@@ -605,10 +605,20 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 **เป้าหมาย:** พัฒนาระบบเบื้องหลังบน Android 14/15 ทำงานตลอด 24 ชั่วโมงไม่โดนระบบฆ่า พร้อมจัดการคลื่นความถี่ BLE สลับ 4-tier Ultra-Saver อัจฉริยะ
 
 #### 📋 TaskList Detail:
-- [ ] **Task 7.1: Android Foreground Service & Wakelock Management**
+- [ ] **Task 7.1: Android Foreground Service, Full-Screen Intent & Priority Popup Engine**
   - พัฒนา `android/app/src/main/java/.../MeshForegroundService.kt`
   - รัน Service พร้อม Persistent Notification แสดงสถานะ Mesh ตามข้อกำหนด Android 14+
   - บริหารจัดสรร WakeLock แบบไม่กินไฟ (สอดรับกับ Google Battery Optimization / Doze Mode)
+  - **Priority-Based Popup Notification System (ระบบแจ้งเตือนป๊อปอัปตามลำดับความสำคัญ ⭐️):**
+    - **Tier-1 Critical SOS (`0x01: SOS_BEACON`):**
+      - สั่งเปิดหน้าจออัตโนมัติแม้ล็อกหน้าจอ/จอดับอยู่ด้วย **Android Full-Screen Intent**
+      - แสดง **Emergency Overlay Modal** สีแดงเต็มจอ ทะลุผ่านโหมดห้ามรบกวน (Bypass Do Not Disturb / Silent Mode)
+      - ส่งสัญญาณเสียงไซเรนกู้ภัยสั้นและสั่นรหัส Morse Code (`... --- ...`) พร้อมปุ่มกด *"กำลังไปช่วย"* และพิกัดระยะทางทันที
+    - **Tier-2 Direct/Group Chat (`0x02`, `0x03`):**
+      - เด้ง **In-App Toast Banner** ลอยลงมาเมื่อเปิดแอปอยู่
+      - เด้ง **Heads-Up Notification** พร้อมปุ่มพิมพ์ตอบกลับด่วน (Quick Reply) เมื่อแอปอยู่เบื้องหลัง
+    - **Tier-3 Crisis Feed (`0x04`):**
+      - เด้ง **High-Priority Sticky Notification** สีส้ม/เหลืองเด่นชัด ไม่หายไปจนกว่าผู้ใช้จะกดอ่าน เพื่อไม่ให้พลาดประกาศเตือนภัยจากศูนย์อพยพ
 - [ ] **Task 7.2: Hardware ScanFilter & BLE Radio Driver**
   - พัฒนา `BleRadioPlugin.kt` ใช้ Hardware BLE ScanFilter ดักจับ Service UUID เฉพาะระดับฮาร์ดแวร์
   - รองรับ BLE Advertising (Peripheral Mode) และ BLE Scanning (Central Mode) พร้อมกัน
