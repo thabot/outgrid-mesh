@@ -43,3 +43,13 @@ export interface ITOGPacket {
   payloadLength: number;        // 16-bit uint
   payload: Uint8Array;
 }
+
+/**
+ * H3 Local Delta Offset (4 Bytes)
+ * High-precision GPS delta relative to Target H3 Hexagon center (< 1m precision)
+ */
+export interface IH3LocalDeltaOffset {
+  deltaX: number; // int16 (-1500m to +1500m)
+  deltaY: number; // int16 (-1500m to +1500m)
+}
+

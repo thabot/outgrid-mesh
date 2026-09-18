@@ -184,6 +184,11 @@
 10. **Fragmented Chunk Header (4 Bytes - สำหรับแพ็กเก็ตที่มีขนาดเกิน MTU > 200B):**
     - `Total Chunks (16 bits / 2 Bytes)`: ระบุจำนวนชิ้นส่วนทั้งหมดของไฟล์
     - `Sequence Index (16 bits / 2 Bytes)`: ระบุลำดับที่ของชิ้นส่วน (0 ถึง N-1) ช่วยให้ปลายทางรองรับการรับชิ้นส่วนสลับลำดับ (Out-of-order Reassembly) ได้ 100%
+11. **H3 Local Delta Offset (4 Bytes - Ultra-Compact High-Precision GPS Payload ⭐️):**
+    - ในแพ็กเก็ตขอความช่วยเหลือ `SOS_BEACON` หรือการแชร์พิกัดฉุกเฉิน จะใช้ **H3 Local Delta Offset** แทนพิกัด Float ดั้งเดิม (16B):
+      - `Delta X (int16, 2 Bytes)`: ระยะกระจัดแกน X (-1,500m ถึง +1,500m) จากจุดกึ่งกลางของ Target H3 Hexagon
+      - `Delta Y (int16, 2 Bytes)`: ระยะกระจัดแกน Y (-1,500m ถึง +1,500m) จากจุดกึ่งกลางของ Target H3 Hexagon
+    - **ผลลัพธ์:** บีบอัดพิกัด GPS แม่นยำระดับ **< 1 เมตร (เห็นหลังคาบ้านชัดเป๊ะ)** โดยกินขนาดข้อมูลเพียง **4 ไบต์** เท่านั้น! ประหยัดกว่าการส่งตัวอักษร GPS (35-40B) ถึง 90% และส่งผ่านคลื่นวิทยุ BLE / LoRa ได้เร็วในเสี้ยววินาที
 
 
 ---
@@ -477,6 +482,9 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - `Message ID (8B uint64)`, `Sender Hash (8B)`, `Recipient/Topic Hash (8B)`
   - **Spatial Target Field (8 Bytes uint64):**
     - ฝังรหัส **Target H3 Index Resolution 9 (~100m)** กำกับไปกับแพ็กเก็ต เพื่อให้โหนดตัวกลางสามารถใช้สูตรคณิตศาสตร์ `h3ToParent` ถอยระดับเป็น Res 7 (ตำบล), Res 5 (กึ่งอำเภอ) และ Res 4 (ข้ามอำเภอ) ในการเลือกเส้นทางส่งต่อได้อย่างแม่นยำ
+  - **H3 Local Delta Offset Packing Engine (4 Bytes Precision GPS ⭐️):**
+    - พัฒนาระบบคำนวณและแปลงพิกัด GPS ดิบ เป็นระยะกระจัด `Delta X (int16)` + `Delta Y (int16)` สัมพัทธ์กับจุดกึ่งกลางของ Target H3 Cell
+    - ปลายทางสามารถถอดรหัสระยะกระจัด 4 ไบต์กลับเป็นพิกัด GPS แม่นยำระดับ < 1 เมตร (ระดับหลังคาบ้าน) โดยไม่ต้องส่ง Float 16 ไบต์หรือสตริง 35-40 ไบต์
   - พัฒนา Unit Tests ตรวจสอบ Header และ Spatial Index Serialization ถูกต้อง 100%
 - [ ] **Task 2.2: Large Payload Fragmentation, Bitmask Reassembly & Erasure Coding**
   - พัฒนา `src/core/protocol/Fragmenter.ts` หั่น Payload ขนาดใหญ่ (>200B เช่น รูปภาพ/เสียง) ออกเป็น Chunks พร้อมกำกับ `[Total_Chunks (2B)] + [Sequence_Index (2B)]`
