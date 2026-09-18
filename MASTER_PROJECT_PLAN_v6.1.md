@@ -690,6 +690,15 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - ฝังค่า Default Production Endpoint ชี้ไปยัง Cloudflare Workers
     - มีหน้าจอการตั้งค่า (Settings UI) ให้ผู้ใช้หรือหน่วยงานราชการสามารถระบุ Custom Signaling / Private Cloud URL ของตนเองได้อิสระ
     - **Offline-First Resilience:** หากต่อเน็ตไม่ได้หรือไม่พบเซิร์ฟเวอร์ ระบบจะไม่หยุดการทำงาน แต่จะ Fallback สู่โหมด BLE Mesh เต็มรูปแบบทันที
+- [ ] **Task 9.6: Hybrid Gmail / Google OAuth2 Authentication Engine (Zero-Barrier Offline + Cloud Identity)**
+  - **Web Dashboard Authentication (100% Mandatory Google/Gmail Login):**
+    - บังคับล็อกอินด้วยบัญชี **Google / Gmail (OAuth 2.0 / OpenID Connect)** สำหรับการเข้าถึงระบบควบคุมส่วนกลาง, ดูพิกัดแม่นยำ (Res 9 Precision), และคิวสั่งการส่งทีมกู้ภัย ป้องกันบุคคลภายนอกเข้าถึงข้อมูลความลับ
+  - **Android Mobile App Hybrid Authentication (`src/core/auth/AuthManager.ts`):**
+    - **Life-Saving Zero-Barrier Offline Guest Mode:** เมื่อไม่มีสัญญาณอินเทอร์เน็ตในพื้นที่ภัยพิบัติ แอปเปิดให้ส่งสัญญาณฉุกเฉิน `SOS_BEACON`, ดูแผนที่ออฟไลน์, และแชต P2P ได้ทันที 100% โดยระบบสร้าง Local Ed25519 Identity ให้อัตโนมัติ ไม่มีการบล็อกหน้าจอ
+    - **Connected Mode (Sign in with Google / Gmail):** เมื่อผู้ใช้มีอินเทอร์เน็ต สามารถกดเข้าสู่ระบบด้วย Gmail เพื่อ:
+      - ซิงก์และสำรองข้อมูลกุญแจส่วนตัว (Key Backup & Recovery)
+      - กำหนดรายชื่อเบอร์โทร/อีเมลแจ้งเตือนฉุกเฉินของครอบครัว (Emergency Contacts)
+      - ส่งอีเมลแจ้งเตือนอัตโนมัติไปยังครอบครัวเมื่อสัญญาณเน็ตกลับมา ว่า *"บุคคลนี้ปลอดภัยแล้ว"*
 
 #### 🎯 Acceptance Criteria:
 - การเชื่อมต่อ WebRTC P2P ผ่าน Public STUN ข้ามเครือข่ายสำเร็จโดยไม่ต้องมีเซิร์ฟเวอร์ Relay
@@ -697,6 +706,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - หน้าเว็บแยกมุมมอง Guest (เบลอพิกัด) และ Responder (พิกัดแม่นยำ) ได้ถูกต้อง 100%
 - การสแกน QR Code หน้างานสามารถมอบสิทธิ์กู้ภัยแบบออฟไลน์สำเร็จ และระบบ OTP / SSO Cloudflare Access ตรวจสอบโดเมนอีเมลราชการได้อย่างแม่นยำ
 - Web Dashboard ใช้งานได้ผ่าน `*.pages.dev` และ API รันผ่าน `*.workers.dev` พร้อมทั้งแอปมือถือสามารถสลับ Custom Server URL ได้อย่างถูกต้อง
+- Web Dashboard บังคับล็อกอินด้วย Gmail สำเร็จ และแอป Android รองรับทั้งโหมด Guest ออฟไลน์ 100% และการผูกบัญชีด้วย Gmail ได้อย่างสมบูรณ์
 
 ---
 
