@@ -3,8 +3,15 @@
   import CrisisFeed from '../ui/components/CrisisFeed.svelte';
   import DonationDashboard from '../ui/components/DonationDashboard.svelte';
   import HelpManualScreen from '../ui/components/HelpManualScreen.svelte';
+  import SosMapView from '../ui/components/SosMapView.svelte';
 
-  let activeTab: 'sos' | 'feed' | 'manual' | 'donation' = 'sos';
+  let activeTab: 'sos' | 'feed' | 'map' | 'manual' | 'donation' = 'sos';
+
+  // Demo SOS targets visible on the map
+  const demoSosTargets = [
+    { id: 'sos-001', lat: 13.7590, lng: 100.5050, category: '🚤 น้ำท่วม ต้องการเรือ', distanceMeters: 340 },
+    { id: 'sos-002', lat: 18.7870, lng: 98.9830, category: '👶 มีเด็ก/ผู้สูงอายุ', distanceMeters: 1200 },
+  ];
 </script>
 
 <svelte:head>
@@ -22,6 +29,7 @@
     <nav class="nav-tabs">
       <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 SOS Beacon</button>
       <button class:active={activeTab === 'feed'} on:click={() => activeTab = 'feed'}>📢 Crisis Feed</button>
+      <button class:active={activeTab === 'map'} on:click={() => activeTab = 'map'}>🗺️ แผนที่กู้ภัย</button>
       <button class:active={activeTab === 'manual'} on:click={() => activeTab = 'manual'}>📖 Field Manual</button>
       <button class:active={activeTab === 'donation'} on:click={() => activeTab = 'donation'}>🤝 Community Fund</button>
     </nav>
@@ -32,6 +40,8 @@
       <div class="card"><OneTapSos /></div>
     {:else if activeTab === 'feed'}
       <div class="card"><CrisisFeed /></div>
+    {:else if activeTab === 'map'}
+      <div class="card card-map"><SosMapView sosTargets={demoSosTargets} /></div>
     {:else if activeTab === 'manual'}
       <div class="card"><HelpManualScreen /></div>
     {:else if activeTab === 'donation'}
@@ -121,5 +131,14 @@
   .card {
     background: #0f172a;
     border-radius: 0.75rem;
+    overflow: hidden;
+  }
+  .card-map {
+    padding: 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    min-height: 580px;
+    display: flex;
+    flex-direction: column;
   }
 </style>
