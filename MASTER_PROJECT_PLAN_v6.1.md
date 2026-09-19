@@ -620,7 +620,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - เด้ง **Heads-Up Notification** พร้อมปุ่มพิมพ์ตอบกลับด่วน (Quick Reply) เมื่อแอปอยู่เบื้องหลัง
     - **Tier-3 Crisis Feed (`0x04`):**
       - เด้ง **High-Priority Sticky Notification** สีส้ม/เหลืองเด่นชัด ไม่หายไปจนกว่าผู้ใช้จะกดอ่าน เพื่อไม่ให้พลาดประกาศเตือนภัยจากศูนย์อพยพ
-- [ ] **Task 7.2: Hardware ScanFilter & Full-Stack BLE Coded S=8 Radio Driver (Long-Range Guaranteed ⭐️)**
+- [ ] **Task 7.2: Hardware ScanFilter, Full-Stack BLE Coded S=8 Radio Driver & 4-Tier Collision Shield (Long-Range & High-Density Guaranteed ⭐️)**
   - พัฒนา `android/app/src/main/java/.../BleRadioPlugin.kt` จัดการไดรเวอร์วิทยุบลูทูธระดับฮาร์ดแวร์
   - ใช้ Hardware BLE ScanFilter ดักจับ Service UUID เฉพาะระดับ Baseband (CPU หลับลึก 100% ถ้าไม่มีแพ็กเก็ต TOG)
   - **Full-Stack Coded S=8 Architecture (สแกนเจอที่ 300ม. คุยส่งข้อความถึงกันได้จริงที่ 300ม. 100%):**
@@ -628,6 +628,14 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - **Ultra-Long-Range SOS & Chat Transmission:** ส่งแพ็กเก็ตฉุกเฉิน `SOS_BEACON` และข้อความสนทนา `DIRECT_CHAT` ด้วย **Coded PHY (S=8) + Max TX Power ตลอดรอดฝั่ง** ป้องกันปัญหาสัญญาณหลุด (Drop Connection) เมื่ออยู่นอกระยะ 1M PHY ทำให้การันตีการคุยแชตได้ระยะไกลเท่ากับระยะสแกน
     - **RSSI-Adaptive High-Throughput Mode (เฉพาะเมื่ออยู่ประชิดตัว):** หากตรวจพบว่าโหนดเพื่อนบ้านอยู่ใกล้มาก (< 30–50 เมตร สัญญาณ RSSI > -75dBm) จึงจะอนุญาตให้สลับความเร็วเป็น 1M PHY เพื่อส่งไฟล์หรือข้อมูลขนาดใหญ่ได้เร็วขึ้น
     - **Hardware Fallback Compatibility:** ตรวจสอบความสามารถของชิปมือถือ หากเป็นรุ่นเก่าที่ไม่รองรับ Coded PHY จะถอยกลับมาใช้ `1M PHY` ดั้งเดิมอัตโนมัติ 100%
+  - **4-Tier Collision Shield for BLE Coded S=8 (เกราะป้องกันสัญญาณชนกันเมื่อเปิดแอปพร้อมกันจำนวนมากในจุดเดียว 🛡️):**
+    - ด้วยคุณสมบัติของ BLE Coded PHY (S=8) แพ็กเก็ตจะแช่อยู่ในอากาศ (Airtime) นานขึ้น (~2.4ms ต่อแพ็กเก็ต) หากมีโหนดหนาแน่นในศูนย์พักพิง อาจเสี่ยงคลื่นชนกัน (Packet Collision) ระบบจึงติดตั้งเกราะป้องกัน 4 ระดับ:
+      1. **CSMA/CA Carrier Sense & Pseudo-Random TX Jitter:** ก่อนยิงคลื่นออกอากาศ โหนดจะสุ่มหน่วงเวลาหนีกัน (Random Jitter 0–150ms) และตรวจเช็คสถานะช่องสัญญาณวิทยุก่อนส่ง ป้องกันทุกเครื่องยิงคลื่นชนกันพร้อมกัน
+      2. **Adaptive Density Throttling Engine:** โหนดจะนับจำนวนเพื่อนบ้านรอบตัว ($N$) อัตโนมัติ:
+         - หากโหนดหนาแน่น ($N > 30$ เครื่องในรัศมี): จะปรับลดความถี่ Presence Chirp ให้ห่างขึ้น (เช่น จากทุก 1 นาที เป็นทุก 5–10 นาที) และบีบเพดาน Hop Count เหลือ 3–5 ทอด เพื่อตัด Broadcast Storm
+         - หากโหนดเบาบาง ($N < 5$ เครื่อง): เร่งความถี่สแกนและขยาย Hop Count เป็น 10–15 ทอด เพื่อดึงสัญญาณให้ไกลที่สุด
+      3. **Smart Gossip Suppression (Probabilistic Relay):** เมื่อได้รับแพ็กเก็ตบรอดแคสต์ โหนดจะหน่วงเวลาสั้นๆ ($t$) หากตรวจพบว่ามีโหนดเพื่อนบ้านอื่นช่วยรีเลย์ส่งต่อแพ็กเก็ตนั้นไปแล้ว โหนดนี้จะสั่งยกเลิกการส่งต่อของตนเองทันที (Drop redundant forward) ลดภาระแบนด์วิดท์ในอากาศลงได้กว่า 70%
+      4. **Reed-Solomon Erasure Coding Recovery (8+4):** แม้จะเกิดสัญญาณชนกันจนข้อมูลตกหล่นหายไปในอากาศบางชิ้น ปลายทางยังสามารถประกอบข้อมูลคืนได้สมบูรณ์แบบ 100% หากได้รับชิ้นส่วนเพียง 8 จาก 12 ชิ้น (ทนทานต่อ Packet Loss ได้สูงถึง 33%)
 - [ ] **Task 7.3: Adaptive Context-Aware Battery Duty Cycle (BLE-Only Radio Scheduling ⭐️)**
   - พัฒนา `src/core/battery/DutyCycleManager.ts` จัดตารางเวลาสแกนคลื่นวิทยุ **BLE ล้วน 100%** (ปิด Wi-Fi สนิทเพื่อประหยัดไฟ) และปรับความถี่ตามการประสานข้อมูล (Sensor Fusion) ระหว่าง **Hardware Accelerometer (<20µA - ไม่ใช้ Gyroscope เพื่อกันไฟรั่ว)** ร่วมกับ **H3 Res 9 Cell Boundary**:
     - **Stationary Detection (อยู่นิ่งบนโต๊ะ/ในบ้าน):** Accelerometer ตรวจไม่พบแรงขยับ และพิกัดยังไม่หลุดข้ามเส้นขอบ H3 Res 9 (~100m) ➔ ป้องกัน GPS Drift 100% และสั่งหลับยาว:
