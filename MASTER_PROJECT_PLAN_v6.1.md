@@ -1227,23 +1227,46 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - ฝังค่า Default Production Endpoint ชี้ไปยัง Cloudflare Workers
     - มีหน้าจอการตั้งค่า (Settings UI) ให้ผู้ใช้หรือหน่วยงานราชการสามารถระบุ Custom Signaling / Private Cloud URL ของตนเองได้อิสระ
     - **Offline-First Resilience:** หากต่อเน็ตไม่ได้หรือไม่พบเซิร์ฟเวอร์ ระบบจะไม่หยุดการทำงาน แต่จะ Fallback สู่โหมด BLE Mesh เต็มรูปแบบทันที
-- [ ] **Task 9.6: Hybrid Gmail / Google OAuth2 Authentication Engine (Zero-Barrier Offline + Cloud Identity)**
-  - **Web Dashboard Authentication (100% Mandatory Google/Gmail Login):**
-    - บังคับล็อกอินด้วยบัญชี **Google / Gmail (OAuth 2.0 / OpenID Connect)** สำหรับการเข้าถึงระบบควบคุมส่วนกลาง, ดูพิกัดแม่นยำ (Res 9 Precision), และคิวสั่งการส่งทีมกู้ภัย ป้องกันบุคคลภายนอกเข้าถึงข้อมูลความลับ
-  - **Android Mobile App Hybrid Authentication (`src/core/auth/AuthManager.ts`):**
-    - **Life-Saving Zero-Barrier Offline Guest Mode:** เมื่อไม่มีสัญญาณอินเทอร์เน็ตในพื้นที่ภัยพิบัติ แอปเปิดให้ส่งสัญญาณฉุกเฉิน `SOS_BEACON`, ดูแผนที่ออฟไลน์, และแชต P2P ได้ทันที 100% โดยระบบสร้าง Local Ed25519 Identity ให้อัตโนมัติ ไม่มีการบล็อกหน้าจอ
-    - **Connected Mode (Sign in with Google / Gmail):** เมื่อผู้ใช้มีอินเทอร์เน็ต สามารถกดเข้าสู่ระบบด้วย Gmail เพื่อ:
-      - ซิงก์และสำรองข้อมูลกุญแจส่วนตัว (Key Backup & Recovery)
-      - กำหนดรายชื่อเบอร์โทร/อีเมลแจ้งเตือนฉุกเฉินของครอบครัว (Emergency Contacts)
-      - ส่งอีเมลแจ้งเตือนอัตโนมัติไปยังครอบครัวเมื่อสัญญาณเน็ตกลับมา ว่า *"บุคคลนี้ปลอดภัยแล้ว"*
+- [ ] **Task 9.6: Passkey & Cloud Identity Engine (Zero-Cost FIDO2 Recovery & Google Sign-In Option ⭐️)**
+  - **Web Dashboard Authentication (Strict Role-Based Cloud Access):**
+    - บังคับล็อกอินสำหรับเจ้าหน้าที่ศูนย์บัญชาการกู้ภัยผ่าน **Google / Gmail (OAuth 2.0 / OpenID Connect)** หรือ **Cloudflare Access (OTP/SSO)** สำหรับการเข้าถึงระบบควบคุมส่วนกลาง, ดูพิกัดแม่นยำ (Res 9/11 Precision), และคิวสั่งการส่งทีมกู้ภัย ป้องกันบุคคลภายนอกเข้าถึงข้อมูลความลับ
+  - **Android Mobile App Zero-Mental-Load Passkey Engine (`src/core/auth/PasskeyAuthManager.ts` ⭐️):**
+    - **100% Zero-Barrier Instant Guest Mode:** เมื่อไม่มีสัญญาณอินเทอร์เน็ต แอปเปิดให้ส่งสัญญาณฉุกเฉิน `SOS_BEACON`, ดูแผนที่ออฟไลน์, และแชต P2P ได้ทันที 100% โดยระบบสุ่มสร้าง Local Ed25519/X25519 Identity ให้อัตโนมัติ (<10ms) ไม่บล็อกหน้าจอ ไม่บังคับจำรหัส 12 คำ
+    - **Zero-Cost Passkey Biometrics Contact Backup (Google Credential Manager / Apple Keychain):**
+      - เมื่อต่อเน็ตได้ ผู้ใช้สามารถผูก Passkey สแกนนิ้ว/ใบหน้าเพื่อสำรองรายชื่อเพื่อน (Node ID + Public Keys) ขึ้น Cloudflare D1
+      - **Clean Reinstall Recovery:** เมื่อถอนการติดตั้งแล้วลงใหม่ เครื่องจะสร้าง Node ID ใหม่ทันที และกู้คืนเฉพาะสมุดเพื่อนกลับมาด้วยสแกนนิ้วเพียง 1 วินาที โดยไม่ต้องจ่ายเงินค่าส่ง SMS/Email OTP แม้แต่บาทเดียว
+    - **Optional Google Account Binding:** เปิดให้ผูกบัญชี Google เพื่อกำหนดรายชื่ออีเมลครอบครัวสำหรับแจ้งเตือนสถานะความปลอดภัยอัตโนมัติ
+
+- [ ] **Task 9.7: Comprehensive Cloudflare, Signaling & Passkey Unit Test Suite (`tests/unit/cloud/` ⭐️)**
+  - พัฒนาชุดทดสอบหน่วยสำหรับ Cloudflare Workers, D1 Schema, P2P WebRTC Signaling, และ Passkey Auth:
+  - **`WebRtcSignaling.test.ts`:**
+    - ทดสอบการดึง Public STUN Configuration (`stun.l.google.com:19302`, `stun.cloudflare.com:3478`)
+    - ทดสอบ ICE Candidate Exchange และ WebRTC DataChannel Handshake จำลองระหว่าง 2 โหนด
+  - **`CloudflareWorkerApi.test.ts`:**
+    - ทดสอบการตรวจสอบ Ed25519 Request Signing: ปฏิเสธ Request ที่ไม่มี Signature หรือ Signature ผิด
+    - ทดสอบ Anti-Replay Guard: ส่งซ้ำ Nonce เดิม หรือส่ง Timestamp คลาดเคลื่อนเกิน 60 วินาที ต้องได้ HTTP 401/403 ทันที
+    - ทดสอบ Rate Limiting Shield: ยิงถี่เกิน 1 ครั้ง/15 วินาที ต้องตอบกลับ HTTP 429 Too Many Requests
+    - ทดสอบ Heartbeat Endpoint (`POST /v1/presence/heartbeat`): ตรวจสอบการบันทึกลง Mock D1
+  - **`D1DatabaseSchema.test.ts`:**
+    - ทดสอบ Schema Migration ใน `cloudflare/schema.sql` (ตาราง `active_nodes`, `node_neighbors`, `passkey_credentials`, `user_contacts`)
+    - ทดสอบ Spatial Query: ค้นหาโหนดในรัศมี H3 Res 7 และ K-Ring ($k=1$)
+    - ทดสอบ Auto-Prune Query: กวาดล้างโหนดที่ `expires_at < unixepoch()` ได้ถูกต้อง 100%
+  - **`PasskeyAuthManager.test.ts`:**
+    - ทดสอบการสร้างและตรวจสอบ FIDO2 Registration Challenge & Verification
+    - ทดสอบการสร้างและตรวจสอบ FIDO2 Authentication Challenge สำหรับกู้คืนรายชื่อเพื่อนหลัง Reinstall
+    - ทดสอบการซิงก์ `user_contacts` ระหว่างเครื่องและคลาวด์ D1
+  - **`DualTierPrivacy.test.ts`:**
+    - ทดสอบ Guest Filter: ปรับพิกัดเป็น H3 Res 7 (~1.2km) และเบลอข้อมูลระบุตัวตน (Zero-PII)
+    - ทดสอบ Responder Authorization: สแกน Signed Delegation QR Code แล้วปลดล็อกพิกัด Res 9/11 ได้ถูกต้อง 100%
 
 #### 🎯 Acceptance Criteria:
 - การเชื่อมต่อ WebRTC P2P ผ่าน Public STUN ข้ามเครือข่ายสำเร็จโดยไม่ต้องมีเซิร์ฟเวอร์ Relay
 - D1 Database รองรับการบันทึกสถานะโหนด Spatial H3 และแสดงผล Heatmap อย่างถูกต้อง
-- หน้าเว็บแยกมุมมอง Guest (เบลอพิกัด) และ Responder (พิกัดแม่นยำ) ได้ถูกต้อง 100%
+- หน้าเว็บและ API แยกมุมมอง Guest (เบลอพิกัด Res 7) และ Responder (พิกัดแม่นยำ Res 9/11) ได้ถูกต้อง 100%
 - การสแกน QR Code หน้างานสามารถมอบสิทธิ์กู้ภัยแบบออฟไลน์สำเร็จ และระบบ OTP / SSO Cloudflare Access ตรวจสอบโดเมนอีเมลราชการได้อย่างแม่นยำ
 - Web Dashboard ใช้งานได้ผ่าน `*.pages.dev` และ API รันผ่าน `*.workers.dev` พร้อมทั้งแอปมือถือสามารถสลับ Custom Server URL ได้อย่างถูกต้อง
-- Web Dashboard บังคับล็อกอินด้วย Gmail สำเร็จ และแอป Android รองรับทั้งโหมด Guest ออฟไลน์ 100% และการผูกบัญชีด้วย Gmail ได้อย่างสมบูรณ์
+- ระบบ Passkey FIDO2 ลงทะเบียนและกู้คืนรายชื่อเพื่อนจาก D1 ได้สำเร็จ 100% ไร้ค่าใช้จ่าย SMS/Email
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/cloud/` (ทั้ง 5 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
