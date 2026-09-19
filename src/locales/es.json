@@ -1,0 +1,8 @@
+{
+  "app_name": "OutGrid Rescate de Emergencia",
+  "one_tap_sos": "SOS de Un Toque",
+  "disaster_mesh_mode": "Modo Malla sin Conexión",
+  "radar_compass": "Brújula Radar de Navegación",
+  "battery_critical": "Batería Crítica (<20%) Modo Hibernación",
+  "evacuate_immediate": "Evacuar Inmediatamente"
+}

@@ -1,0 +1,8 @@
+{
+  "app_name": "OutGrid Rescue",
+  "one_tap_sos": "One-Tap SOS",
+  "disaster_mesh_mode": "Disaster Mesh Mode",
+  "radar_compass": "Radar Compass Navigation",
+  "battery_critical": "Critical Battery (<20%) Radio Hibernating",
+  "evacuate_immediate": "Evacuate Immediately"
+}

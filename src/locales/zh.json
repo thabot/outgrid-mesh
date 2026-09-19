@@ -1,0 +1,8 @@
+{
+  "app_name": "OutGrid 应急救援",
+  "one_tap_sos": "一键紧急求救",
+  "disaster_mesh_mode": "离线灾难网格模式",
+  "radar_compass": "雷达罗盘导航",
+  "battery_critical": "电量告急 (<20%) 进入休眠",
+  "evacuate_immediate": "立即紧急撤离"
+}
