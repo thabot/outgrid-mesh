@@ -811,35 +811,68 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 ---
 
 ### 🔹 Phase 5: Spatial H3 Indexing, Hierarchical Fallback & Supernode Election
-**เป้าหมาย:** วางโครงข่ายพิกัดเชิงพื้นที่ด้วย Uber H3 Hexagonal Grid (Res 9, 7, 5, 4) ระบบย่อขยายพิกัดฉุกเฉิน และอัลกอริทึมเลือกตั้ง Supernode อัตโนมัติ
+**เป้าหมาย:** วางโครงข่ายพิกัดเชิงพื้นที่ด้วย Uber H3 Hexagonal Grid (Res 9, 7, 5, 4), ระบบ Geocast Routing ย่อขยายพิกัดฉุกเฉิน (Progressive Spatial Expansion), และอัลกอริทึมเลือกตั้ง Supernode อัตโนมัติ (Deterministic Supernode Election) ควบคู่กับระบบ LoRa Backbone Gateway Promotion
 
 #### 📋 TaskList Detail:
 - [ ] **Task 5.1: Spatial H3 Grid & Geo-Hashing Engine (Hybrid Mesh & Precision Triage Architecture ⭐️)**
-  - พัฒนา `src/core/spatial/H3GridEngine.ts` แปลง GPS Lat/Long เป็น H3 Index ด้วย `h3-js`
+  - พัฒนา `src/core/spatial/H3GridEngine.ts` แปลง GPS Lat/Long เป็น H3 Index ด้วย `h3-js` / Pure H3 Algorithmic Core:
   - **Sweet-Spot Hierarchical Resolution Strategy:**
     - **Resolution 9 (~100m / รัศมี ~107m - Core Radio Mesh Base):** ความละเอียดฐานหลักของโครงข่าย BLE Mesh และตัวตรวจจับ Stationary เพื่อหลีกเลี่ยงผลกระทบจาก GPS Drift ในอาคาร และเข้าคู่กับระยะทำการของคลื่นบลูทูธพอดีเป๊ะ
     - **Resolution 11 (~25m) & Resolution 12 (~9m - Precision Roof Triage Layer):** ถอดรหัสสดจาก **H3 Local Delta Offset (4B)** เพื่อปักหมุดระบุหลังคาบ้านผู้ประสบภัย (Roof-Level Pinpoint) บนหน้าจอเรดาร์ของทีมกู้ภัยโดยไม่รบกวนชั้นส่งสัญญาณวิทยุ
     - **Resolution 7 (~1.2km / รัศมี ~1.22km):** สำหรับช่องสนทนาระดับตำบล / สถิติ Anonymous Heatmap
     - **Resolution 5 (~8.5km / รัศมี ~8.88km):** สำหรับการกระจายข่าวด่วนระดับตำบลขนาดใหญ่/กึ่งอำเภอ
     - **Resolution 4 (~22km / รัศมี ~22.6km):** สำหรับการขนส่งข้อความข้ามอำเภอและเชื่อมต่อกับ Data Mule
-- [ ] **Task 5.2: Progressive Spatial Expansion & K-Ring Search เมื่อปลายทาง Offline**
+  - **Cell Boundary & Distance Calculation:**
+    - พัฒนาฟังก์ชันคำนวณระยะห่างระหว่าง H3 Cells (`gridDistance`) และจุดศูนย์กลาง (`cellToLatLng`) แบบ Zero-Allocation
+
+- [ ] **Task 5.2: Progressive Spatial Expansion & K-Ring Search เมื่อปลายทาง Offline (⭐️)**
   - พัฒนาระบบ **H3 Progressive Spatial Expansion** ค้นหาและส่งมอบข้อความเมื่อปลายทาง Offline เป็นระลอกคลื่น:
     - **ระดับ 1 (Offline < 15 นาที):** พยายามส่งตรงพิกัดเดิม **Res 9 (~100m)** ผ่าน BLE Long Range
     - **ระดับ 2 (Offline 15 นาที – 2 ชม.):** ถอยระดับสู่ **Res 7 (~1.2km)** พร้อมสั่ง `gridDisk(k=1)` ดักจับรังผึ้งรอบข้าง 6 ช่องรอบตัว เพื่อดักผู้ประสบภัยที่กำลังเดินอพยพ
     - **ระดับ 3 (Offline 2 – 12 ชม.):** ถอยระดับสู่ **Res 5 (~8.5km)** ประสานส่งต่อยังศูนย์อพยพระดับตำบล
     - **ระดับ 4 (Offline > 12 – 24 ชม.):** ถอยระดับสู่ **Res 4 (~22km)** บรรจุเข้าสู่ตู้เก็บสัมภาระของ **High-Priority Data Mule** ขนส่งข้ามอำเภอ
-  - พัฒนาระบบลดขนาดการค้นหาอัตโนมัติ (Instant Collapse) เมื่อปลายทางตอบรับ Signed ACK กลับมา
-- [ ] **Task 5.3: Deterministic Supernode Election Algorithm & LoRa Gateway Tier-1 Promotion**
-  - พัฒนา `src/core/mesh/SupernodeElection.ts` คำนวณความเหมาะสมในการเป็นโหนดกระจายสัญญาณ (Score-based Election)
+  - **Instant Collapse On Signed Receipt:** พัฒนาระบบยุบขนาดการค้นหากลับมาเป็น Point-to-Point ทันทีเมื่อได้รับ Signed ACK จากปลายทาง
+
+- [ ] **Task 5.3: Deterministic Supernode Election Algorithm & LoRa Gateway Tier-1 Promotion (⭐️)**
+  - พัฒนา `src/core/mesh/SupernodeElection.ts` คำนวณความเหมาะสมในการเป็นโหนดกระจายสัญญาณ (Score-based Election):
+  - **Scoring Function Formula:**
+    $$\text{Score} = (\text{Battery\%} \times 0.4) + (\text{IsCharging} \times 30) + (\text{PeerStability} \times 0.2) + (\text{LoRaBridgeActive} \times 100)$$
   - **LoRa Gateway Priority Override (Tier-1 Community Backbone):**
     - เครื่องที่มีการเชื่อมต่อกับกล่อง LoRa ฮาร์ดแวร์ส่วนตัว (Active BLE LoRa Companion Bridge) จะได้รับคะแนนโบนัสสูงสุด (+100 คะแนน) ได้รับการแต่งตั้งเป็น **Zone Tier-1 Backbone Gateway** อัตโนมัติ เพื่อทำหน้าที่เป็นเครื่องแม่ข่ายยิงข้อความข้ามเขาระยะไกล 10–20+ กม. ให้เพื่อนบ้านรอบตัว
   - **Smartphone Supernode Criteria:** แบตเตอรี่ > 50%, กำลังชาร์จไฟ (Wall/Car charger), มีหน่วยความจำเหลือ, เสถียรภาพการเชื่อมต่อ (สูงสุด 1 Master + 2 Standby Backups ต่อ H3 Res 7 Zone)
-  - สลับสิทธิ์เป็น Normal Node อัตโนมัติเมื่อแบตเตอรี่ลดต่ำกว่า 30% (เว้นแต่กำลังชาร์จไฟหรือเชื่อมต่อ LoRa Gateway อยู่)
+  - **Graceful Demotion:** สลับสิทธิ์กลับเป็น Normal Node อัตโนมัติเมื่อแบตเตอรี่ลดต่ำกว่า 30% (เว้นแต่กำลังชาร์จไฟหรือเชื่อมต่อ LoRa Gateway อยู่)
+
+- [ ] **Task 5.4: Spatial Geocast Forwarding & Bounded Epidemic Flood Engine (`src/core/mesh/GeocastRouter.ts` ⭐️)**
+  - พัฒนาการส่งต่อแพ็กเก็ตจำกัดขอบเขตเชิงพื้นที่ (Geographically Bounded Flooding):
+  - **Target H3 Cell Boundary Check:**
+    - เมื่อโหนดได้รับแพ็กเก็ตบรอดแคสต์ฉุกเฉิน จะตรวจสอบว่าตนเองอยู่ใน `Target_H3` หรืออยู่ใน K-Ring ($k=1$) ของพื้นที่เป้าหมายหรือไม่
+    - หากอยู่นอกเขตระยะไกลเกินกว่ากำหนด ให้ลดการส่งต่อ (Prune Forwarding) ทันที เพื่อไม่ให้เปลือง Airtime ในพื้นที่ไม่เกี่ยวข้อง
+  - **Hop Count & Density-Adaptive Forwarding:**
+    - หากอยู่ในเขตเป้าหมายที่มีโหนดหนาแน่น ($N > 20$) จะสุ่มส่งต่อเพียง $p = 1/\sqrt{N}$ เพื่อกำจัดปัญหา Broadcast Storm
+
+- [ ] **Task 5.5: Comprehensive Spatial & Supernode Unit Test Suite (`tests/unit/spatial/` ⭐️)**
+  - พัฒนาชุดทดสอบหน่วยสำหรับ H3 Spatial Engine, Geocast และการเลือกตั้ง Supernode:
+  - **`H3GridEngine.test.ts`:**
+    - ทดสอบแปลงพิกัด Lat/Long เป็น H3 Index ถูกต้องตามมาตรฐาน Uber H3 ทั้ง 5 ระดับ (Res 4, 5, 7, 9, 11/12)
+    - ทดสอบคำนวณ `cellToLatLng` และคำนวณระยะทาง `gridDistance` ถูกต้องแม่นยำ
+  - **`ProgressiveExpansion.test.ts`:**
+    - จำลองไทม์ไลน์สถานการณ์ปลายทาง Offline ตามช่วงเวลา (<15 นาที, 2 ชม., 12 ชม., 24 ชม.)
+    - ยืนยันการปรับความละเอียด Res 9 $\rightarrow$ Res 7 (k=1) $\rightarrow$ Res 5 $\rightarrow$ Res 4 ตามลำดับขั้น
+    - ทดสอบ **Instant Collapse:** เมื่อได้รับ ACK จำลอง ระบบต้องยกเลิก Expansion และกลับสู่ Res 9 ทันที 100%
+  - **`SupernodeElection.test.ts`:**
+    - ทดสอบการคำนวณคะแนนตามสูตร Scoring Function
+    - ทดสอบกรณีเชื่อมต่อ LoRa Companion Bridge: ต้องได้รับการแต่งตั้งเป็น Supernode Tier-1 ทันที 100%
+    - ทดสอบกรณีแบตเตอรี่ลดต่ำกว่า 30%: ระบบต้องสละตำแหน่ง (Demote) คืนสู่ Normal Node อย่างสุภาพ
+  - **`GeocastRouter.test.ts`:**
+    - ทดสอบการคัดกรองแพ็กเก็ต: โหนดที่อยู่นอกพื้นที่เป้าหมาย H3 ต้อง Drop แพ็กเก็ตทิ้ง
+    - ทดสอบ Density-Adaptive Forwarding: ในสภาพแวดล้อมหนาแน่น อัตราการ Forward ต้องลดลงตามสัดส่วน $1/\sqrt{N}$
 
 #### 🎯 Acceptance Criteria:
-- Unit Test แปลงพิกัด GPS เป็น H3 Index ถูกต้องตามมาตรฐาน Uber H3 ครบทั้ง 4 ระดับ (Res 9, 7, 5, 4)
-- ระบบจำลองสถานการณ์จำลองปลายทาง Offline สามารถสั่งขยายวงรังผึ้ง Res 9 -> 7 -> 5 -> 4 ตามช่วงเวลาที่กำหนดได้อย่างแม่นยำ 100%
-- การเลือกตั้ง Supernode สลับบทบาทได้ทันทีเมื่อแบตเตอรี่ลดลงโดยไม่ทำให้การส่งต่อข้อมูลสะดุด
+- แปลงพิกัด GPS เป็น H3 Index ถูกต้องตามมาตรฐาน Uber H3 ครบทั้ง 5 ระดับ (Res 4, 5, 7, 9, 11/12)
+- ระบบ Progressive Spatial Expansion ขยายวงรังผึ้ง Res 9 -> 7 -> 5 -> 4 ตามช่วงเวลาที่กำหนดได้อย่างแม่นยำ 100% และ Instant Collapse เมื่อได้ ACK
+- การเลือกตั้ง Supernode คำนวณคะแนนและสลับบทบาทได้ถูกต้อง ยกสิทธิ์สูงสุดให้โหนดที่ต่อ LoRa Gateway และลดบทบาทเมื่อแบตเตอรี่ต่ำกว่า 30%
+- Geocast Router สกัดกั้นการแพร่กระจายของแพ็กเก็ตออกนอกเขตเป้าหมายได้อย่างแม่นยำ 100%
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/spatial/` (ทั้ง 4 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
