@@ -71,12 +71,12 @@
 
 | หมวดหมู่ข้อมูล | ข้อมูลที่สามารถส่งได้ (Supported Payloads) | ขนาดข้อมูล / ความยาว | ช่องทางการส่ง (Transport) | สภาพแวดล้อมการทำงาน |
 | :--- | :--- | :---: | :---: | :--- |
-| **1. Emergency & SOS** | **One-Tap SOS Beacon:** พิกัด GPS (Lat/Lng), H3 Index, ระดับแบตเตอรี่, สถานะผู้ประสบภัย (เด็ก/คนแก่/ผู้ป่วย/ขาดออกซิเจน) | $\le 28$ bytes (Single Packet) | **Bluetooth 5 Long Range (LE Coded PHY)**<br>*(Fallback: BLE 1M Legacy)* | ส่งทันทีไร้การจับคู่ รัศมีทะลุทะลวง **200–400+ เมตร** (ที่โล่งแตะ 500 ม.) กินไฟต่ำสุด เซ็นกำกับด้วย Ed25519 กันปลอม |
-| **2. Text & Chat** | **1-on-1 Private Messages (E2EE):** แชตส่วนบุคคลเข้ารหัส AES-256-GCM สองชั้น โหนดตัวกลางอ่านไม่ได้ (Security Overhead เพียง +28 bytes: IV 12B + Tag 16B) | **แนะนำ 140–300 ตัวอักษร** (สูงสุดไม่เกิน 1,000 ตัวอักษร / < 1 KB) | **Bluetooth 5 Long Range (LE Coded PHY)**<br>+ Extended Adv & Epidemic Gossip | ส่งข้อความแชตตัวหนังสือข้ามตึก/ซอกซอยระยะไกล **200–400 เมตร/ทอด** รวดเร็วในเสี้ยววินาที ไร้เน็ต 100% |
-| **3. Group Chat** | **กลุ่มผู้ประสบภัย / กลุ่มกู้ภัยเฉพาะจุด:** ถอดรหัสด้วย Shared Group Key (32B) ติดหัวซองด้วย `TopicID` (4B) | **100–200 ตัวอักษร** (สูงสุดไม่เกิน 500 ตัวอักษร) | **BT 5 Long Range / Targeted Flood** | กระจายข้อความกลุ่มครอบคลุมกว้างขวาง รัศมีระดับหมู่บ้าน/ตำบล |
-| **4. Broadcast / Crisis** | **Offline Crisis Feed:** ประกาศเตือนภัย, ข่าวสารอพยพ พร้อมลายเซ็นดิจิทัล Ed25519 ป้องกันข่าวปลอม | < 500 bytes | **BT 5 Long Range Epidemic Broadcast** | กระจายข่าวสารรอบทิศทางในรัศมี 200–400 เมตร ทุกโหนดรับรู้พร้อมกัน |
-| **5. Voice Messages** | **คลิปเสียงสั้น (Push-to-Talk Voice Memo):** บันทึกเสียงแจ้งเหตุด้วย Opus Codec (Voice Mono 6–12 kbps) สำหรับผู้บาดเจ็บ/สูงอายุ | **ความยาว 10–15 วินาที** (~15 KB – 30 KB) | **Wi-Fi Direct หรือ BLE Chunks** | ส่งผ่าน Wi-Fi หรือซอยส่งผ่าน BLE ได้ใน 10–30 วินาที |
-| **6. Image Compression** | **ภาพถ่ายความเสียหาย (3-Tier Adaptive Image Engine):**<br>- 🔴 **Ultra-Low Emergency:** 320x240 WebP (Grayscale/Color)<br>- 🟡 **Standard Disaster:** 640x480 WebP (Color)<br>- 🟢 **High Detail (เน็ต/แบตเต็ม):** 1280x720 WebP | <br>**5 KB – 15 KB**<br>**20 KB – 40 KB**<br>100 KB – 200 KB | <br>**BLE Mesh ส่งได้ทันทีใน 1-2s!**<br>**Wi-Fi Direct P2P (1s)**<br>Wi-Fi / Cloud Sync | บีบอัดในเครื่องลด 99% เห็นรอยแตก/สะพานขาดชัดเจน<br>*(🚫 วิดีโอปิดกั้นในโหมดออฟไลน์เพื่อรักษาแบตเตอรี่)* |
+| **1. Emergency & SOS** | **One-Tap SOS Beacon:** พิกัด GPS (Lat/Lng), H3 Index, ระดับแบตเตอรี่, สถานะผู้ประสบภัย (เด็ก/คนแก่/ผู้ป่วย/ขาดออกซิเจน) พร้อม **Optional SOS Note (จำกัดเด็ดขาด $\le 280$ ตัวอักษร)** หรือ Voice SOS (15s) | $\le 28$ bytes (Beacon)<br>+ Note $\le 280$ chars | **Bluetooth 5 Long Range (LE Coded PHY)**<br>*(Fallback: BLE 1M Legacy)* | ส่งทันทีไร้การจับคู่ รัศมีทะลุทะลวง **200–400+ เมตร** (ที่โล่งแตะ 500 ม.) กินไฟต่ำสุด เซ็นกำกับด้วย Ed25519 กันปลอม |
+| **2. Text & Chat** | **1-on-1 Private Messages (E2EE):** แชตส่วนบุคคลเข้ารหัส AES-256-GCM สองชั้น โหนดตัวกลางอ่านไม่ได้ (Security Overhead เพียง +28 bytes: IV 12B + Tag 16B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **Bluetooth 5 Long Range (LE Coded PHY)**<br>+ Extended Adv & Epidemic Gossip | ส่งข้อความแชตตัวหนังสือข้ามตึก/ซอกซอยระยะไกล **200–400 เมตร/ทอด** รวดเร็วในเสี้ยววินาที ไร้เน็ต 100% |
+| **3. Group Chat** | **กลุ่มผู้ประสบภัย / กลุ่มกู้ภัยเฉพาะจุด:** ถอดรหัสด้วย Shared Group Key (32B) ติดหัวซองด้วย `TopicID` (4B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range / Targeted Flood** | กระจายข้อความกลุ่มครอบคลุมกว้างขวาง รัศมีระดับหมู่บ้าน/ตำบล |
+| **4. Broadcast / Crisis** | **Offline Crisis Feed:** ประกาศเตือนภัย, ข่าวสารอพยพ พร้อมลายเซ็นดิจิทัล Ed25519 ป้องกันข่าวปลอม | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range Epidemic Broadcast** | กระจายข่าวสารรอบทิศทางในรัศมี 200–400 เมตร ทุกโหนดรับรู้พร้อมกัน |
+| **5. Voice Messages** | **คลิปเสียงสั้น (Push-to-Talk Voice Memo):** บันทึกเสียงแจ้งเหตุด้วย Opus Codec (Voice Mono 6–12 kbps) สำหรับผู้บาดเจ็บ/สูงอายุ **(พร้อมระบบ Preview & กดยืนยันส่งเสมอ)** | **ความยาวสูงสุด 15 วินาที**<br>(~8 KB – 15 KB, ตัดจบอัตโนมัติ) | **BLE Chunks หรือ Wi-Fi Direct** | บันทึกสูงสุด 15 วิ ผู้ใช้กดฟังทวนซ้ำได้ และ **ต้องกดยืนยันส่งด้วยตนเองเสมอ** ส่งผ่าน BLE ถึงใน 3–5 วินาที |
+| **6. Image Compression** | **ภาพถ่ายความเสียหาย (Client-Side Auto-Compress Engine):**<br>- 🔴 **Ultra-Low Emergency (Default):** 320x240 WebP<br>- 🟡 **Standard Disaster:** 640x480 WebP<br>- 🟢 **High Detail (เน็ต/Wi-Fi มา):** 1280x720 WebP | <br>**5 KB – 12 KB**<br>**18 KB – 35 KB**<br>80 KB – 150 KB | <br>**BLE Mesh ส่งได้ทันทีใน 1-2s!**<br>**Wi-Fi Direct P2P (1s)**<br>Wi-Fi / Cloud Sync | **ผู้ใช้เลือกรูปขนาดเท่าไหร่ก็ได้ ระบบย่อและแปลงเป็น WebP ในเครื่องทันทีก่อนส่ง** เห็นสะพานขาดชัดเจน<br>*(🚫 วิดีโอปิดกั้นในโหมดออฟไลน์เพื่อรักษาแบตเตอรี่)* |
 | **7. App Sideloading** | **ตัวติดตั้งแอปเต็ม (`OutGridMesh.apk`):** ส่งต่อแอปให้เครื่องข้างเคียงผ่าน Web Browser โดยตรง | 15 - 30 MB | **Local Wi-Fi Hotspot + QR Code** | อีกเครื่องใช้แค่กล้องสแกน QR โหลดผ่าน Chrome ได้เลย |
 | **8. Physical Signals** | **Acoustic Siren & Flash Strobe:** เสียงไซเรนความถี่สูง/อัลตราโซนิก (ใต้ซากตึก) + แฟลช LED SOS | - | **Phone Speaker & Camera LED** | ใช้ค้นหาด้วยเสียงและสายตาในความมืด |
 
@@ -387,6 +387,8 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 │   │   ├── components/                    # Reusable UI Widgets
 │   │   │   ├── SosPanicButton.tsx         # ปุ่ม SOS นับถอยหลัง 3 วิ (Hold-to-Activate)
 │   │   │   ├── CancelSosModal.tsx         # ปุ่ม "ฉันปลอดภัยแล้ว" ลบหมุดฉุกเฉิน
+│   │   │   ├── VoiceRecorderModal.tsx     # อัดเสียง 15s + นับถอยหลัง + Preview ฟังซ้ำ + กดยืนยันส่ง
+│   │   │   ├── ImageCompressorModal.tsx   # พรีวิวรูปและบีบอัด Auto-WebP (5-12KB) ก่อนส่ง
 │   │   │   ├── H3OfflineMap.tsx           # เรนเดอร์ Vector Basemap 5MB + หกเหลี่ยม H3
 │   │   │   ├── DeliveryBadge.tsx          # แสดงไอคอนสถานะ 5 ขั้น (ส่ง/ฝาก/ติ๊กถูกคู่)
 │   │   │   └── BatteryIndicator.tsx       # แสดงโหมด Duty Cycle ตามระดับแบต
@@ -780,10 +782,21 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     1. English (`en`) | 2. 中文 (`zh`) | 3. Español (`es`) | 4. हिन्दी (`hi`) | 5. العربية (`ar` - รองรับ RTL)
     6. Français (`fr`) | 7. Русский (`ru`) | 8. Português (`pt`) | 9. 日本語 (`ja`) | 10. ไทย (`th`)
   - ตรวจจับภาษาอัตโนมัติตาม Locale ของเครื่อง และสลับภาษาได้ทันทีโดยไม่ต้องต่อเน็ต
-- [ ] **Task 10.2: Icon-Driven Disaster UI & Accessibility**
+- [ ] **Task 10.2: Icon-Driven Disaster UI, Unified Multi-Channel Media Engine & Accessibility (⭐️)**
   - ออกแบบ UI แบบสัญลักษณ์สากล (Universal Icons) ใช้งานได้แม้ผู้ประสบภัยอ่านหนังสือไม่ออก
   - คอนทราสต์สูงพิเศษ (High Contrast Mode) สำหรับมองกลางแดดจ้าหรือในควันไฟ
   - ปุ่ม Emergency SOS สีแดงขนาดใหญ่ กดครั้งเดียวส่งพิกัดและกระจายสัญญาณฉุกเฉินทันที
+  - **Unified Chat, Group, Crisis Feed & SOS Media Engine (มาตรฐานเดียวกันทุกช่องทาง):**
+    - **1. Text Message Hard Limit:**
+      - บังคับล็อกช่องพิมพ์ **ห้ามเกิน 280 ตัวอักษรเด็ดขาด** (Hard Limit) ครอบคลุมทั้ง **1-on-1 Chat, Group Chat, Crisis Feed และ SOS Emergency Note**
+      - แสดง Counter ตัวอักษรสด `0/280` ป้องกันแพ็กเก็ตเกินขนาด เพื่อให้ส่งทะลวงผ่านคลื่น BLE Coded PHY (S=8) ได้ใน 1 ทอด
+    - **2. Client-Side Auto-Compress Image Engine (`ImageCompressorModal.tsx`):**
+      - ผู้ใช้เลือกภาพถ่ายขนาดใดก็ได้จากกล้อง/แกลเลอรี ระบบจะบีบอัดและแปลงเป็น **WebP ในเครื่องทันที**
+      - เริ่มต้นที่ **320x240 px ขนาดเพียง 5–12 KB** (เห็นสะพานขาด/ป้ายชัดเจน) เพื่อให้ส่งผ่าน BLE Mesh ได้ใน 1–2 วินาที พร้อมแถบพรีวิวยืนยัน
+    - **3. Push-to-Talk Voice Memo with Review & Confirm (`VoiceRecorderModal.tsx`):**
+      - รองรับการอัดเสียงแจ้งเหตุสำหรับผู้ป่วย/ผู้สูงอายุ ทั้งในห้องแชต 1-on-1, ห้องกลุ่ม, และแนบไปกับสัญญาณ SOS
+      - **ความยาวสูงสุด 15 วินาที** (ตัดหยุดบันทึกอัตโนมัติเมื่อครบ 15 วิ ขนาด ~8–15 KB บีบอัดด้วย Opus Mono 6–12 kbps)
+      - **Review & Confirm Flow (ห้ามส่งทันที):** เมื่ออัดเสร็จจะขึ้นแถบพรีวิวให้ผู้ใช้ **กดฟังเสียงทบทวนความชัดเจนได้ก่อน** พร้อมปุ่ม "อัดใหม่" และ **ผู้ใช้ต้องกดปุ่มยืนยันส่ง (Confirm Send) ด้วยตนเองเสมอ** เพื่อป้องกันการเผลอกดส่งไฟล์เสียงขยะไปแช่คลื่นวิทยุในอากาศ
 - [ ] **Task 10.3: 3-Tier Smart Spatial Pyramid & Dual-Platform Offline Map Engine (Android & Web PWA)**
   - **สถาปัตยกรรมแผนที่ทั้งโลกขนาดเล็ก 3 ระดับ (3-Tier Smart Spatial Pyramid ไม่เกิน 25-30MB):**
     - **Level 1 (Global Low-Poly Basemap ~1.5MB):** เส้นเวกเตอร์ธรรมชาติ (Natural Earth) ขอบเขตทวีป มหาสมุทร และแนวเขตทุกประเทศทั่วโลก เปิดดูได้ทั้งโลกแบบออฟไลน์ 100%
