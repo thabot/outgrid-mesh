@@ -1524,19 +1524,38 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - แยก Environment ชัดเจน: `[env.uat]` ชี้ไปที่ฐานข้อมูล `outgrid-mesh-db-uat` และ `[env.production]` ชี้ไปที่ `outgrid-mesh-db`
   - ข้อมูลทดสอบใน UAT จะถูกแยกขาดจากข้อมูลจริงในยามภัยพิบัติ 100%
 
-#### 📱 3. Deployment: Android Native APK & Cloudflare R2 (Mobile App Release)
-- **การคอมไพล์และแจกจ่ายแยกตาม Branch:**
+#### 📱 3. Deployment: Android Native Mobile Release (Google Play Store & GitHub Releases)
+- **สถาปัตยกรรมการแจกจ่ายแบบคู่ขนาน (Dual Android Distribution Channels):**
+  เพื่อให้ประชาชนและเจ้าหน้าที่สามารถเข้าถึงตัวแอปได้อย่างกว้างขวางที่สุด ทั้งผ่านสโตร์ทางการและดาวน์โหลดตรง:
+
+  ```
+  ┌────────────────────────────────────────────────────────────────────────────────────────┐
+  │                           Dual Android Release Strategy                                │
+  ├────────────────────────────────────────────────────────┬───────────────────────────────┤
+  │ 1. Official Store (Google Play Store)                  │ 2. Direct Sideload & GitHub   │
+  │ • Target: ประชาชนทั่วไปที่มีเน็ตและ Google Services    │ • Target: โหลดตรง / ไร้กูเกิล │
+  │ • Format: Android App Bundle (.aab)                    │ • Format: Universal APK (.apk)│
+  │ • Tracks: Internal Testing (uat) -> Production (main)  │ • Distribution: GitHub / R2   │
+  └────────────────────────────────────────────────────────┴───────────────────────────────┘
+  ```
+
+- **การคอมไพล์และขั้นตอนแยกตาม Branch:**
   - **UAT Staging (`branch: uat`):**
-    - คอมไพล์ได้ไฟล์ `outgrid-rescue-uat.apk` (Package: `org.outgrid.rescue.uat`)
-    - อัปโหลดเป็น **Pre-release** บน GitHub Releases และ R2 Bucket สภาพแวดล้อมทดสอบ
+    - **GitHub Releases:** บิลด์ `outgrid-rescue-uat.apk` อัปโหลดขึ้น GitHub Releases เป็น Pre-release พร้อม SHA-256 ให้ทีมงานโหลดเทสได้ทันที
+    - **Google Play Store (Internal App Sharing / Closed Testing Track):** บิลด์ `app-uat-release.aab` อัปโหลดขึ้น Google Play Console (Track: Internal Testing) อัตโนมัติผ่าน GitHub Actions (`r0adkll/upload-google-play`) เพื่อให้ทีมกู้ภัยทดสอบผ่าน Play Store
   - **Production Stable (`branch: main`):**
-    - คอมไพล์ได้ไฟล์ `outgrid-rescue-v1.1.apk` (Package: `org.outgrid.rescue`)
-    - เซ็นกำกับด้วย Production Keystore อัปโหลดเป็น **Official Release** บน GitHub Releases และ R2 Bucket (`r2.outgrid.org/download/outgrid-rescue.apk`)
+    - **Google Play Store (Production Track):**
+      - บิลด์ไฟล์ **Android App Bundle (`app-release.aab`)** บีบอัดขนาดตามสถาปัตยกรรม CPU ของแต่ละเครื่อง (Dynamic Delivery เหลือเพียง ~12–18 MB)
+      - ส่งขึ้น Google Play Console (Production Track) พร้อมรูปสกรีนช็อตและคำอธิบาย 10 ภาษา
+    - **GitHub Releases (Universal Standalone APK):**
+      - บิลด์ไฟล์ **Universal Release APK (`outgrid-rescue-v1.1.apk`)** เซ็นกำกับด้วย Production Keystore
+      - ปล่อยขึ้น GitHub Releases ทางการ พร้อมแสดง SHA-256 Checksum ชัดเจน สำหรับคนที่ไม่มี Google Play Store, เครื่อง Huawei, หรือต้องการโหลดเก็บไว้ใน Flash Drive
+    - **Cloudflare R2 Bucket (`r2.outgrid.org/download/outgrid-rescue.apk`):** สำหรับให้ประชาชนทั่วโลกโหลด APK ตรงด้วยสปีดเต็มความเร็ว ไม่มีค่า Egress Bandwidth
 
 #### 📶 4. Deployment: Local Offline Zero-Internet Hotspot (P2P Field Sideload)
 - **การปล่อยแอปในสนามรบจริง (Disaster Zone):**
-  - ฝังไฟล์ APK ตามสภาพแวดล้อมไว้ในเครื่อง (`uat` หรือ `main`)
-  - ให้บริการดาวน์โหลดผ่าน Local Hotspot และ Nano HTTP Server (Port 8080) โดยอัตโนมัติ
+  - ตัว Universal APK (`outgrid-rescue.apk`) จะถูกบิลด์ฝังไว้ในที่เก็บข้อมูลภายในของแอป (App Internal Assets)
+  - เมื่อเปิดเมนู **"แชร์แอปให้อีกเครื่อง (Offline APK Sideload)"** โทรศัพท์จะเปิด Local Hotspot และรัน Micro HTTP Server (Port 8080) ส่งไฟล์ APK ให้เครื่องข้างเคียงทันทีแม้ไม่มีทั้งเน็ตและ Google Play Store
 
 ---
 
