@@ -3,8 +3,8 @@
 
 
 ┌──► [ 1-on-1 Unicast ] ──────► E2EE (ECDH + AES-GCM) + Edge Relay
-[ Multi-Mode Messaging ] ─────────┼──► [ Group Chat (Roadmap v2.0) ] ► Shared Group Key + Targeted Flood
-                                  └──► [ Local Broadcast / SOS ] ──► Compact Binary (Protobuf/CBOR) + Epidemic Gossip
+[ Multi-Mode Messaging ] ─────────┼──► [ Local Broadcast / SOS ] ──► Compact Binary (Protobuf/CBOR) + Epidemic Gossip
+                                  └──► *(Group Chat ถอดไปบรรจุใน Roadmap v2.0)*
 
                                   ┌──► [ Normal Mesh Mode ] ────► Multi-Transport (Internet Server + Local P2P)
 [ Network & Disaster Engine ] ────┼──► [ Server Timeout / Down ] ──► Standalone Local Mesh (Timeout 5s Auto-fallback)
@@ -72,13 +72,12 @@
 | หมวดหมู่ข้อมูล | ข้อมูลที่สามารถส่งได้ (Supported Payloads) | ขนาดข้อมูล / ความยาว | ช่องทางการส่ง (Transport) | สภาพแวดล้อมการทำงาน |
 | :--- | :--- | :---: | :---: | :--- |
 | **1. Emergency & SOS** | **One-Tap SOS Beacon:** พิกัด GPS (Lat/Lng), H3 Index, ระดับแบตเตอรี่, สถานะผู้ประสบภัย (เด็ก/คนแก่/ผู้ป่วย/ขาดออกซิเจน) พร้อม **Optional SOS Note (จำกัดเด็ดขาด $\le 280$ ตัวอักษร)** หรือ Voice SOS (15s) | $\le 28$ bytes (Beacon)<br>+ Note $\le 280$ chars | **Bluetooth 5 Long Range (LE Coded PHY)**<br>*(Fallback: BLE 1M Legacy)* | ส่งทันทีไร้การจับคู่ รัศมีทะลุทะลวง **200–400+ เมตร** (ที่โล่งแตะ 500 ม.) กินไฟต่ำสุด เซ็นกำกับด้วย Ed25519 กันปลอม |
-| **2. Text & Chat** | **1-on-1 Private Messages (E2EE):** แชตส่วนบุคคลเข้ารหัส AES-256-GCM สองชั้น โหนดตัวกลางอ่านไม่ได้ (Security Overhead เพียง +28 bytes: IV 12B + Tag 16B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **Bluetooth 5 Long Range (LE Coded PHY)**<br>+ Extended Adv & Epidemic Gossip | ส่งข้อความแชตตัวหนังสือข้ามตึก/ซอกซอยระยะไกล **200–400 เมตร/ทอด** รวดเร็วในเสี้ยววินาที ไร้เน็ต 100% |
-| **3. Group Chat (Roadmap v2.0)** | **กลุ่มผู้ประสบภัย / กลุ่มกู้ภัยเฉพาะจุด [ถอดไปใส่ Roadmap v2.0]:** ถอดรหัสด้วย Shared Group Key (32B) ติดหัวซองด้วย `TopicID` (4B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range / Targeted Flood** | กระจายข้อความกลุ่มครอบคลุมกว้างขวาง รัศมีระดับหมู่บ้าน/ตำบล |
-| **4. Broadcast / Crisis** | **Offline Crisis Feed:** ประกาศเตือนภัย, ข่าวสารอพยพ พร้อมลายเซ็นดิจิทัล Ed25519 ป้องกันข่าวปลอม | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range Epidemic Broadcast** | กระจายข่าวสารรอบทิศทางในรัศมี 200–400 เมตร ทุกโหนดรับรู้พร้อมกัน |
-| **5. Voice Messages** | **คลิปเสียงสั้น (Push-to-Talk Voice Memo):** บันทึกเสียงแจ้งเหตุด้วย Opus Codec (Voice Mono 6–12 kbps) สำหรับผู้บาดเจ็บ/สูงอายุ **(พร้อมระบบ Preview & กดยืนยันส่งเสมอ)** | **ความยาวสูงสุด 15 วินาที**<br>(~8 KB – 15 KB, ตัดจบอัตโนมัติ) | **BLE Chunks หรือ Wi-Fi Direct** | บันทึกสูงสุด 15 วิ ผู้ใช้กดฟังทวนซ้ำได้ และ **ต้องกดยืนยันส่งด้วยตนเองเสมอ** ส่งผ่าน BLE ถึงใน 3–5 วินาที |
-| **6. Image Compression** | **ภาพถ่ายความเสียหาย (Client-Side Auto-Compress Engine):**<br>- 🔴 **Ultra-Low Emergency (Default):** 320x240 WebP<br>- 🟡 **Standard Disaster:** 640x480 WebP<br>- 🟢 **High Detail (เน็ต/Wi-Fi มา):** 1280x720 WebP | <br>**5 KB – 12 KB**<br>**18 KB – 35 KB**<br>80 KB – 150 KB | <br>**BLE Mesh ส่งได้ทันทีใน 1-2s!**<br>**Wi-Fi Direct P2P (1s)**<br>Wi-Fi / Cloud Sync | **ผู้ใช้เลือกรูปขนาดเท่าไหร่ก็ได้ ระบบย่อและแปลงเป็น WebP ในเครื่องทันทีก่อนส่ง** เห็นสะพานขาดชัดเจน<br>*(🚫 วิดีโอปิดกั้นในโหมดออฟไลน์เพื่อรักษาแบตเตอรี่)* |
-| **7. App Sideloading** | **ตัวติดตั้งแอปเต็ม (`OutGridMesh.apk`):** ส่งต่อแอปให้เครื่องข้างเคียงผ่าน Web Browser โดยตรง | 15 - 30 MB | **Local Wi-Fi Hotspot + QR Code** | อีกเครื่องใช้แค่กล้องสแกน QR โหลดผ่าน Chrome ได้เลย |
-| **8. Physical Signals** | **Acoustic Siren & Flash Strobe:** เสียงไซเรนความถี่สูง/อัลตราโซนิก (ใต้ซากตึก) + แฟลช LED SOS | - | **Phone Speaker & Camera LED** | ใช้ค้นหาด้วยเสียงและสายตาในความมืด |
+| **2. Text & Chat** | **1-on-1 Private Messages (E2EE):** แชตส่วนบุคคลเข้ารหัส AES-256-GCM สองชั้น โหนดตัวกลางอ่านไม่ได้ (Security Overhead เพียง +28 bytes: IV 12B + Tag 16B) *(หมายเหตุ: Group Chat ถอดไปพัฒนาใน Roadmap v2.0)* | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **Bluetooth 5 Long Range (LE Coded PHY)**<br>+ Extended Adv & Epidemic Gossip | ส่งข้อความแชตตัวหนังสือข้ามตึก/ซอกซอยระยะไกล **200–400 เมตร/ทอด** รวดเร็วในเสี้ยววินาที ไร้เน็ต 100% |
+| **3. Broadcast / Crisis** | **Offline Crisis Feed:** ประกาศเตือนภัย, ข่าวสารอพยพ พร้อมลายเซ็นดิจิทัล Ed25519 ป้องกันข่าวปลอม | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range Epidemic Broadcast** | กระจายข่าวสารรอบทิศทางในรัศมี 200–400 เมตร ทุกโหนดรับรู้พร้อมกัน |
+| **4. Voice Messages** | **คลิปเสียงสั้น (Push-to-Talk Voice Memo):** บันทึกเสียงแจ้งเหตุด้วย Opus Codec (Voice Mono 6–12 kbps) สำหรับผู้บาดเจ็บ/สูงอายุ **(พร้อมระบบ Preview & กดยืนยันส่งเสมอ)** | **ความยาวสูงสุด 15 วินาที**<br>(~8 KB – 15 KB, ตัดจบอัตโนมัติ) | **BLE Chunks หรือ Wi-Fi Direct** | บันทึกสูงสุด 15 วิ ผู้ใช้กดฟังทวนซ้ำได้ และ **ต้องกดยืนยันส่งด้วยตนเองเสมอ** ส่งผ่าน BLE ถึงใน 3–5 วินาที |
+| **5. Image Compression** | **ภาพถ่ายความเสียหาย (Client-Side Auto-Compress Engine):**<br>- 🔴 **Ultra-Low Emergency (Default):** 320x240 WebP<br>- 🟡 **Standard Disaster:** 640x480 WebP<br>- 🟢 **High Detail (เน็ต/Wi-Fi มา):** 1280x720 WebP | <br>**5 KB – 12 KB**<br>**18 KB – 35 KB**<br>80 KB – 150 KB | <br>**BLE Mesh ส่งได้ทันทีใน 1-2s!**<br>**Wi-Fi Direct P2P (1s)**<br>Wi-Fi / Cloud Sync | **ผู้ใช้เลือกรูปขนาดเท่าไหร่ก็ได้ ระบบย่อและแปลงเป็น WebP ในเครื่องทันทีก่อนส่ง** เห็นสะพานขาดชัดเจน<br>*(🚫 วิดีโอปิดกั้นในโหมดออฟไลน์เพื่อรักษาแบตเตอรี่)* |
+| **6. App Sideloading** | **ตัวติดตั้งแอปเต็ม (`OutGridMesh.apk`):** ส่งต่อแอปให้เครื่องข้างเคียงผ่าน Web Browser โดยตรง | 15 - 30 MB | **Local Wi-Fi Hotspot + QR Code** | อีกเครื่องใช้แค่กล้องสแกน QR โหลดผ่าน Chrome ได้เลย |
+| **7. Physical Signals** | **Acoustic Siren & Flash Strobe:** เสียงไซเรนความถี่สูง/อัลตราโซนิก (ใต้ซากตึก) + แฟลช LED SOS | - | **Phone Speaker & Camera LED** | ใช้ค้นหาด้วยเสียงและสายตาในความมืด |
 
 ---
 
@@ -93,7 +92,7 @@
 │   ┌────────────────────────────────────────────────────────────────┐   │
 │   │                     UI / Presentation Layer                    │   │
 │   │  [One-Tap SOS]  [Offline Crisis Feed]  [Diagnostics Dashboard] │   │
-│   │  [1-on-1 Chat]  [Group Chat (v2.0)]    [Offline Map & H3 Tile] │   │
+│   │  [1-on-1 Chat]                         [Offline Map & H3 Tile] │   │
 │   │  [One-Tap QR Offline APK Share Modal]                          │   │
 │   └────────────────────────────────┬───────────────────────────────┘   │
 │                                    │                                   │
@@ -394,7 +393,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 │   │   │   └── BatteryIndicator.tsx       # แสดงโหมด Duty Cycle ตามระดับแบต
 │   │   ├── screens/                       # Main Pages
 │   │   │   ├── EmergencyScreen.tsx        # หน้าหลักกู้ภัย (SOS, สัญญาณไซเรน, ไฟกระพริบ)
-│   │   │   ├── ChatListScreen.tsx         # รายชื่อแชต 1-on-1 และกลุ่มชุมชน
+│   │   │   ├── ChatListScreen.tsx         # รายชื่อแชต 1-on-1 และผู้ติดต่อที่ยืนยันแล้ว
 │   │   │   ├── ConversationScreen.tsx     # หน้าต่างพิมพ์แชตพร้อม Dropdown เลือกอายุ TTL
 │   │   │   ├── CrisisFeedScreen.tsx       # ฟีดข่าวสารรอบตัวระยะ 1–5 กม. (Verified Badge)
 │   │   │   ├── NetworkDiagnostics.tsx     # ดูจำนวน Peers รอบตัว, Bloom Hit Rate
@@ -527,7 +526,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - [ ] **Task 3.3: Dynamic QR Code Binary Protocol & 6-8 Digit Safety Numbers (Anti-MitM Pairing ⭐️)**
   - พัฒนา `src/core/crypto/QrPairingEngine.ts` สร้างและสแกน Dynamic QR Code แบบออฟไลน์ 100%
   - **Compact Binary QR Payload (ความยาวกะทัดรัดเพียง 80–110 Bytes เพื่อให้กล้องมือถือราคาถูกสแกนติดง่ายในที่มืด/จอแตก):**
-    - `[Magic 2B: 0x4F47 ("OG")]` + `[Version 1B: 0x01]` + `[Pairing_Type 1B]` (0x01=Friend, 0x02=Responder Delegation, 0x03=Group Key)
+    - `[Magic 2B: 0x4F47 ("OG")]` + `[Version 1B: 0x01]` + `[Pairing_Type 1B]` (0x01=Friend, 0x02=Responder Delegation)
     - `[Ed25519_PubKey 32B]` + `[X25519_PubKey 32B]` + `[Ephemeral_Nonce 8B]` + `[Nickname UTF-8 1-16B]` + `[Ed25519_Signature 64B]`
   - **6-8 Digit Safety Numbers (รหัสตัวเลขยืนยันความปลอดภัยขานรหัสวิทยุ ⭐️):**
     - นำกุญแจสาธารณะของทั้งสองฝั่งมารวมกัน `SHA-256(Key_A || Key_B)` แล้วแปลงเป็น **ตัวเลข 8 หลัก แบ่งเป็น 2 ชุด** เช่น `[ 4 8 2 1 ]   [ 9 0 3 5 ]` แสดงบนหน้าจอคู่สนทนา
@@ -871,7 +870,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - Adaptive Density Hop & Dynamic Hop Decay (ทดสอบการสลับ Hop 3–7 ในเมือง vs 12–15 ในชนบท และ Dynamic Clamping)
   - 3-Level Spatial H3 Hierarchy & Fallback (ทดสอบการหา Parent `h3ToParent` Res 9 $\rightarrow$ Res 7 $\rightarrow$ Res 5)
   - Reverse Delivery ACK & NACK Engine (ทดสอบสร้างใบเสร็จยืนยันปลายทางและการล้างแคช Auto-Prune)
-  - Tiered TTL & Storage Quota Clamping (ทดสอบ FIFO ลบข้อความกลุ่มเก่าทิ้งเมื่อครบ 50 MB และปกป้อง SOS 72 ชม.)
+  - Tiered TTL & Storage Quota Clamping (ทดสอบ FIFO ลบประวัติแชตเก่าที่หมดอายุทิ้งเมื่อครบ 50 MB และปกป้อง SOS 72 ชม.)
   - Image Compression Engine (ทดสอบลดขนาดรูปภาพเหลือ 5–15 KB และ 20–40 KB WebP)
   - Local SQLite & D1 Database Mapping (ทดสอบการบันทึกและจับคู่โหนดปลายทาง)
   - Battery Policy State Transitions (จำลองสถานการณ์แบตเตอรี่ >50%, 20-50%, <20%)
