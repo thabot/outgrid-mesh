@@ -26,7 +26,7 @@ OutGridMesh/
 │   │   ├── crypto/             # E2EE (X25519 + AES-256-GCM), Ed25519 Signatures, HKDF
 │   │   ├── dtn/                # Bundle Custody Store, Velocity Tracker, Hop Freeze
 │   │   ├── i18n/               # 10-Language Universal Translation Engine
-│   │   ├── network/            # Dynamic API Configuration & Zero-Cost Cloudflare Resolver
+│   │   ├── network/            # Dynamic API Configuration & Cloudflare Resolver
 │   │   ├── protocol/           # TOG v1.1 Bitfield Serializer, Reed-Solomon 8+4 FEC, Sliding Window
 │   │   ├── radio/              # BLE Coded PHY, Collision Shield, Wi-Fi P2P Driver
 │   │   ├── routing/            # Epidemic Gossip Router, Dynamic Hop Decay, Bloom Filter

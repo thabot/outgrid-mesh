@@ -2,7 +2,7 @@
 
 # 🚨 OutGrid Mesh (TOG v1.1)
 
-### Autonomous, Decentralized, Zero-Cost Spatial Mesh Communication Grid for Disaster Response & Remote Operations
+### Autonomous, Decentralized Spatial Mesh Communication Grid for Disaster Response & Remote Operations
 
 [![GitHub Release](https://img.shields.io/github/v/release/thabot/outgrid-mesh?color=blue&include_prereleases&style=for-the-badge&logo=github)](https://github.com/thabot/outgrid-mesh/releases)
 [![Build & Release APK](https://img.shields.io/github/actions/workflow/status/thabot/outgrid-mesh/android-release.yml?branch=main&style=for-the-badge&logo=githubactions)](https://github.com/thabot/outgrid-mesh/actions)
@@ -67,7 +67,7 @@ You don't need an account, phone number verification, or internet access to use 
 
 ## 🗺️ System Architecture Overview
 
-OutGrid Mesh is built on a 5-layer modular client architecture coupled with a zero-cost spatial edge coordinator, engineered for extreme disaster resilience, zero personal data retention, and ultra-low bandwidth consumption:
+OutGrid Mesh is built on a 5-layer modular client architecture coupled with a high-efficiency spatial edge coordinator, engineered for extreme disaster resilience, zero personal data retention, and ultra-low bandwidth consumption:
 
 ### 1. Client Layered Architecture
 ```text
@@ -179,16 +179,16 @@ graph LR
 
 ---
 
-### 4. Zero-Cost Cloudflare Spatial Edge Architecture
+### 4. Cloudflare Spatial Edge Architecture
 
-When an internet gateway or cellular connection is available, nodes coordinate through a lightweight, serverless edge layer operating under Cloudflare's free tier ($0/month):
+When an internet gateway or cellular connection is available, nodes coordinate through a lightweight, serverless edge layer:
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                   Cloudflare Edge Coordinator Architecture (Zero-Cost)                 │
+│                        Cloudflare Edge Coordinator Architecture                        │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                        │
-│  [ Public STUN Servers ] (Google & Cloudflare STUN - 100% Free)                        │
+│  [ Public STUN Servers ] (Google & Cloudflare STUN)                                    │
 │         ▲                                                                              │
 │         │ 1. NAT Discovery (Resolve client public IP/Port)                             │
 │         │                                                                              │
@@ -200,7 +200,7 @@ When an internet gateway or cellular connection is available, nodes coordinate t
 │         │                                                        - Anonymous Heatmap   │
 │         ▼                                                                              │
 │  [ Direct P2P WebRTC DataChannel ] ═════════════════════════════════════════════════   │
-│  (Direct E2EE P2P communication - Server never touches chat payloads: Zero Bandwidth)  │
+│  (Direct E2EE P2P communication - Server never touches chat payloads)                  │
 │                                                                                        │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │  [ Inbound Emergency Alert Gateway ] (Civil Protection / Meteorological Agency)        │
@@ -208,7 +208,7 @@ When an internet gateway or cellular connection is available, nodes coordinate t
 │         ▼                                                                              │
 │  [ Cloudflare Worker ] ───► Ingest to D1 Spatial Cache ──► Edge nodes relay to Mesh    │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│  [ Cloudflare R2 Object Storage ] (Zero Egress Fee) ───► Free global APK distribution  │
+│  [ Cloudflare R2 Object Storage ] ─────────────────────► Global APK distribution       │
 │  [ Cloudflare Pages ] ─────────────────────────────────► Public Heatmap & Web PWA      │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -243,14 +243,14 @@ Looking to contribute, audit cryptography, or build from source? Read our full t
 - [x] **Phase 6:** DTN Delay-Tolerant Bundle Custody, Velocity Tracker & Hop Freeze.
 - [x] **Phase 7:** Android Foreground Service (24/7 Relay), 4-Tier Battery Duty Cycle & Radio Bridges.
 - [x] **Phase 8:** Offline Wi-Fi APK Sideload HTTP Server, Acoustic Morse Siren & Optical Torch.
-- [x] **Phase 9:** Zero-Cost Cloudflare Pages/Workers, D1 Spatial DB & Transparent Donation Ledger.
+- [x] **Phase 9:** Cloudflare Pages/Workers, D1 Spatial DB & Transparent Donation Ledger.
 - [x] **Phase 10:** Universal 10-Language i18n, Offline In-App Field Survival Guides & 15-Hop Simulation.
 
 ---
 
 ## 🤝 Community Sustainability & Transparent Donation
 
-OutGrid Mesh is built as a **humanitarian public good**. Infrastructure costs are minimal due to true P2P mesh routing and free public STUN/Cloudflare tiers.
+OutGrid Mesh is built as a **humanitarian public good**. Infrastructure costs are minimal due to true P2P mesh routing and public STUN/Cloudflare edge tiers.
 - **Open Ledger:** Real-time expense auditing showing actual cloud runtime vs community funds.
 - **Hardware Fund:** Surplus donations are converted into solar-powered **ESP32 LoRa Repeater Nodes** gifted to flood/earthquake prone remote communities.
 - **Support Channels:** Open Collective, GitHub Sponsors, and PromptPay via `DonationDashboard.svelte`.
