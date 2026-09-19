@@ -1097,63 +1097,70 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 **เป้าหมาย:** ระบบส่งต่อตัวติดตั้งแอปพลิเคชันแบบออฟไลน์ 100% ไร้อินเทอร์เน็ตผ่าน Local Embedded HTTP Server และ Wi-Fi SoftAP Captive Portal พร้อมระบบส่งสัญญาณขอความช่วยเหลือฉุกเฉินด้วยคลื่นเสียงอะคูสติกไซเรน (Acoustic Audio Morse Beacon) และไฟกระพริบฉุกเฉินระดับฮาร์ดแวร์ (Optical Strobe Torch)
 
 #### 📋 TaskList Detail:
-- [ ] **Task 8.1: Offline APK Sideloading, Micro Embedded HTTP Server & Captive Portal (`src/platform/sideload/` ⭐️)**
-  - พัฒนา `android/app/src/main/java/.../LocalHttpServerPlugin.kt` และ `src/ui/components/SideloadQrModal.svelte`:
+- [ ] **Task 8.1: Offline APK Sideloading, Micro Embedded HTTP Server & Dynamic Captive Portal (`src/platform/sideload/` ⭐️)**
+  - พัฒนา `android/app/src/main/java/.../LocalHttpServerPlugin.kt`, `MicroDnsServer.kt`, และ `src/ui/components/SideloadQrModal.svelte`:
+  - **Android LocalOnlyHotspot & Dynamic Interface IP Discovery:**
+    - สั่งเปิด Hotspot ผ่าน `WifiManager.startLocalOnlyHotspot()` 
+    - ดึง IP ของ Host Interface จาก `NetworkInterface` แบบไดนามิก (ไม่ Hardcode IP ป้องกันปัญหา Android สุ่มแจก Subnet `192.168.43.x` หรือ `192.168.49.x`)
+  - **Micro DNS Daemon (UDP Port 53) for Zero-Click Captive Portal:**
+    - รัน DNS Server จิ๋วบน UDP Port 53 ตอบรับทุก DNS Query ชี้กลับมาที่ Dynamic Host IP
+    - รองรับมาตรฐาน Captive Portal Trigger: หลอกล่อ URL ตรวจสอบอินเทอร์เน็ตของทั้ง Android (`/generate_204`), Apple iOS (`/hotspot-detect.html`), และ Windows (`/ncsi.txt`) ให้เด้งหน้าเว็บดาวน์โหลด APK ขึ้นมาเต็มจอของผู้ประสบภัยทันทีที่เชื่อมต่อ
   - **Embedded Nano HTTP Server (Port 8080):**
-    - ฝัง Micro HTTP Engine ขนาดเล็กพิเศษในตัวแอป (Zero External Server Dependency)
     - ให้บริการไฟล์ติดตั้ง `outgrid-rescue.apk` (ขนาดไม่เกิน 15–20MB) จากที่เก็บข้อมูลภายในเครื่อง
     - จัดเสิร์ฟ Landing Page แบบ Responsive น้ำหนักเบามาก (<50KB) พร้อมปุ่มดาวน์โหลดขนาดใหญ่ภาษาไทยและอังกฤษ
-  - **Auto-Captive Portal & SoftAP Deployment:**
-    - เปิด Wi-Fi Local Hotspot / SoftAP อัตโนมัติในชื่อ *"OutGrid-Rescue-Download"*
-    - ติดตั้ง DNS Hijack (Captive Portal) ชี้ทุกโดเมน (เช่น `http://neverssl.com`, `http://connectivitycheck.gstatic.com`) ให้เด้งหน้าเว็บดาวน์โหลด APK ขึ้นมาบนจอของผู้ประสบภัยทันทีที่กดเชื่อมต่อ Wi-Fi โดยไม่ต้องพิมพ์ URL เอง
   - **Dual-Purpose QR Code Display:**
     - แสดง Dynamic QR Code บนหน้าจอเครื่องต้นทาง:
-      - เมื่อสแกนด้วยกล้องมือถือทั่วไป: จะสั่งเชื่อมต่อ Wi-Fi Hotspot อัตโนมัติ (`WIFI:S:OutGrid-Rescue-Download;T:nopass;;`)
-      - นำทางเปิดเบราว์เซอร์ไปที่ `http://192.168.49.1:8080/download` ทันที
+      - สแกนด้วยกล้องมือถือทั่วไป: สั่งเชื่อมต่อ Wi-Fi Hotspot อัตโนมัติ (`WIFI:S:OutGrid-Rescue-Download;T:nopass;;`)
+      - นำทางเปิดเบราว์เซอร์ไปที่ `http://<Dynamic_Host_IP>:8080/download` ทันที
 
-- [ ] **Task 8.2: Acoustic Audio Morse Siren & Frequency-Shift SOS Beacon (`src/core/acoustic/` ⭐️)**
-  - พัฒนา `src/core/acoustic/AcousticMorseEngine.ts` และไดรเวอร์เสียงฮาร์ดแวร์:
+- [ ] **Task 8.2: Acoustic Audio Morse Siren, Ultrasonic FSK & FFT Demodulator (`src/core/acoustic/` ⭐️)**
+  - พัฒนา `src/core/acoustic/AcousticMorseEngine.ts` และไดรเวอร์เสียง:
+  - **Cross-Platform Audio Synthesis (Web Audio API + Native AudioTrack):**
+    - **Android Native:** ขับเคลื่อนผ่าน `AudioTrack` สังเคราะห์เสียงความแม่นยำสูงระดับ Latency ต่ำ
+    - **Web PWA Fallback:** ขับเคลื่อนผ่าน **Web Audio API (`AudioContext`, `OscillatorNode`, `GainNode`)** สร้างคลื่นเสียงผ่านเบราว์เซอร์ได้ทันที 100%
   - **High-Penetration Audio Siren Pattern:**
-    - สร้างคลื่นเสียงสังเคราะห์รูปคลื่นไซน์ (Sine Wave) ที่ความถี่กวาด (Sweep Frequency 800 Hz – 1,800 Hz) ซึ่งเป็นย่านความถี่ที่หูมนุษย์ไวที่สุดและทะลุผ่านซากปรักหักพัง ดินถล่ม หรือเสียงฝนตกหนักได้ดีที่สุด
-  - **Dual-Mode Morse Code Beacon:**
-    - **Mode 1: International Audible SOS (`... --- ...`):**
-      - สัญญาณสั้น (Dot: 150ms) สัญญาณยาว (Dash: 450ms) สลับเสียงไซเรนบีบคั้นเป็นจังหวะต่อเนื่อง เพื่อนำทางทีมค้นหาเดินตามเสียงมายังจุดติดค้าง
+    - สร้างคลื่นเสียงสังเคราะห์รูปคลื่นไซน์ (Sine Wave) ที่ความถี่กวาด (Sweep Frequency 800 Hz – 1,800 Hz) ทะลุผ่านซากปรักหักพัง ดินถล่ม หรือเสียงฝนตกหนักได้ดีที่สุด
+  - **Dual-Mode Morse Code & Ultrasonic FSK Beacon:**
+    - **Mode 1: Audible Morse SOS (`... --- ...`):** สัญญาณสั้น (Dot: 150ms) สัญญาณยาว (Dash: 450ms) สลับเสียงไซเรนบีบคั้นเป็นจังหวะต่อเนื่อง
     - **Mode 2: Acoustic Ultrasonic/High-Frequency Data Chirp (18–20 kHz):**
-      - เข้ารหัสตัวเลขพิกัดละติจูด/ลองจิจูดและข้อความสั้นด้วย Frequency Shift Keying (FSK) ส่งเสียงความถี่สูงเหนือหูมนุษย์
-      - ไมโครโฟนของเครื่องกู้ภัยสามารถดักฟังและถอดรหัสออกมาเป็นพิกัด GPS บนแผนที่ได้ในระยะ 30–50 เมตร แม้ไม่มีสัญญาณบลูทูธ
+      - เข้ารหัสตัวเลขพิกัดละติจูด/ลองจิจูดและข้อความสั้นด้วย Frequency Shift Keying (FSK: Mark 18.5 kHz / Space 19.5 kHz, 100 baud)
+  - **Goertzel Algorithm / FFT Demodulator Pipeline (ฝั่งรับของกู้ภัย ⭐️):**
+    - ดักฟังคลื่นเสียงผ่านไมโครโฟน ประมวลผลด้วย **Goertzel Algorithm / Fast Fourier Transform (FFT 512–1024 จุด)** เพื่อตรวจจับความถี่เฉพาะและแปลงกลับเป็นไบต์พิกัด GPS แสดงบนเรดาร์ในระยะ 30–50 เมตร แม้ไม่มีคลื่นบลูทูธ
 
-- [ ] **Task 8.3: Optical Emergency Strobe Torch & Night Rescue Signaling (`src/platform/hardware/` ⭐️)**
+- [ ] **Task 8.3: Optical Emergency Strobe Torch & Web ImageCapture Torch Fallback (`src/platform/hardware/` ⭐️)**
   - พัฒนา `src/platform/hardware/FlashlightPlugin.kt`:
-  - **Camera2 Flashlight Strobe Controller:**
-    - สั่งงานหลอดไฟแฟลช LED ด้านหลังของสมาร์ตโฟนผ่าน Android Camera2 API (`setTorchMode`)
+  - **Dual-Platform Flashlight Strobe Controller:**
+    - **Android Native:** สั่งงานหลอดไฟแฟลช LED ผ่าน `CameraManager.setTorchMode`
+    - **Web PWA Fallback:** สั่งงานผ่าน **ImageCapture API (`MediaStreamTrack.applyConstraints({ advanced: [{ torch: true }] })`)** สั่งเปิดไฟแฟลชบนเบราว์เซอร์มือถือได้โดยไม่ต้องลงแอป Native
     - ยิงจังหวะไฟกระพริบฉุกเฉินมาตรฐานสากล **Morse Code SOS (`... --- ...`)**
     - ปรับความสว่างสูงสุด (Max Luminance) สำหรับการนำร่องให้โดรนกู้ภัยหรือเฮลิคอปเตอร์ค้นหามองเห็นจากมุมสูงในเวลากลางคืนได้ไกลกว่า 1–2 กิโลเมตร
-  - **Battery-Guarded Duty Strobe:**
-    - มีโหมดประหยัดพลังงานไฟฉาย: กะพริบเป็นรอบ 3 ชุดแล้วหยุดพัก 10 วินาที ช่วยป้องกันหลอดแฟลชร้อนจัด (Overheating) และยืดอายุแบตเตอรี่โทรศัพท์ให้ส่องสว่างต่อเนื่องได้นานข้ามคืน
+  - **Thermal Protection & Battery-Guarded Duty Strobe:**
+    - กะพริบเป็นรอบ 3 ชุดแล้วหยุดพัก 10 วินาที ป้องกันหลอดแฟลชร้อนจัด (Overheating) และยืดอายุแบตเตอรี่โทรศัพท์ให้ส่องสว่างต่อเนื่องได้นานข้ามคืน
 
 - [ ] **Task 8.4: Comprehensive Sideload, Audio & Optical Unit Test Suite (`tests/unit/emergency/` ⭐️)**
   - พัฒนาชุดทดสอบหน่วยสำหรับการติดตั้งออฟไลน์และสัญญาณเสียง/แสงฉุกเฉิน:
   - **`LocalHttpServer.test.ts`:**
     - ทดสอบการเริ่มและหยุดทำงานของ Micro HTTP Server
-    - ทดสอบ HTTP GET `/download` ตรวจสอบความถูกต้องของ MIME Type (`application/vnd.android.package-archive`) และขนาด Content-Length ของไฟล์ APK
-    - ทดสอบการดักจับ Captive Portal Request (DNS Hijack response)
+    - ทดสอบการดึง Dynamic Interface IP และการตอบรับ UDP DNS Query (Port 53 Captive Portal Trigger)
+    - ทดสอบ HTTP GET `/download` ตรวจสอบความถูกต้องของ MIME Type (`application/vnd.android.package-archive`) และ Content-Length
   - **`AcousticMorseEngine.test.ts`:**
     - ทดสอบการแปลงข้อความตัวอักษรเป็นชุดสัญลักษณ์ Morse Code (`.` และ `-`) ถูกต้อง 100%
-    - ทดสอบ Timing ของ Dot (150ms), Dash (450ms), และช่วงเว้นวรรค (Inter-element gap)
-    - ทดสอบการสร้าง Sine Wave Buffer ที่ความถี่ 800Hz–1800Hz
-    - ทดสอบ FSK Chirp Encoder/Decoder: ถอดรหัสคลื่นเสียงกลับมาเป็นพิกัด GPS ได้ถูกต้อง
+    - ทดสอบ Timing ของ Dot (150ms), Dash (450ms), และช่วงเว้นวรรค
+    - ทดสอบการสร้าง Sine Wave Buffer ที่ความถี่ 800Hz–1800Hz ทั้งบน Web Audio Mock และ PCM AudioTrack
+  - **`FskDemodulator.test.ts`:**
+    - ทดสอบการสังเคราะห์คลื่นเสียง FSK (18.5 kHz / 19.5 kHz) จากข้อมูลพิกัด GPS
+    - ทดสอบการถอดรหัสคลื่นเสียงด้วย Goertzel Algorithm / FFT ยืนยันว่าถอดรหัสพิกัดกลับมาได้ถูกต้อง 100%
   - **`FlashlightStrobe.test.ts`:**
-    - ทดสอบรอบจังหวะเวลาเปิด/ปิดไฟฉาย Camera2 Mock ตามลำดับ Morse Code SOS
-    - ทดสอบระบบตัดความร้อนและประหยัดพลังงาน (Thermal Protection & Battery Guard): ปิดพัก 10 วินาทีทุกรอบ
+    - ทดสอบรอบจังหวะเวลาเปิด/ปิดไฟฉาย Camera2 Mock และ Web ImageCapture Torch Mock ตามลำดับ Morse Code SOS
+    - ทดสอบระบบตัดความร้อนและประหยัดพลังงาน (Thermal Protection): ปิดพัก 10 วินาทีทุกรอบ
   - **`SideloadQrGenerator.test.ts`:**
-    - ทดสอบสร้างสตริง Wi-Fi Config สำหรับ QR Code (`WIFI:S:...`) และ URL Redirect
-    - ตรวจสอบความถูกต้องของข้อมูล QR Code ที่สามารถสแกนติดได้จากแอปกล้องมาตรฐาน
+    - ทดสอบสร้างสตริง Wi-Fi Config สำหรับ QR Code (`WIFI:S:...`) และ URL Redirect ร่วมกับ Dynamic Host IP
 
 #### 🎯 Acceptance Criteria:
-- สมาร์ตโฟนเครื่องอื่นที่ไม่มีแอป สามารถต่อ Wi-Fi SoftAP ของเครื่องแม่ข่ายแล้วเปิดหน้าเว็บดาวน์โหลด APK ไปติดตั้งได้สำเร็จ 100% แบบออฟไลน์
-- สัญญาณเสียง Acoustic Morse Siren สังเคราะห์คลื่นเสียงย่าน 800–1800Hz และถอดรหัส FSK พิกัด GPS ได้ถูกต้อง
-- ระบบไฟฉายกระพริบแสง SOS แม่นยำตามมาตรฐานสากล พร้อมระบบตัดความร้อนประหยัดแบตเตอรี่
-- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/emergency/` (ทั้ง 4 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
+- สมาร์ตโฟนเครื่องอื่นที่ไม่มีแอป สามารถต่อ Wi-Fi SoftAP ของเครื่องแม่ข่ายแล้วเปิดหน้าเว็บดาวน์โหลด APK ผ่าน Captive Portal ได้สำเร็จ 100% แบบออฟไลน์
+- สัญญาณเสียง Acoustic Morse Siren สังเคราะห์คลื่นเสียงย่าน 800–1800Hz และถอดรหัสเสียง FSK พิกัด GPS ด้วย Goertzel Algorithm ได้ถูกต้อง 100%
+- ระบบไฟฉายกระพริบแสง SOS ทำงานได้ทั้งบน Android Native (`CameraManager`) และ Web PWA (`ImageCapture API`) พร้อมระบบตัดความร้อนประหยัดแบตเตอรี่
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/emergency/` (ทั้ง 5 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
