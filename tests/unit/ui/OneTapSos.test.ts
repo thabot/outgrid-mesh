@@ -26,7 +26,7 @@ describe('OneTapSosEngine (Single-Tap SOS Beacon)', () => {
 
     expect(packet.header.packetType).toBe(TOGPacketType.SOS_BEACON);
     expect(packet.header.priority).toBe(TOGPriority.CRITICAL_SOS);
-    expect(packet.header.ttlHops).toBe(15);
+    expect(packet.header.ttlHops).toBe(25);
     expect(packet.payloadLength).toBe(6); // 4B Delta + 1B Battery + 1B Category
 
     // Check payload details

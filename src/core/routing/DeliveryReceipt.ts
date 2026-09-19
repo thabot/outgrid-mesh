@@ -9,6 +9,7 @@ import {
   TOG_MAGIC,
   TOGPacketType,
   TOGPriority,
+  DEFAULT_ACK_HOPS,
   type ITOGPacket
 } from '../protocol/TOGPacket';
 import { DigitalSignature } from '../crypto/DigitalSignature';
@@ -47,7 +48,7 @@ export class DeliveryReceipt {
         magic: TOG_MAGIC,
         version: 1,
         packetType: TOGPacketType.DELIVERY_ACK,
-        ttlHops: 7,
+        ttlHops: DEFAULT_ACK_HOPS,
         priority: TOGPriority.HIGH,
         flags: 0,
         reserved: 0

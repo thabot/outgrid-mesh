@@ -14,10 +14,10 @@ export class DynamicHopDecay {
    */
   public static calculateInitialHops(neighborCount: number, isEmergencySos = false): number {
     if (isEmergencySos) {
-      // Emergency SOS gets boosted hops to ensure life safety
-      if (neighborCount > 15) return 7;
-      if (neighborCount > 5) return 10;
-      return 15; // Sparse rural emergency
+      // Emergency SOS gets boosted hops to ensure life safety in flood/disaster scenarios
+      if (neighborCount > 15) return 10;
+      if (neighborCount > 5) return 15;
+      return 25; // Sparse rural/isolated emergency
     }
 
     if (neighborCount >= 15) {

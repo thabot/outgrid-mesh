@@ -45,6 +45,6 @@ describe('OfflineFallbackIntegration (Total Grid Outage Simulation)', () => {
     });
 
     expect(sosPkt.header.packetType).toBe(TOGPacketType.SOS_BEACON);
-    expect(sosPkt.header.ttlHops).toBe(15);
+    expect(sosPkt.header.ttlHops).toBe(25);
   });
 });

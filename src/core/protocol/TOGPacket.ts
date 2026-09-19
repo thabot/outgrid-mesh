@@ -25,6 +25,16 @@ export enum TOGPriority {
   CRITICAL_SOS = 0x3
 }
 
+/**
+ * Standard Default Hop Limits (TTL) by packet classification
+ * Optimized for disaster resilience & flood reach while maintaining power efficiency
+ */
+export const DEFAULT_SOS_HOPS = 25;         // Max penetration for life-critical SOS (~1.5 - 2.5km BLE)
+export const DEFAULT_ACK_HOPS = 25;         // Symmetric return path for delivery acknowledgment
+export const DEFAULT_CRISIS_FEED_HOPS = 20; // Official disaster alerts & evacuation notices
+export const DEFAULT_CHAT_HOPS = 8;         // Standard direct/group communications
+export const DEFAULT_PRESENCE_HOPS = 2;     // Neighbor discovery link-local scope
+
 export interface ITOGHeader {
   magic: number;             // 16 bits (0x544F)
   version: number;           // 3 bits (0b001)

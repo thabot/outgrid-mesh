@@ -45,6 +45,7 @@ describe('DeliveryReceipt (Reverse Signed ACK & Auto-Prune)', () => {
       new Uint8Array(8),
       0x88654c5525fffff0n
     );
+    expect(ackPacket.header.ttlHops).toBe(25);
 
     // Sender receives and verifies ACK
     const result = DeliveryReceipt.processAck(ackPacket, storage, recipientKeys.publicKey);

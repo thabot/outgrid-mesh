@@ -108,7 +108,7 @@ describe('Phase 10: Multiplatform UI/UX, 10 Global Languages & Disaster Drills',
       });
 
       expect(beacon.header.packetType).toBe(TOGPacketType.SOS_BEACON);
-      expect(beacon.header.ttlHops).toBe(15);
+      expect(beacon.header.ttlHops).toBe(25);
     });
   });
 });
