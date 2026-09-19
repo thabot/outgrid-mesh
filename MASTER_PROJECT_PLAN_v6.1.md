@@ -1191,7 +1191,11 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - Request Body: `node_pubkey`, `h3_res7`, `battery: {level_pct, is_charging, power_save_mode, est_runtime_min, battery_tier}`, `mesh_role`, `seen_neighbors: [{peer_id_hash, rssi, last_seen_sec_ago, via_transport, battery_tier}]`
       - Response Body: `status: "ok"`, `nearby_active_nodes`, `supernodes_in_zone`, `inbound_emergency_alerts`
     - `GET /v1/spatial/neighbors?h3=...&k_ring=1`: ดึงข้อมูลโหนดใกล้เคียงในรัศมีรังผึ้งรอบตัว สำหรับเชื่อมต่อ WebRTC P2P
-  - **4. Cloudflare D1 Multi-Table Mesh & Passkey Sync Schema (`cloudflare/schema.sql`):**
+    - `GET /v1/spatial/stream?h3=...`: **Server-Sent Events (SSE Real-Time Push):** สตรีมพิกัด SOS สดเข้าสู่หน้าจอ Incident Commander แดชบอร์ดแบบ Zero-Polling ประหยัด D1 Read Quota 100%
+    - `POST /v1/alerts/cap-ingest`: นำเข้าประกาศเตือนภัยพิบัติระดับชาติมาตรฐาน **CAP v1.2 (Common Alerting Protocol)** แปลงเป็นแพ็กเก็ต `0x04: CRISIS_FEED` เซ็นกำกับด้วย Authority Ed25519 Signature
+  - **4. Cloudflare D1 Multi-Table Mesh & Free-Tier Quota Coalescing (`cloudflare/schema.sql` ⭐️):**
+    - **D1 Write Coalescing Buffer:**
+      - รวบรวม Heartbeat หลายรายการในพื้นที่ H3 เดียวกันไว้ใน Worker Memory / KV Buffer แล้วทำ **Batch Upsert (Multi-row Insert)** ทุก 10–30 วินาที ช่วยลดจำนวน Write Transaction ลงกว่า 85% ป้องกันการชนเพดาน Free Tier (100,000 Writes/วัน)
     - **ตาราง `active_nodes`:** บันทึก `node_id_hash` (PK), `pubkey`, `h3_res7`, `battery_level`, `is_charging`, `power_save_mode`, `est_runtime_min`, `battery_tier`, `mesh_role`, `transport_type`, `last_nonce`, `last_seen_at`, `expires_at` (Index: `(h3_res7, expires_at)`)
     - **ตาราง `node_neighbors`:** บันทึก `reporter_node_hash`, `neighbor_node_hash`, `rssi`, `via_transport`, `neighbor_battery_tier`, `seen_at` (PK: `(reporter, neighbor)`) เพื่อให้แดชบอร์ดสร้างกราฟความสัมพันธ์ของเครือข่ายได้แบบ Live
     - **ตาราง `passkey_credentials` (ระบบยืนยันตัวตน FIDO2 / WebAuthn ฟรี 100% ไร้ค่าบริการส่ง Email):**
@@ -1247,10 +1251,16 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - ทดสอบ Anti-Replay Guard: ส่งซ้ำ Nonce เดิม หรือส่ง Timestamp คลาดเคลื่อนเกิน 60 วินาที ต้องได้ HTTP 401/403 ทันที
     - ทดสอบ Rate Limiting Shield: ยิงถี่เกิน 1 ครั้ง/15 วินาที ต้องตอบกลับ HTTP 429 Too Many Requests
     - ทดสอบ Heartbeat Endpoint (`POST /v1/presence/heartbeat`): ตรวจสอบการบันทึกลง Mock D1
+    - ทดสอบ SSE Real-Time Stream Endpoint (`GET /v1/spatial/stream`)
   - **`D1DatabaseSchema.test.ts`:**
     - ทดสอบ Schema Migration ใน `cloudflare/schema.sql` (ตาราง `active_nodes`, `node_neighbors`, `passkey_credentials`, `user_contacts`)
     - ทดสอบ Spatial Query: ค้นหาโหนดในรัศมี H3 Res 7 และ K-Ring ($k=1$)
     - ทดสอบ Auto-Prune Query: กวาดล้างโหนดที่ `expires_at < unixepoch()` ได้ถูกต้อง 100%
+  - **`D1QuotaCoalescing.test.ts`:**
+    - ทดสอบ Worker Buffer Coalescing: ยิง Heartbeat 500 รายการพร้อมกันใน 5 วินาที ระบบต้องรวมเป็น Batch Insert 1 ครั้ง ลด Write Query ได้ $\ge 80\%$
+  - **`CapAlertIngestion.test.ts`:**
+    - ทดสอบการแปลงประกาศภัยพิบัติมาตรฐาน CAP v1.2 XML/JSON เป็นแพ็กเก็ต TOG v1.1 `CRISIS_FEED`
+    - ตรวจสอบ Authority Ed25519 Signature บนแพ็กเก็ตเตือนภัย
   - **`PasskeyAuthManager.test.ts`:**
     - ทดสอบการสร้างและตรวจสอบ FIDO2 Registration Challenge & Verification
     - ทดสอบการสร้างและตรวจสอบ FIDO2 Authentication Challenge สำหรับกู้คืนรายชื่อเพื่อนหลัง Reinstall
@@ -1261,12 +1271,14 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 
 #### 🎯 Acceptance Criteria:
 - การเชื่อมต่อ WebRTC P2P ผ่าน Public STUN ข้ามเครือข่ายสำเร็จโดยไม่ต้องมีเซิร์ฟเวอร์ Relay
-- D1 Database รองรับการบันทึกสถานะโหนด Spatial H3 และแสดงผล Heatmap อย่างถูกต้อง
+- D1 Database รองรับการบันทึกสถานะโหนด Spatial H3 และแสดงผล Heatmap อย่างถูกต้อง พร้อม Buffer Coalescing ประหยัดโควตา Write
+- สตรีม Server-Sent Events (SSE) ยิงการแจ้งเตือน SOS สดเข้าสู่หน้าจอ Incident Commander ได้ทันที
+- นำเข้าประกาศเตือนภัยมาตรฐาน CAP v1.2 และแปลงเป็นแพ็กเก็ต `CRISIS_FEED` เซ็นรับรองสิทธิ์ถูกต้อง 100%
 - หน้าเว็บและ API แยกมุมมอง Guest (เบลอพิกัด Res 7) และ Responder (พิกัดแม่นยำ Res 9/11) ได้ถูกต้อง 100%
 - การสแกน QR Code หน้างานสามารถมอบสิทธิ์กู้ภัยแบบออฟไลน์สำเร็จ และระบบ OTP / SSO Cloudflare Access ตรวจสอบโดเมนอีเมลราชการได้อย่างแม่นยำ
 - Web Dashboard ใช้งานได้ผ่าน `*.pages.dev` และ API รันผ่าน `*.workers.dev` พร้อมทั้งแอปมือถือสามารถสลับ Custom Server URL ได้อย่างถูกต้อง
 - ระบบ Passkey FIDO2 ลงทะเบียนและกู้คืนรายชื่อเพื่อนจาก D1 ได้สำเร็จ 100% ไร้ค่าใช้จ่าย SMS/Email
-- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/cloud/` (ทั้ง 5 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/cloud/` (ทั้ง 7 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
