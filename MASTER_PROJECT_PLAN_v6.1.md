@@ -1052,11 +1052,37 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - **1km Single-Hop H3 Res 7 Coverage:** ส่งผ่านข้อมูลพิกัด SOS แผนที่ และข้อความได้ไกลถึง 1–1.5 กิโลเมตรใน 1 Hop ทะลุกำแพงตึกและป่าเขา ประหยัดพลังงานระดับ Ultra-Low Power
     - **High-Bandwidth Disaster Media Relay:** รองรับการส่งภาพถ่ายความเสียหายความละเอียดสูง และคลิปเสียงกู้ภัย (Opus Audio) ข้ามตำบลได้ทันทีโดยไม่ต้องเข้าใกล้แบบ Wi-Fi Direct ดั้งเดิม
 
+- [ ] **Task 7.6: Comprehensive Android Native, Radio & Battery Unit Test Suite (`tests/unit/native/` ⭐️)**
+  - พัฒนาชุดทดสอบหน่วยและการจำลองฮาร์ดแวร์สำหรับ Android Layer, Duty Cycle, และ Protocol Bridges:
+  - **`DutyCycleManager.test.ts`:**
+    - ทดสอบ State Machine การสลับโหมดตามระดับแบตเตอรี่ (Normal $>50\%$, Saver $20-50\%$, Low $10-20\%$, Deep $<10\%$)
+    - ทดสอบ Sensor Fusion การตรวจจับ Stationary (Accelerometer นิ่ง + H3 Res 9 คงที่): ยืนยันว่าสั่งหลับ 60s, 3 นาที, 10 นาที, 30 นาที ตรงตามสเปก
+    - ทดสอบ In-Motion Burst Mode: เมื่อ Accelerometer มีแรงสั่นสะเทือน หรือพิกัดข้ามเส้น H3 Res 9 ระบบต้องสลับมาสแกนถี่ขึ้นอัตโนมัติ
+    - ทดสอบ **Zero-Latency Outbound SOS:** เมื่อยิง SOS ระบบต้อง Bypass การหลับทันที 0ms Blast
+  - **`CollisionShield.test.ts`:**
+    - ทดสอบ CSMA/CA Pseudo-Random Jitter (0–150ms) ว่าไม่มีโหนดสุ่มเวลาชนกัน
+    - ทดสอบ Adaptive Density Throttling: เมื่อจำลองเพื่อนบ้าน $N > 30$ โหนด ความถี่ Chirp ต้องลดลง และ Hop Count ต้องถูกจำกัดเหลือ $\le 5$
+    - ทดสอบ Gossip Suppression: จำลองโหนดอื่นช่วยรีเลย์แพ็กเก็ตไปแล้ว โหนดตนเองต้องระงับการส่งต่อ (Drop Redundant Forward)
+  - **`BleRadioDriverMock.test.ts`:**
+    - ทดสอบไดรเวอร์ BLE Coded S=8 Mock: ยืนยันการตั้งค่า PHY_LE_CODED, TX Power สูงสุด
+    - ทดสอบ Hardware Fallback: เมื่อจำลองชิปที่ไม่รองรับ Coded PHY ระบบต้องถอยสู่ 1M PHY อัตโนมัติ 100%
+  - **`PriorityNotification.test.ts`:**
+    - ทดสอบการคัดกรอง Notification: `0x01: SOS` ต้องเรียกคำสั่ง Full-Screen Intent และ Morse Audio Trigger
+    - ทดสอบ `0x02: Chat` แสดง Quick Reply Toast และ `0x04: Crisis` แสดง Sticky Alert
+  - **`MeshtasticBridge.test.ts`:**
+    - ทดสอบการแปลงแพ็กเก็ต TOG v1.1 $\leftrightarrow$ Meshtastic Protobuf Packet
+    - ตรวจสอบความถูกต้องของพิกัด Lat/Long และข้อความกู้ชีพใน Protobuf Payload
+    - ทดสอบการยกระดับสถานะโหนดขึ้นเป็น Backbone Gateway เมื่อตรวจพบกล่อง Meshtastic
+  - **`BriarBridge.test.ts`:**
+    - ทดสอบการแปลงแพ็กเก็ตระหว่าง TOG v1.1 และ Bramble Transport Protocol (BTP) Framing
+    - ตรวจสอบฟีดข่าวเตือนภัยและการถ่ายโอนข้อความข้ามโครงข่าย
+
 #### 🎯 Acceptance Criteria:
 - แอปสามารถรันในโหมดปิดหน้าจอบน Android ต่อเนื่องเกิน 24 ชั่วโมงโดยไม่ถูกระบบปิดกั้น
 - การบริโภคแบตเตอรี่ในโหมด Deep Hibernation (<10%) ไม่เกิน 0.2% ต่อชั่วโมง
 - ทดสอบเชื่อมต่อกล่อง Meshtastic เสมือน สามารถแปลงแพ็กเก็ต TOG v1.1 ไป-กลับ และส่งต่อข้อความ SOS ข้ามโครงข่าย LoRa ได้ถูกต้อง 100%
 - โมดูล `briarAdapter.ts` รองรับโครงสร้าง BTP Framing และสามารถแปลงแพ็กเก็ตฟีดข่าว/ข้อความฉุกเฉินแลกเปลี่ยนกับโหนด Briar แบบสองทิศทางได้สมบูรณ์
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/native/` (ทั้ง 6 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
