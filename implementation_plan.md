@@ -782,9 +782,10 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - **Review & Confirm Flow (ห้ามส่งทันที):** เมื่ออัดเสร็จจะขึ้นแถบพรีวิวให้ผู้ใช้ **กดฟังเสียงทบทวนความชัดเจนได้ก่อน** พร้อมปุ่ม "อัดใหม่" และ **ผู้ใช้ต้องกดปุ่มยืนยันส่ง (Confirm Send) ด้วยตนเองเสมอ** เพื่อป้องกันการเผลอกดส่งไฟล์เสียงขยะไปแช่คลื่นวิทยุในอากาศ
 - [ ] **Task 10.3: Hybrid Smart Spatial Pyramid & Dual-Platform Offline Map Engine (Android & Web PWA ⭐️)**
   - **สถาปัตยกรรมแผนที่ออฟไลน์แบบผสมผสาน (Hybrid Pragmatic Spatial Architecture):**
-    - **1. Base Offline Vector Bundle (3–5 MB ฝังใน App ตั้งแต่วินาทีแรก):**
-      - ฝังไฟล์ Vector สำเร็จรูป (`vector-basemap.pbf` $\le 5\text{MB}$) ที่แปลงจาก Protomaps / Natural Earth / OpenStreetMap (ODbL) ลงใน Local Asset ของแอป Android และ IndexedDB บน Web PWA
-      - **Zero-Internet Guarantee:** รับประกันว่าแม้จะเพิ่งลงแอปแล้วเกิดแผ่นดินไหว/เสาสัญญาณล่มทันที ผู้ใช้จะยังมีแผนที่ขอบเขตประเทศ ชายฝั่ง แม่น้ำสายหลัก และทางหลวงเปิดดูได้ 100% โดยไม่เจอหน้าจอสีเทาว่างเปล่า
+    - **1. Base Offline Vector Bundle (แผนที่ครอบคลุมทั้งโลก 100% ขนาดเพียง 3–5 MB ฝังใน App ตั้งแต่วินาทีแรก):**
+      - ฝังไฟล์ Vector แผนที่ทั้งโลกสำเร็จรูป (`vector-basemap.pbf` $\le 5\text{MB}$) ที่แปลงจาก Natural Earth World Vector + OpenStreetMap Global Landmass/Borders (ODbL) ลงใน Local Asset ของแอป Android และ IndexedDB บน Web PWA
+      - **Global Offline Coverage (ครอบคลุมทุกประเทศทั่วโลก 100%):** บรรจุขอบเขตทุกทวีป, แนวชายฝั่งทะเลทั่วโลก, เส้นแบ่งเขตแดนทุกประเทศทั่วโลก, เกาะสำคัญ, แม่น้ำสายหลักระดับโลก, และแนวทางหลวงเชื่อมต่อระหว่างประเทศ
+      - **Zero-Internet Guarantee:** รับประกันว่าไม่ว่าจะนำแอปไปเปิดใช้งานที่ประเทศใดในโลก (เช่น ไทย, ญี่ปุ่น, สหรัฐฯ, ยุโรป หรือเกาะกลางมหาสมุทร) แม้ไม่มีเน็ตตั้งแต่ดาวน์โหลดเสร็จ จะมีแผนที่เวกเตอร์ทั้งโลกเปิดดูได้ทันที 100% ไม่มีปัญหาหน้าจอสีเทาว่างเปล่า
     - **2. Cloudflare Edge Tile Cache Proxy (สำหรับซูมดูถนน/ซอยบ้านความละเอียดสูงเมื่อมีเน็ต):**
       - พัฒนา Cloudflare Worker ให้ทำหน้าที่เป็น **Edge Cache Proxy** ดึง Map Tile ระดับลึก (Zoom 14+) จาก OpenStreetMap / CARTO มาเก็บไว้ที่ Global Edge Cache
       - **ODbL Compliance & OSM Protection:** ป้องกันการยิงรัวกวนเซิร์ฟเวอร์กลางของ OSM โดย Cloudflare จะดูดซับ Request ซ้ำ (Cache Hit Rate >95%) ส่งให้ผู้ใช้ได้เร็ว 5–10ms และถูกกฎ Tile Usage Policy 100%
