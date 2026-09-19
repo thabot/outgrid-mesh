@@ -898,12 +898,18 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - [ ] **Task 6.1: DTN Store-and-Forward Bundle Custody Engine (`src/core/dtn/BundleStore.ts` ⭐️)**
   - พัฒนาระบบจัดเก็บและส่งต่อแพ็กเก็ตแบบทนทานต่อการตัดขาดของสัญญาณ (Disruption-Tolerant):
   - **Bundle Structure & Serialization:**
-    - โครงสร้าง Bundle: `[Bundle_ID 16B]` + `[Creation_Timestamp 8B]` + `[Expires_At 8B]` + `[Priority 1B]` + `[Hop_Count 1B]` + `[Custodian_Node_ID 8B]` + `[Target_H3 8B]` + `[Payload_Len 2B]` + `[Encrypted_Payload BLOB]`
+    - โครงสร้าง Bundle: `[Bundle_ID 16B]` + `[Creation_Timestamp 8B]` + `[Expires_At 8B]` + `[Priority 1B]` + `[Hop_Count 1B]` + `[Custodian_Node_ID 8B]` + `[Target_H3 8B]` + `[Triage_Level 1B: Red(0x01)/Yellow(0x02)/Green(0x03)]` + `[Payload_Len 2B]` + `[Encrypted_Payload BLOB]`
   - **Custody Transfer Protocol (การโอนย้ายสิทธิ์ดูแลความปลอดภัยของข้อมูล):**
     - เมื่อโหนด A ส่งมอบ Bundle ให้โหนด B (เช่น ผู้ประสบภัยส่งต่อให้รถกู้ภัย):
       - โหนด A จะยังไม่ลบ Bundle ทันที แต่จะคงสถานะเป็น `CUSTODY_OFFERED`
       - เมื่อโหนด B ตอบรับด้วยแพ็กเก็ต **`CUSTODY_ACCEPT (0x08)`** พร้อมลายเซ็น โหนด A จึงจะปลดสถานะเป็น `CUSTODY_TRANSFERRED` และลบออกจาก Flash Memory ได้อย่างปลอดภัย
       - ป้องกันข้อมูลสูญหาย 100% หากการเชื่อมต่อหลุดขณะกำลังส่งมอบกลางทาง
+  - **Bundle Buffer Congestion & Triage Eviction Policy (บริหารคลังสัมภาระเมื่อ Flash Memory เต็ม):**
+    - กำหนดโควตา DTN Bundle Storage บนอุปกรณ์ (สูงสุด 30MB)
+    - หากคลังเก็บเต็มและมี Bundle ใหม่เข้ามา จะใช้ระบบ **Prioritized Triage Eviction**:
+      1. ทิ้ง Direct Chat ที่หมดอายุหรือส่งนานเกิน 24 ชม. ก่อน
+      2. ทิ้ง Crisis Feed ที่อยู่นอกเขต H3
+      3. สำหรับแพ็กเก็ต SOS ฉุกเฉิน: **ห้ามทิ้งเคสฉุกเฉินระดับสีแดง (Triage Red 0x01: บาดเจ็บสาหัส/ติดค้างวิกฤต) เด็ดขาด 100%** แต่จะคัดกรองเคสสีเขียว (Green: ร้องขอของใช้ทั่วไป) ออกก่อนหากจำเป็นขีดสุด
 
 - [ ] **Task 6.2: Velocity Azimuth & Mobility Tracker (`src/core/dtn/MobilityTracker.ts` ⭐️)**
   - พัฒนาระบบตรวจจับและวิเคราะห์การเคลื่อนที่เชิงเวกเตอร์ของอุปกรณ์:
@@ -928,21 +934,28 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       $$P_{(a, b)} = P_{(a, b)\text{old}} + (1 - P_{(a, b)\text{old}}) \times L_{\text{encounter}}$$
     - คัดเลือกส่งต่อเฉพาะโหนดที่มีโอกาสเดินทางไปพบปลายทางสูงที่สุด
 
-- [ ] **Task 6.4: Network Healing & Cloud Re-anchoring Engine (`src/core/dtn/CloudReAnchorEngine.ts` ⭐️)**
-  - สะพานเชื่อมข้อมูลกู้ภัยกลับเข้าสู่ระบบคลาวด์อัตโนมัติเมื่อพ้นจุดอับสัญญาณ:
+- [ ] **Task 6.4: Network Healing, Cloud Re-anchoring & Epidemic Vaccine Kill Pill (`src/core/dtn/` ⭐️)**
+  - พัฒนา `src/core/dtn/CloudReAnchorEngine.ts` และ `src/core/dtn/VaccineKillPillEngine.ts`:
   - **Cellular / Wi-Fi Detection & Burst Upload:**
     - ตรวจสอบสถานะการเชื่อมต่ออินเทอร์เน็ตของ Data Mule ทันทีที่เข้าสู่เขตที่มีสัญญาณ Cellular (4G/5G) หรือ Wi-Fi
     - บีบอัดและส่ง Bundle ฉุกเฉินทั้งหมดขึ้นสู่ **Cloudflare Workers API (`POST /api/mesh/sync-bundle`)** เป็นชุดเดียว (Batch Upload)
     - นำเข้าข้อมูลสู่ Cloudflare D1 Database และอัปเดตสถานะ Heatmap กู้ภัยระดับประเทศแบบเรียลไทม์
   - **Global Delivery Receipt Broadcast:**
     - เมื่อ Cloudflare ได้รับข้อมูล จะสร้างใบเสร็จดิจิทัลส่งกลับลงมา เพื่อให้ Data Mule นำใบเสร็จกลับไปกระจายแจ้งโหนดในป่าว่า "ข้อความกู้ชีพของคุณถึงศูนย์บัญชาการแล้ว"
+  - **Epidemic Vaccine Kill Pill Protocol (ฉีดวัคซีนหยุดส่งข้อความที่ช่วยแล้ว ⭐️):**
+    - เมื่อเคสได้รับการช่วยเหลือ หรือแพ็กเก็ตขึ้นสู่ Cloudflare เรียบร้อยแล้ว ระบบจะออก **"Vaccine / Kill Pill Packet"** บรรจุ `Bundle_ID` พร้อมลายเซ็นทางการ
+    - แพ็กเก็ตวัคซีนจะแพร่กระจายแบบ Epidemic เมื่อโหนดหรือ Data Mule คันอื่นได้รับวัคซีนนี้ จะทำการลบสำเนา Bundle ดังกล่าวทิ้งจาก Flash Memory ทันที (Instant Purge) สกัดกั้นการส่งต่อซ้ำซ้อนข้ามอำเภอ และคืนพื้นที่จัดเก็บให้เครือข่าย 100%
 
 - [ ] **Task 6.5: Comprehensive DTN & Data Mule Unit Test Suite (`tests/unit/dtn/` ⭐️)**
-  - พัฒนาชุดทดสอบหน่วยสำหรับสถาปัตยกรรม DTN และระบบ Data Mule:
+  - พัฒนาชุดทดสอบหน่วยสำหรับสถาปัตยกรรม DTN และระบบ Data Mule ครบวงจร:
   - **`BundleStore.test.ts`:**
-    - ทดสอบ Serialize และ Deserialize โครงสร้าง DTN Bundle ขนาดต่างๆ
+    - ทดสอบ Serialize และ Deserialize โครงสร้าง DTN Bundle ขนาดต่างๆ รวมถึงฟิลด์ Triage Level
     - ทดสอบกระบวนการ Custody Transfer: สถานะ `CUSTODY_OFFERED` $\rightarrow$ ได้รับ `CUSTODY_ACCEPT` $\rightarrow$ สลับสถานะเป็น `CUSTODY_TRANSFERRED` และคืนพื้นที่ Flash Memory
     - ทดสอบกรณีส่งมอบขาดตอน (Simulated Link Drop): ยืนยันว่า Bundle ต้องไม่สูญหายและคงอยู่บนโหนดต้นทาง
+  - **`BundleEvictionTriage.test.ts`:**
+    - จำลองอัด Bundle เต็มโควตา 30MB
+    - ตรวจสอบลำดับการ Evict: Direct Chat $\rightarrow$ Crisis Feed $\rightarrow$ Green SOS
+    - ยืนยันว่า **Red SOS (0x01) ที่มีวิกฤตขั้นสูงสุด จะไม่มีวันถูกลบออกจากหน่วยความจำ 100%**
   - **`MobilityTracker.test.ts`:**
     - ทดสอบคำนวณความเร็วและทิศทางจากลำดับพิกัด GPS จำลอง:
       - จำลองพิกัดเดินเท้า ($3\text{ km/h}$) $\rightarrow$ สถานะ Normal Node
@@ -955,13 +968,19 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - **`CloudReAnchor.test.ts`:**
     - จำลองการตรวจพบอินเทอร์เน็ตบน Data Mule และการยิง Batch POST เข้า Endpoint จำลอง
     - ตรวจสอบการแปลง Bundle เป็น D1 Record และการรับใบเสร็จ Global Delivery Receipt
+  - **`VaccineKillPill.test.ts`:**
+    - จำลองการสร้างแพ็กเก็ตวัคซีน Kill Pill เมื่อเคสกู้ภัยสำเร็จ
+    - ทดสอบการส่งต่อวัคซีนระหว่างโหนด และการสั่ง Instant Purge ลบ Bundle เป้าหมายออกจาก Flash Memory ทันที
+    - ยืนยันว่าหลังจากได้รับวัคซีน โหนดจะไม่ส่งต่อข้อความเคสนั้นอีกต่อไป 100%
 
 #### 🎯 Acceptance Criteria:
 - จำลองการเคลื่อนที่ของ Data Mule จากจุดอับสัญญาณไปยังเขตมีอินเทอร์เน็ต สามารถส่งต่อ Bundle สู่ Cloudflare ได้ครบถ้วน 100%
 - กระบวนการ Custody Transfer มีระบบทนทานต่อสัญญาณหลุดกลางคัน โดยไม่มีข้อมูลสูญหาย 100%
+- นโยบาย Triage Eviction ป้องกันการสูญหายของเคสวิกฤตสีแดง (Red SOS) ได้อย่างสมบูรณ์แบบ 100% แม้หน่วยความจำเต็ม
 - กลไก Hop Freeze ป้องกันการลดทอน Hop Count ของ Bundle ระหว่างการเดินทางข้ามอำเภอได้อย่างถูกต้อง
+- ระบบ Epidemic Vaccine Kill Pill สามารถล้างแพ็กเก็ตที่ช่วยแล้วออกจากเครือข่าย ป้องกันการกระจายซ้ำซ้อน 100%
 - ระบบ Mobility Tracker ระบุสถานะ High-Priority Data Mule ได้อย่างแม่นยำตามเกณฑ์ความเร็ว 20–120 กม./ชม.
-- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/dtn/` (ทั้ง 4 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/dtn/` (ทั้ง 6 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
