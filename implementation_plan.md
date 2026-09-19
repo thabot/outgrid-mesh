@@ -988,10 +988,17 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 **เป้าหมาย:** พัฒนาระบบเบื้องหลังบน Android 14/15 ทำงานตลอด 24 ชั่วโมงไม่โดนระบบฆ่า พร้อมจัดการคลื่นความถี่ BLE สลับ 4-tier Ultra-Saver อัจฉริยะ
 
 #### 📋 TaskList Detail:
-- [ ] **Task 7.1: Android Foreground Service, Full-Screen Intent & Priority Popup Engine**
-  - พัฒนา `android/app/src/main/java/.../MeshForegroundService.kt`
-  - รัน Service พร้อม Persistent Notification แสดงสถานะ Mesh ตามข้อกำหนด Android 14+
-  - บริหารจัดสรร WakeLock แบบไม่กินไฟ (สอดรับกับ Google Battery Optimization / Doze Mode)
+- [ ] **Task 7.1: Android Foreground Service, Full-Screen Intent & OEM Killer Defense (`MeshForegroundService.kt` ⭐️)**
+  - พัฒนา `android/app/src/main/java/.../MeshForegroundService.kt`:
+  - **Android 14/15 Compliant Service Types & Manifest Matrix:**
+    - กำหนด `android:foregroundServiceType="connectedDevice|location|dataSync"` ใน `AndroidManifest.xml`
+    - ขอสิทธิ์จำเป็นระดับ Runtime: `BLUETOOTH_SCAN`, `BLUETOOTH_ADVERTISE`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, `POST_NOTIFICATIONS`
+  - **OEM Aggressive Battery Killer Defense (รับมือระบบฆ่าแอปของ Samsung/Xiaomi/Vivo/Oppo):**
+    - ขอข้อยกเว้นประหยัดพลังงานผ่าน `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (Battery Optimization Whitelist)
+    - มีหน้าจอตรวจจับยี่ห้อโทรศัพท์ (OEM Detector) แนะนำวิธีเปิด Auto-start / ปิด App Sleep ให้ผู้ใช้แบบ Step-by-Step
+    - **Doze Mode Alarm Fallback:** ใช้ `AlarmManager.setExactAndAllowWhileIdle()` คู่กับ `SCHEDULE_EXACT_ALARM` ทำหน้าที่เป็น Watchdog ปลุก CPU มารับส่งคลื่นวิทยุตรงเวลา แม้ระบบจะเข้าสู่ Deep Doze Mode
+  - **WakeLock Management & Disaster Energy Governance:**
+    - บริหารจัดสรร `PARTIAL_WAKE_LOCK` แบบชั่วคราว (Acquire เฉพาะช่วงกำลังประมวลผลแพ็กเก็ต แล้ว Release ทันทีในระดับ Millisecond) เพื่อการันตีไม่กินไฟเกินกำหนด
   - **Priority-Based Popup Notification System (ระบบแจ้งเตือนป๊อปอัปตามลำดับความสำคัญ ⭐️):**
     - **Tier-1 Critical SOS (`0x01: SOS_BEACON`):**
       - สั่งเปิดหน้าจออัตโนมัติแม้ล็อกหน้าจอ/จอดับอยู่ด้วย **Android Full-Screen Intent**
