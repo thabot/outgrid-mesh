@@ -6,7 +6,7 @@
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
 
-import { ITOGPacket, TOGPacketType, TOGPriority } from '../protocol/TOGPacket';
+import { ITOGPacket, TOGPacketType, TOGPriority, DEFAULT_SOS_HOPS } from '../protocol/TOGPacket';
 import { H3DeltaCompressor } from '../spatial/H3DeltaCompressor';
 
 export enum SosStatusCategory {
@@ -46,7 +46,7 @@ export class OneTapSosEngine {
         magic: 0x544F,
         version: 1,
         packetType: TOGPacketType.SOS_BEACON,
-        ttlHops: 15, // Maximum hops for life-critical SOS
+        ttlHops: DEFAULT_SOS_HOPS, // Maximum hops for life-critical SOS (25 hops for flood penetration)
         priority: TOGPriority.CRITICAL_SOS,
         flags: 0,
         reserved: 0,

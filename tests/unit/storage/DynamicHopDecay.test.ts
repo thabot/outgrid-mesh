@@ -16,12 +16,19 @@ describe('DynamicHopDecay (Adaptive Density & RSSI Hop Decay)', () => {
     expect(moderateHops).toBe(5);
   });
 
-  it('should expand hops in sparse rural environments (12 - 15 hops)', () => {
+  it('should expand hops in sparse rural environments (12 - 25 hops)', () => {
     const ruralHops = DynamicHopDecay.calculateInitialHops(1);
     expect(ruralHops).toBe(12);
 
+    // Emergency SOS gets boosted hops (25 for rural/isolated flood zone)
     const ruralSosHops = DynamicHopDecay.calculateInitialHops(1, true);
-    expect(ruralSosHops).toBe(15);
+    expect(ruralSosHops).toBe(25);
+
+    const moderateSosHops = DynamicHopDecay.calculateInitialHops(8, true);
+    expect(moderateSosHops).toBe(15);
+
+    const denseSosHops = DynamicHopDecay.calculateInitialHops(20, true);
+    expect(denseSosHops).toBe(10);
   });
 
   it('should apply faster decay penalty on weak fringe RSSI links (< -90 dBm)', () => {

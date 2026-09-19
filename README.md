@@ -44,7 +44,7 @@ Users do not need to install developer tools or compile source code. Choose your
 | **🚀 Production Release (Recommended)** | `v1.1.0` | [📲 **outgrid-mesh.apk**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0/outgrid-mesh.apk) | Official verified release from `main` branch |
 | **🧪 UAT Pre-Release (Bleeding-Edge)** | `v1.1.0-uat` | [📲 **outgrid-mesh-uat.apk**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0-uat/outgrid-mesh-uat.apk) | Latest automated test build from `uat` branch |
 | **📦 GitHub Releases Page** | All | [📂 **All Releases & Checksums**](https://github.com/thabot/outgrid-mesh/releases) | Review release notes, changelog, and SHA-256 hashes |
-| **🌐 Web PWA / Browser App** | `v1.1.0` | [🖥️ **Web Dashboard PWA**](https://outgrid-rescue.pages.dev) | Runs in any modern browser with offline service worker cache |
+| **🌐 Web PWA / Browser App** | `v1.1.0` | [🖥️ **Web Dashboard PWA**](https://thabot.github.io/outgrid-mesh/) | Runs in any modern browser with offline service worker cache |
 
 > 💡 **Offline Wi-Fi Sideloading:** In isolated disaster zones without any internet connectivity, users can connect to the local Wi-Fi hotspot of an existing OutGrid Mesh device and open `http://192.168.49.1:8080` in their browser to download and install `outgrid-mesh.apk` directly over-the-air.
 
