@@ -4,18 +4,25 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "useDefineForClassFields": true,
     "baseUrl": ".",
     "paths": {
-      "/*": [
-        "src/ui/*"
-      ]
+      "@core/*": ["src/core/*"],
+      "@platform/*": ["src/platform/*"],
+      "@ui/*": ["src/ui/*"]
     }
   },
   "include": [
     "src/**/*",
-    "scripts/**/*"
+    "scripts/**/*",
+    "tests/**/*"
   ]
 }
