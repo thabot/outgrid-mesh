@@ -194,6 +194,20 @@
 
 ### 2.2 โครงสร้างการทำงานของ Server แม่ข่ายจิ๋ว (Cloud Coordinator & Spatial Edge Architecture)
 
+#### 🖥️ จำนวนเครื่อง Server และสถานที่รัน (Server Count & Deployment Locations Specification)
+> **สรุปสำคัญด้านฮาร์ดแวร์และค่าใช้จ่าย (Core Cost & Infrastructure Summary):**
+> - **จำนวนเครื่อง Server ที่ต้องสร้าง/เช่าซื้อ (Dedicated/VPS Cloud Boxes):** **`0 เครื่อง`** (ไม่ต้องเช่า AWS EC2, DigitalOcean, หรือเครื่อง On-premise แม้แต่เครื่องเดียว จึงไม่มีค่าเช่าเซิร์ฟเวอร์รายเดือน $0 บาทตลอดชีพ)
+> - **สถาปัตยกรรม:** **Zero-Cost Serverless & Edge-First Architecture** รันแบบกระจายตัวบน Edge Cloudflare และโครงข่าย P2P ไม่ล่มตามไฟดับในพื้นที่ภัยพิบัติ
+
+| ลำดับ | ส่วนประกอบของระบบ | รันไว้ที่ไหน (Location & Platform) | หน้าที่การทำงาน | รูปแบบค่าบริการ (Cost) |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | **Web Dashboard ศูนย์กู้ภัย (Frontend)** | **Cloudflare Pages**<br>*(Anycast CDN 300+ เมืองทั่วโลก รวมศูนย์ BKK)* | ให้เจ้าหน้าที่กู้ภัยและประชาชนเปิดดูแผนที่เรดาร์ และสถานะผู้ประสบภัยผ่านเว็บเบราว์เซอร์ (`https://outgrid-rescue.pages.dev`) | **ฟรี 100%**<br>(Unlimited Bandwidth & DDoS Protection) |
+| **2** | **API Gateway & Real-Time Engine (Backend)** | **Cloudflare Workers**<br>*(Edge V8 Isolates ทั่วโลก Latency 5-15ms)* | • รับพิกัด SOS / Presence Heartbeat<br>• สตรีมสัญญาณสดเข้าจอศูนย์กู้ภัยผ่าน SSE<br>• ตรวจสอบลายเซ็น Ed25519 & ป้องกัน Replay Attack<br>• รับ Inbound Webhook แจ้งเตือนภัยพิบัติ (CAP v1.2) | **ฟรี 100%**<br>(รองรับได้ถึง 100,000 requests/วัน บน Free Tier) |
+| **3** | **ฐานข้อมูลเชิงพื้นที่ (Spatial Mesh DB)** | **Cloudflare D1**<br>*(Serverless Distributed SQLite Edge)* | บันทึกตาราง `active_nodes`, `node_neighbors`, `passkey_credentials`, `user_contacts` โดยมีระบบ Write Coalescing Buffer ประหยัดโควตา | **ฟรี 100%**<br>(โควตาอ่าน 5M reads/day, เขียน 100k writes/day) |
+| **4** | **ที่จัดเก็บไฟล์ดาวน์โหลด (Storage)** | **Cloudflare R2**<br>*(S3-Compatible Object Storage)* | โฮสต์ไฟล์ติดตั้ง `OutGridMesh.apk` และ `vector-basemap.pbf` ให้ดาวน์โหลดได้ทั่วโลก | **ฟรี 100%**<br>(ไม่มีค่า Egress Bandwidth 100%) |
+| **5** | **ระบบเชื่อมต่อ Peer-to-Peer (WebRTC)** | **Google & Cloudflare Public STUN**<br>• `stun.l.google.com:19302`<br>• `stun.cloudflare.com:3478` | ช่วยให้เครื่องที่ต่อเน็ตได้สามารถส่งข้อมูลหากันแบบ P2P ทะลุไฟร์วอลล์ (NAT) ได้โดยตรง โดยไม่ต้องส่งข้อมูลผ่าน Media Relay Server | **ฟรี 100%**<br>(ใช้ฟรีผ่าน Public Infrastructure สากล) |
+| **+** | **Offline Hotspot Web Server** | **ฝังอยู่ในมือถือสมาร์ตโฟนของผู้ใช้ทุกคน**<br>*(Local Nano HTTP & DNS Server)* | เมื่อเปิดโหมดแชร์ออฟไลน์ มือถือจะรัน Web Server ในตัวเอง (Port 8080) เพื่อแจกไฟล์ APK ให้คนรอบข้างดาวน์โหลดโดยไม่ต้องมีอินเทอร์เน็ต | **ไม่มีค่าใช้จ่าย**<br>(ทำงานออฟไลน์ 100% บนเครื่องโทรศัพท์) |
+
 เพื่อให้ระบบทำงานระดับโลกได้โดย **ไร้ภาระค่าใช้จ่ายเซิร์ฟเวอร์ ($0 - $15/เดือน)** และรักษาหลักการ **Zero-Storage Policy (ไม่เก็บข้อมูลส่วนบุคคลและไม่เก็บข้อความแชต)** เซิร์ฟเวอร์แม่ข่ายจึงถูกวางโครงสร้างเป็น **Micro-Serverless Edge Architecture** บนเครือข่าย Cloudflare (Node กรุงเทพฯ Latency ต่ำ 5–15ms) ทำหน้าที่หลัก 4 ด้านเท่านั้น:
 
 ```
