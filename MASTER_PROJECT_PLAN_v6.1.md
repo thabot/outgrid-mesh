@@ -706,9 +706,30 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - [ ] **Task 9.1: Zero-Cost Public STUN & P2P WebRTC Signaling Engine**
   - ผนวก Public STUN เซิร์ฟเวอร์ฟรีสากล (`stun.l.google.com:19302`, `stun.cloudflare.com:3478`)
   - พัฒนา WebRTC DataChannel สำหรับเชื่อมต่อ P2P ระหว่างผู้ใช้ที่เข้าถึงเน็ตได้ ข้าม NAT โดยไม่ผ่าน Media Relay
-- [ ] **Task 9.2: Cloudflare Workers Spatial Signaling & D1 Spatial Table**
-  - พัฒนา Worker รับส่ง Signaling SDP ขนาดเล็ก 1–2KB อิงตามพิกัด H3 Hexagon
-  - สร้าง D1 Database จัดเก็บโหนดที่เปิดใช้งาน พร้อม API Heatmap แบบไม่เก็บข้อมูลส่วนบุคคล (Zero-PII)
+- [ ] **Task 9.2: Cloudflare Workers Spatial Presence API, D1 Mesh Graph Schema & Zero-Trust Security (Heartbeat Engine ⭐️)**
+  - พัฒนา Cloudflare Worker API บน Endpoint `https://api.outgrid-mesh.workers.dev`:
+  - **1. Cryptographic Zero-Trust API Security & Anti-Spoofing Architecture:**
+    - **Ed25519 Request Signing:** ทุก HTTP Request ที่โหนดส่งขึ้น Server จะต้องถูกเซ็นกำกับด้วย Master Private Key (Ed25519) ประจำเครื่อง
+      - Headers: `X-Node-ID` (8-byte hash), `X-Timestamp` (Unix ms), `X-Nonce` (16B Hex), `X-Signature` (Ed25519 64B Hex)
+    - **Anti-Replay & Timestamp Drift Protection:** Worker ตรวจสอบ Timestamp หากเบี่ยงเบนเกิน ±60 วินาที หรือพบ Nonce ซ้ำใน Cloudflare KV (TTL 120s) จะตัด Drop ทันที
+    - **Zero-Trust Identity Verification:** ตรวจสอบความถูกต้องของ Signature เทียบกับ `pubkey` เพื่อยืนยันว่าไม่มีใครสามารถสวมรอย Node ID ของผู้อื่นได้
+    - **Rate Limiting & Abuse Shield:** จำกัดอัตราการยิงไม่เกิน 1 ครั้ง/15-30 วินาทีต่อโหนด ป้องกัน Sybil Attack และ DDoS
+  - **2. Adaptive Context-Aware Heartbeat Scheduling (ความถี่การรายงานตัว 1-60 นาที เพื่อเซฟแบตเตอรี่ & เซฟโควตาฟรี):**
+    - **กำลังชาร์จไฟ / เป็น Supernode:** ยิงทุกๆ **1 – 2 นาที** (แบตไม่จำกัด อัปเดตสถานะแบบ Real-time)
+    - **แบตเตอรี่ปกติ (>50%):** ยิงทุกๆ **5 นาที** (จุดสมดุล ยืนยันสถานะโดยกินไฟโมเด็ม <0.05%/ชม.)
+    - **โหมดประหยัด (20–50%):** ยิงทุกๆ **15 นาที**
+    - **แบตเตอรี่ต่ำ (10–20%):** ยิงทุกๆ **30 นาที**
+    - **วิกฤต (<10%):** ยิงทุกๆ **60 นาที** (หรือปิดการส่งเน็ต เก็บแบตไว้ส่งเฉพาะ BLE SOS สั้น)
+    - **Event-Driven Instant Flush (ยิงทันที 0ms ไม่ต้องรอรอบเวลา):** เมื่อเพิ่งต่อเน็ตได้ครั้งแรกหลังออฟไลน์ (Re-connected), เมื่อจับสัญญาณฉุกเฉิน `SOS_BEACON` ของคนอื่นได้, หรือเมื่อก้าวข้ามขอบเขต H3 Res 7 ใหม่
+  - **3. Production API Endpoints Specification:**
+    - `POST /v1/presence/heartbeat`: โหนดส่งสถานะตนเอง + ข้อมูลแบตเตอรี่ละเอียด + รายชื่อ Neighbors รอบตัว
+      - Request Body: `node_pubkey`, `h3_res7`, `battery: {level_pct, is_charging, power_save_mode, est_runtime_min, battery_tier}`, `mesh_role`, `seen_neighbors: [{peer_id_hash, rssi, last_seen_sec_ago, via_transport, battery_tier}]`
+      - Response Body: `status: "ok"`, `nearby_active_nodes`, `supernodes_in_zone`, `inbound_emergency_alerts`
+    - `GET /v1/spatial/neighbors?h3=...&k_ring=1`: ดึงข้อมูลโหนดใกล้เคียงในรัศมีรังผึ้งรอบตัว สำหรับเชื่อมต่อ WebRTC P2P
+  - **4. Cloudflare D1 Dual-Table Mesh Topology Schema (`cloudflare/schema.sql`):**
+    - **ตาราง `active_nodes`:** บันทึก `node_id_hash` (PK), `pubkey`, `h3_res7`, `battery_level`, `is_charging`, `power_save_mode`, `est_runtime_min`, `battery_tier`, `mesh_role`, `transport_type`, `last_nonce`, `last_seen_at`, `expires_at` (Index: `(h3_res7, expires_at)`)
+    - **ตาราง `node_neighbors`:** บันทึก `reporter_node_hash`, `neighbor_node_hash`, `rssi`, `via_transport`, `neighbor_battery_tier`, `seen_at` (PK: `(reporter, neighbor)`) เพื่อให้แดชบอร์ดสร้างกราฟความสัมพันธ์ของเครือข่ายได้แบบ Live
+    - **Auto-Prune Cron Job:** สั่งล้างข้อมูลหมดอายุอัตโนมัติ (`expires_at < unixepoch()`) ทุก 1 ชั่วโมง รักษาฐานข้อมูลให้สะอาดและฟรีตลอดชีพ
 - [ ] **Task 9.3: Transparent Community Donation Ledger & Dashboard**
   - พัฒนาหน้าแดชบอร์ดระดมทุนเพื่อมนุษยธรรม เชื่อมต่อ Open Collective / GitHub Sponsors / PromptPay
   - แสดงรายงานรายรับ-รายจ่ายของโครงสร้างพื้นฐานแบบ Open Ledger โปร่งใส 100%
