@@ -510,9 +510,30 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - **Log Masking & Privacy Guard:** ห้ามพิมพ์ Private Keys, Raw GPS พิกัดละเอียด, หรือข้อความแชตส่วนตัวลงใน Console Log โดยเด็ดขาด
     - **Disaster In-Memory Ring Buffer:** เก็บ Log ย้อนหลัง 500 รายการล่าสุดในหน่วยความจำ RAM สำหรับแสดงบนหน้าจอ `NetworkDiagnostics.tsx` เพื่อให้วิเคราะห์ปัญหาหน้างานได้แบบออฟไลน์ 100%
 
+- [ ] **Task 1.5: Core Foundation, Boundary Isolation & Tooling Unit Test Suite (`tests/unit/foundation/` ⭐️)**
+  - พัฒนาชุดทดสอบอัตโนมัติ 100% ตรวจสอบความถูกต้องของโครงสร้างสถาปัตยกรรม รากฐานเครื่องมือ และตรรกะระบบเบื้องต้น:
+    - **1. `ArchitectureBoundary.test.ts` (Static Boundary Isolation Test):**
+      - สแกนไฟล์ทุกไฟล์ภายใต้ `src/core/` เพื่อวิเคราะห์ Abstract Syntax Tree (AST)
+      - ตรวจสอบว่า **ห้ามมี Import หรือเรียกใช้โมดูลของแพลตฟอร์มภายนอกเด็ดขาด** (เช่น `@capacitor/*`, `window`, `document`, `localStorage`, `sessionStorage`, `navigator`, `indexedDB`, `android.*`)
+      - ยืนยันว่า `src/core/` ขึ้นตรงกับมาตรฐาน Pure TypeScript / JavaScript ES2022 และชุดเครื่องมือคณิตศาสตร์ภายในเท่านั้น 100%
+    - **2. `InterfacePortsMock.test.ts` (Contract & Mock Implementation Test):**
+      - สร้าง Mock Classes จำลองการทำงานของ Ports ทั้งหมด: `MockRadioDriver`, `MockStorageDriver`, `MockKeystoreDriver`, `MockGpsDriver`
+      - ยืนยันว่า Core Services สามารถเชื่อมต่อกับ Mock Interfaces และส่งผ่าน Data Streams ได้สมบูรณ์แบบโดยไม่ต้องมีฮาร์ดแวร์จริง
+      - ทดสอบการสลับ Adapter ในช่วง Runtime (Dependency Injection Verification)
+    - **3. `LoggerRingBuffer.test.ts` (Unit Test ระบบบันทึก Log และ Ring Buffer):**
+      - ทดสอบการทำงานของ Ring Buffer ในหน่วยความจำ RAM ขนาด 500 รายการ:
+        - เมื่อเขียน Log เกิน 500 รายการ (เช่น เขียน 1,000 รายการ) ข้อมูลเก่าที่สุดจะต้องถูกเลื่อนทิ้งอัตโนมัติ (FIFO Eviction) และคงเหลือเฉพาะ 500 รายการล่าสุดเสมอ ไร้ Memory Leak
+      - ทดสอบ **Privacy Masking:** จำลองการส่ง Private Key (Base64), พิกัด GPS ละเอียด, และเนื้อหาข้อความแชตเข้า Logger แล้วยืนยันว่าระบบต้อง Masking เป็น `[REDACTED_KEY]`, `[REDACTED_GPS]`, `[REDACTED_TEXT]` 100% ไม่หลุดออกไปที่ Console Log
+      - ทดสอบการกรอง Log ตามระดับความสำคัญ (`DEBUG`, `INFO`, `WARN`, `ERROR`, `CRITICAL_SOS`)
+    - **4. `SyntaxChecker.test.ts` (Unit Test สำหรับสคริปต์ `checkSyntax.js`):**
+      - ทดสอบสคริปต์ `scripts/checkSyntax.js` กับไฟล์จำลองที่มี Syntax Error (เช่น วงเล็บเปิดไม่ปิด, Typo ใน JSON, Identifier ผิด)
+      - ยืนยันว่าตัวสแกนสามารถดักจับ Syntax Error และส่งคืน Exit Code = 1 ได้ถูกต้อง 100%
+      - ยืนยันว่าเมื่อไฟล์ถูกต้องทั้งหมด จะส่งคืน Exit Code = 0 พร้อมรายงานจำนวนไฟล์ที่สแกนถูกต้อง
+
 #### 🎯 Acceptance Criteria (Definition of Done for Phase 1):
 - สคริปต์ `node scripts/checkSyntax.js` และคำสั่งทดสอบ `bun test` ทำงานผ่าน 100% ไร้ข้อผิดพลาด
-- โฟลเดอร์ `src/core/` ผ่านการตรวจสอบ Boundary Isolation: ไม่มี Dependency หรือ Import ของ Browser/Capacitor/Native แม้แต่บรรทัดเดียว
+- โฟลเดอร์ `src/core/` ผ่านการทดสอบ Boundary Isolation Test 100%: ไม่มี Dependency หรือ Import ของ Browser/Capacitor/Native แม้แต่บรรทัดเดียว
+- ชุดทดสอบใน `tests/unit/foundation/` (ทั้ง 4 ไฟล์ทดสอบ) ทำงานผ่าน 100% ครอบคลุม Mock Ports, Ring Buffer, Privacy Masking, และ Syntax Checker
 - โครงสร้างโปรเจกต์รองรับการพัฒนาข้ามระบบ (Cross-Platform) อย่างเป็นอิสระทั้ง Android Native, Web PWA และ Cloudflare Serverless
 - สาขาการพัฒนา `uat` ถูกตั้งค่าพร้อมรองรับการส่งมอบงานในเฟสถัดไปอย่างเคร่งครัดตามกฎของโครงการ
 
