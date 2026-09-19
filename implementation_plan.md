@@ -519,33 +519,67 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 ---
 
 ### 🔹 Phase 2: Thabot OutGrid Protocol (TOG v1.1) Bitfield Packing & Frame Engine
-**เป้าหมาย:** สร้าง Engine เข้ารหัส/ถอดรหัสแพ็กเก็ตระดับ Binary Bitfield (28 bytes minimum) พร้อมระบบ Erasure Coding, Sliding Window และ NACK Retransmission
+**เป้าหมาย:** พัฒนาเอนจินระดับสายสัญญาณ (Wire Protocol Engine) ด้วย **Thabot OutGrid Protocol (TOG v1.1)** ทำงานบนหน่วยความจำระดับไบต์ (`Uint8Array` / `DataView`) โดยตรง ไร้ JSON Overhead เพื่อความเร็วสูงสุดและกินแบตเตอรี่ต่ำสุด พร้อมระบบตรวจจับความผิดพลาด (CRC-16-CCITT), การซอยชิ้นส่วน (Fragmentation), การกู้คืนแพ็กเก็ตตกหล่นในอากาศด้วย Reed-Solomon Erasure Coding (8+4), และระบบคิวส่งแบบ Selective NACK Sliding Window
 
 #### 📋 TaskList Detail:
-- [ ] **Task 2.1: Binary Frame Bitfield Packing & Unpacking Engine**
-  - พัฒนา `src/core/protocol/PacketSerializer.ts` จัดสรร Buffer และอ่าน/เขียน Bitfield ตาม TOG v1.1
-  - **Fixed Header (28 Bytes):**
-    - `Protocol Version (3b)`, `Packet Type (5b)`, `TTL / Hop Count (8b)`, `Priority (4b)`, `Reserved (4b)`
-    - `Message ID (8B uint64)`, `Sender Hash (8B)`, `Recipient/Topic Hash (8B)`
-  - **Spatial Target Field (8 Bytes uint64):**
-    - ฝังรหัส **Target H3 Index Resolution 9 (~100m)** กำกับไปกับแพ็กเก็ต เพื่อให้โหนดตัวกลางสามารถใช้สูตรคณิตศาสตร์ `h3ToParent` ถอยระดับเป็น Res 7 (ตำบล), Res 5 (กึ่งอำเภอ) และ Res 4 (ข้ามอำเภอ) ในการเลือกเส้นทางส่งต่อได้อย่างแม่นยำ
-  - **H3 Local Delta Offset Packing Engine (4 Bytes Precision GPS ⭐️):**
-    - พัฒนาระบบคำนวณและแปลงพิกัด GPS ดิบ เป็นระยะกระจัด `Delta X (int16)` + `Delta Y (int16)` สัมพัทธ์กับจุดกึ่งกลางของ Target H3 Cell
-    - ปลายทางสามารถถอดรหัสระยะกระจัด 4 ไบต์กลับเป็นพิกัด GPS แม่นยำระดับ < 1 เมตร (ระดับหลังคาบ้าน) โดยไม่ต้องส่ง Float 16 ไบต์หรือสตริง 35-40 ไบต์
-  - พัฒนา Unit Tests ตรวจสอบ Header และ Spatial Index Serialization ถูกต้อง 100%
-- [ ] **Task 2.2: Large Payload Fragmentation, Bitmask Reassembly & Erasure Coding**
-  - พัฒนา `src/core/protocol/Fragmenter.ts` หั่น Payload ขนาดใหญ่ (>200B เช่น รูปภาพ/เสียง) ออกเป็น Chunks พร้อมกำกับ `[Total_Chunks (2B)] + [Sequence_Index (2B)]`
-  - พัฒนา `src/core/protocol/Reassembler.ts` ระบบประกอบร่างไฟล์อัจฉริยะ:
-    - **In-Memory Bitmask Checklist:** กระดานเช็คชื่อในหน่วยความจำ RAM ติ๊กถูกบิตของชิ้นส่วนที่ได้รับ ช่วยให้ทราบทันทีว่าครบ 100% หรือยังแม้ชิ้นส่วนจะมาสลับลำดับ
-    - **SHA-256 Checksum Verification:** ตรวจสอบความถูกต้องของข้อมูลทั้งหมดหลังประกอบเสร็จ ก่อนยิงตอบรับ `DELIVERY_ACK (0x05)`
-  - พัฒนา `src/core/protocol/ErasureCoder.ts` (Reed-Solomon FEC 8+4) สามารถคำนวณกู้คืนข้อมูลเต็มได้ทันทีแม้ชิ้นส่วนตกหล่นหายไปในอากาศ 4 ชิ้น
-- [ ] **Task 2.3: Selective NACK & Sliding Window Retransmission**
-  - พัฒนา `src/core/protocol/SlidingWindow.ts` ควบคุมคิวส่งข้อมูลและคิวตอบรับ
-  - พัฒนา `src/core/protocol/NackManager.ts` ส่งคำขอซ้ำเฉพาะชิ้นส่วนที่ขาดหายแทนการส่งใหม่ทั้งก้อน
+- [ ] **Task 2.1: Zero-Copy Binary Bitfield Serializer & Memory Buffer Pool (`src/core/protocol/PacketSerializer.ts` ⭐️)**
+  - **Zero-Allocation Buffer Pool Pattern:**
+    - พัฒนา `BufferPool.ts` จัดสรร `Uint8Array` ขนาดคงที่ (256B, 512B, 1024B) หมุนเวียนใช้งานซ้ำ (Object Pooling) ป้องกัน Garbage Collection (GC) Stutter บนโทรศัพท์ Android สเปกต่ำขณะรับส่งข้อมูลความถี่สูง
+  - **Bitfield Bit-Shift Packing Engine:**
+    - พัฒนาการอ่าน/เขียนระดับบิตด้วย Bitwise Operators (`<<`, `>>`, `&`, `|`):
+      - **Byte 0-1 (16b):** Magic Word `0x544F` (`'TO'`)
+      - **Byte 2 (8b):** `[Version 3b: 0b001] | [Packet_Type 5b]` (0x01=SOS, 0x02=Chat, 0x04=Crisis, 0x05=ACK, 0x06=NACK, 0x07=Chirp)
+      - **Byte 3 (8b):** `TTL / Hop Count` (0–255, Clamped ตามค่า Density)
+      - **Byte 4 (8b):** `[Priority 4b (0xF=SOS .. 0x1=Chirp)] | [Flags 4b: IsFragmented(1b), HasDeltaGPS(1b), IsSigned(1b), Reserved(1b)]`
+      - **Bytes 5-12 (64b uint64 Big-Endian):** `Message ID` (สุ่มด้วย CSPRNG ป้องกันซ้ำ)
+      - **Bytes 13-20 (64b uint64):** `Sender Public Key Hash` (Truncated SHA-256 8 ไบต์แรก)
+      - **Bytes 21-28 (64b uint64):** `Recipient Public Key Hash / Topic Hash` (8 ไบต์)
+      - **Bytes 29-36 (64b uint64):** `Target H3 Index Resolution 9` (~100m)
+      - **Bytes 37-38 (16b uint16):** `Payload Length` (0–65535 ไบต์)
+  - **CRC-16-CCITT Frame Integrity Checksum (2 Bytes):**
+    - เติมท้ายแพ็กเก็ตด้วย **CRC-16-CCITT (Polynomial `0x1021`, Initial `0xFFFF`)**
+    - ตรวจจับบิตเพี้ยนจากคลื่นรบกวนในอากาศทันทีในระดับ Microsecond ก่อนส่งเข้า Layer การถอดรหัสลับ ช่วยประหยัด CPU 100% หากแพ็กเก็ตเสียหาย
 
-#### 🎯 Acceptance Criteria:
-- Serialize/Deserialize ทุกประเภท Packet (Chat, SOS, Voice, Map) ได้ความถูกต้อง 100%
-- Erasure Coding สามารถจำลองกู้คืนเสียง/ภาพแผนที่ได้สำเร็จเมื่อ Drop Packet หายไป 30%
+- [ ] **Task 2.2: H3 Local Delta Offset Encoder & High-Precision GPS Compression (`src/core/spatial/H3DeltaCompressor.ts` ⭐️)**
+  - บีบอัดพิกัด GPS ดิบ (Lat/Lng Float64 = 16 ไบต์) ให้เหลือเพียง **4 ไบต์ถ้วน**:
+    - ดึงจุดศูนย์กลางพิกัดของ Target H3 Cell Res 9 (`h3ToGeo(target_h3)`) เป็นจุดอ้างอิง `(Lat_0, Lng_0)`
+    - คำนวณระยะกระจัดแกนโลกจริง (Equirectangular Projection) เป็นเมตร:
+      - $\Delta X = (\text{Lng} - \text{Lng}_0) \times \cos(\text{Lat}_0) \times 111,320\text{ m}$
+      - $\Delta Y = (\text{Lat} - \text{Lat}_0) \times 110,540\text{ m}$
+    - บีบอัดลงฟิลด์ `int16` (-32,768 ถึง +32,767 โดย 1 หน่วย = 10 เซนติเมตร ครอบคลุมรัศมี ±3.2 กิโลเมตร)
+  - **ผลลัพธ์:** ส่งพิกัดแม่นยำระดับ **< 1 เมตร (ระบุหลังคาบ้านผู้ประสบภัยได้เป๊ะ)** ในขนาดเพียง **4 ไบต์** ลดขนาดจาก String ปกติ (35–40 ไบต์) ลงถึง 90%
+
+- [ ] **Task 2.3: Large Payload Fragmentation & Out-of-Order Bitmask Reassembler (`src/core/protocol/Fragmenter.ts` & `Reassembler.ts`)**
+  - **Adaptive MTU Chunk Slicing:**
+    - หั่นรูปภาพ Auto-WebP (5–12 KB) หรือไฟล์เสียง Opus (8–15 KB) ออกเป็นชิ้นย่อยขนาด $\le 180\text{ bytes}$ ต่อก้อน เพื่อให้ฟิตพอดีกับ BLE L2CAP / Extended Advertising MTU โดยไม่ต้องต่อ GATT Connection
+    - กำกับหัวชิ้นส่วนด้วย **Fragment Sub-Header (4 Bytes):**
+      - `[Total_Chunks (16b uint16)]` + `[Sequence_Index (16b uint16)]`
+  - **Memory-Efficient Bitmask Checklist:**
+    - ติดตามการมาถึงของชิ้นส่วนด้วย `Uint32Array` Bitmask (1 บิต = 1 ชิ้นส่วน, 100 ชิ้นส่วนใช้ RAM เพียง 16 ไบต์)
+    - รองรับการรับชิ้นส่วนสลับลำดับ (Out-of-Order Reassembly) และชิ้นส่วนที่มาจากคนละเส้นทาง (Multi-Path Relay)
+  - **Reassembly Buffer Eviction & Timeout:**
+    - ตั้งเวลาหมดอายุชิ้นส่วนที่ประกอบไม่เสร็จ (Buffer Timeout 15 นาที) เพื่อล้าง RAM คืนระบบอัตโนมัติ
+
+- [ ] **Task 2.4: Reed-Solomon Forward Error Correction (Erasure Coding 8+4) (`src/core/protocol/ErasureCoder.ts` ⭐️)**
+  - พัฒนา **Reed-Solomon FEC บน Galois Field $GF(2^8)$**:
+    - แบ่งข้อมูลต้นฉบับออกเป็น $K = 8$ Data Shards
+    - สร้างชิ้นส่วนสำรองเพิ่ม $M = 4$ Parity Shards (Overhead +50% หรือเลือกโหมดประหยัด $10+3$ +30%)
+    - รวมเป็น $N = 12$ ชิ้นส่วนส่งออกสู่อากาศพร้อมกัน
+  - **Instant Mathematical Recovery:**
+    - หากแพ็กเก็ตสูญหายในอากาศเนื่องจากสัญญาณวิทยุถูกบังสเปกตรัมสูงถึง **30% – 33%** (ได้รับเพียง 8 ใน 12 ชิ้นส่วนใดๆ ก็ตาม) ปลายทางสามารถแก้สมการเมทริกซ์เกาส์เซียน (Gaussian Elimination) กู้คืนไฟล์รูปหรือคลิปเสียงฉุกเฉินได้สมบูรณ์แบบ 100% ทันทีโดยไม่ต้องเสียเวลาและพลังงานแบตเตอรี่ขอส่งใหม่ (Zero-Retransmit Recovery)
+
+- [ ] **Task 2.5: Selective NACK & Backoff Sliding Window (`src/core/protocol/SlidingWindow.ts`)**
+  - พัฒนาระบบคิวส่งและตอบรับสำหรับกรณีที่ Reed-Solomon กู้คืนไม่ได้ (หายเกิน 4 ชิ้น):
+    - ปลายทางส่งแพ็กเก็ต **`DELIVERY_NACK (0x06)`** บรรจุ Bitmask ระบุเฉพาะหมายเลขชิ้นส่วนที่ขาดหาย (เช่น ขาดชิ้นที่ #3, #7)
+    - ฝั่งส่งจะส่งซ่อมเฉพาะชิ้นที่ระบุใน NACK แทนที่จะส่งใหม่ทั้งหมด 12 ชิ้น
+    - **Exponential Backoff & Jitter:** สุ่มดีเลย์ 50–200ms ในการส่งซ่อมเพื่อป้องกันไม่ให้ชนกันซ้ำกับแพ็กเก็ตของโหนดเพื่อนบ้าน (Collision Avoidance)
+
+#### 🎯 Acceptance Criteria (Definition of Done for Phase 2):
+- **100% Deterministic Bitfield Serialization:** แปลงไป-กลับทุกประเภทแพ็กเก็ต (SOS, Chat, ACK, NACK, Chirp) ข้อมูลตรงกันระดับบิต ไร้ Memory Leak
+- **High-Precision Delta Compression:** พิกัด GPS หลังถอดรหัสมีความคลาดเคลื่อนเชิงตำแหน่ง $< 0.5$ เมตร เทียบกับพิกัดจริง
+- **CRC-16 Error Trap:** ดักจับแพ็กเก็ตที่ถูกแกล้งกลับบิต (Bit-flip attack) หรือคลื่นกวนได้ถูกต้อง 100%
+- **Erasure Coding Resilience Drill:** ในการทดสอบจำลอง Drop Packets สูญหาย 4 ใน 12 ชิ้น ระบบสามารถกู้คืนไฟล์รูปภาพและเสียง Opus กลับมาได้ครบถ้วน 100% โดยใช้เวลาคำนวณ $< 15\text{ms}$ บน CPU มือถือ
+- **Unit Test Coverage:** มีชุดทดสอบใน `tests/unit/core/protocol/` ผ่าน 100% ทุกกรณีขอบเขต (Boundary Cases)
 
 ---
 
