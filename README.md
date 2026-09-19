@@ -19,6 +19,7 @@
 [📖 GitHub Releases](https://github.com/thabot/outgrid-mesh/releases) •
 [📱 How to Use](#-how-to-use-3-simple-steps) •
 [🗺️ System Architecture](#-system-architecture) •
+[💻 Developer Guide](docs/DEVELOPER_GUIDE.md) •
 [🌐 10-Language Manuals](docs/manuals/) •
 [📄 License & Author](#-license--author)
 
@@ -158,57 +159,16 @@ graph LR
 
 ---
 
-## 💻 Developer & Contributor Guide
+## 💻 Developer & Engineering Documentation
 
-*(This section is strictly for open-source developers contributing to the codebase. End-users only need the APK above.)*
+Looking to contribute, audit cryptography, or build from source? Read our full technical guide:
 
-### 1. Project Directory Structure
-```text
-OutGridMesh/
-├── .github/workflows/          # CI/CD Pipelines (Android APK build & GitHub Releases)
-├── android/                    # Native Android Runtime (Kotlin + Gradle 8.5)
-│   ├── app/src/main/java/io/outgrid/mesh/
-│   │   ├── MainActivity.kt               # Entrypoint UI & Hardware Permission Bridge
-│   │   ├── OutGridMeshService.kt         # 24/7 Foreground Service & WakeLock
-│   │   ├── BleRadioNativeDriver.kt       # BLE 5 Coded PHY S=8 Hardware Radio Driver
-│   │   └── LocalHotspotSideloadService.kt# Offline APK HTTP Server & Hotspot
-│   └── build.gradle                      # Android Build Configuration (AGP 8.2.2)
-├── docs/
-│   └── manuals/                # 10-Language Emergency Field Survival Manuals
-├── src/
-│   ├── core/                   # Platform-Independent Core Engine (Clean Architecture)
-│   │   ├── crypto/             # E2EE (X25519 + AES-256-GCM), Ed25519 Signatures, HKDF
-│   │   ├── dtn/                # Bundle Custody Store, Velocity Tracker, Hop Freeze
-│   │   ├── i18n/               # 10-Language Universal Translation Engine
-│   │   ├── network/            # Dynamic API Configuration & Zero-Cost Cloudflare Resolver
-│   │   ├── protocol/           # TOG v1.1 Bitfield Serializer, Reed-Solomon 8+4 FEC, Sliding Window
-│   │   ├── radio/              # BLE Coded PHY, Collision Shield, Wi-Fi P2P Driver
-│   │   ├── routing/            # Epidemic Gossip Router, Dynamic Hop Decay, Bloom Filter
-│   │   ├── spatial/            # 4-Tier H3 Geo-Hashing, Vector Basemap Parser, Radar Nav
-│   │   └── storage/            # 50MB FIFO Quota Clamping Engine, SQLite/IndexedDB
-│   ├── routes/                 # SvelteKit Root Pages & Layouts
-│   └── ui/                     # Svelte 5 High-Contrast Dark Mode UI Components
-├── scripts/
-│   ├── checkSyntax.js          # AST Syntax Verification Guard (Scans 160+ files)
-│   └── generateTestVectorMap.js# 5MB Offline Basemap Generator
-├── tests/                      # Automated Unit & Integration Tests (245 Tests / 76 Suites)
-└── package.json                # SvelteKit, Bun, Noble Cryptography, H3 Spatial
-```
+👉 [**Open Developer & Contributor Guide (`docs/DEVELOPER_GUIDE.md`)**](docs/DEVELOPER_GUIDE.md)
 
-### 2. Local Setup & Testing
-```bash
-# Install dependencies
-bun install
-
-# Verify codebase syntax
-bun run check:syntax
-
-# Run 245 automated unit & integration tests
-bun test
-
-# Build Web PWA bundle
-bun run build
-```
+- Project Directory Structure & Clean Architecture boundaries
+- Local setup, Bun test suite (`bun test`), and syntax verification
+- Compiling Android Native APK locally (`./gradlew assembleDebug`)
+- PR & Dual-Release contribution rules
 
 ---
 
