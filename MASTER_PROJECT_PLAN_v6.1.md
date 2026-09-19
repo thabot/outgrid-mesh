@@ -620,13 +620,13 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - เด้ง **Heads-Up Notification** พร้อมปุ่มพิมพ์ตอบกลับด่วน (Quick Reply) เมื่อแอปอยู่เบื้องหลัง
     - **Tier-3 Crisis Feed (`0x04`):**
       - เด้ง **High-Priority Sticky Notification** สีส้ม/เหลืองเด่นชัด ไม่หายไปจนกว่าผู้ใช้จะกดอ่าน เพื่อไม่ให้พลาดประกาศเตือนภัยจากศูนย์อพยพ
-- [ ] **Task 7.2: Hardware ScanFilter & Asymmetric BLE Radio Driver (Coded S=8 Range Booster ⭐️)**
+- [ ] **Task 7.2: Hardware ScanFilter & Full-Stack BLE Coded S=8 Radio Driver (Long-Range Guaranteed ⭐️)**
   - พัฒนา `android/app/src/main/java/.../BleRadioPlugin.kt` จัดการไดรเวอร์วิทยุบลูทูธระดับฮาร์ดแวร์
   - ใช้ Hardware BLE ScanFilter ดักจับ Service UUID เฉพาะระดับ Baseband (CPU หลับลึก 100% ถ้าไม่มีแพ็กเก็ต TOG)
-  - **Asymmetric PHY Radio Architecture (หูฟังระยะไกล 200–300ม. + ส่งข้อมูลเร็วประหยัดไฟ):**
-    - **High-Sensitivity Scanning Engine:** บังคับเปิดสแกนด้วย **`BluetoothDevice.PHY_LE_CODED` (S=8)** ร่วมกับ Hardware ScanFilter ขยายความไวในการรับสัญญาณ (+12dBm Sensitivity) ดักฟังเพื่อนบ้านจากระยะไกลสุดขั้ว **200 – 350+ เมตร** ได้อย่างแม่นยำ
-    - **Ultra-Long-Range SOS Burst:** ยิงแพ็กเก็ต `SOS_BEACON` ด้วย **Coded PHY (S=8) + Max TX Power** ทะลุซากปรักหักพังและแนวต้นไม้
-    - **Negotiated High-Speed Data Fallback:** เมื่อตรวจพบเพื่อนบ้านแล้ว เวลาแลกเปลี่ยนข้อมูลแชต (`DIRECT_CHAT`) หรือก้อนข้อมูลขนาดใหญ่ จะเจรจาปรับลดระดับมาใช้ **`1M PHY` หรือ `Coded S=2`** โดยอัตโนมัติ เพื่อส่งข้อมูลให้เสร็จเร็วในเสี้ยววินาทีและตัดจบ ไม่แช่คลื่นวิทยุในอากาศ ช่วยประหยัดแบตเตอรี่สูงสุด
+  - **Full-Stack Coded S=8 Architecture (สแกนเจอที่ 300ม. คุยส่งข้อความถึงกันได้จริงที่ 300ม. 100%):**
+    - **Long-Range Scanning Engine:** บังคับเปิดสแกนด้วย **`BluetoothDevice.PHY_LE_CODED` (S=8)** ร่วมกับ Hardware ScanFilter ขยายความไวในการรับสัญญาณ (+12dBm Sensitivity) ดักฟังเพื่อนบ้านจากระยะไกลสุดขั้ว **200 – 350+ เมตร**
+    - **Ultra-Long-Range SOS & Chat Transmission:** ส่งแพ็กเก็ตฉุกเฉิน `SOS_BEACON` และข้อความสนทนา `DIRECT_CHAT` ด้วย **Coded PHY (S=8) + Max TX Power ตลอดรอดฝั่ง** ป้องกันปัญหาสัญญาณหลุด (Drop Connection) เมื่ออยู่นอกระยะ 1M PHY ทำให้การันตีการคุยแชตได้ระยะไกลเท่ากับระยะสแกน
+    - **RSSI-Adaptive High-Throughput Mode (เฉพาะเมื่ออยู่ประชิดตัว):** หากตรวจพบว่าโหนดเพื่อนบ้านอยู่ใกล้มาก (< 30–50 เมตร สัญญาณ RSSI > -75dBm) จึงจะอนุญาตให้สลับความเร็วเป็น 1M PHY เพื่อส่งไฟล์หรือข้อมูลขนาดใหญ่ได้เร็วขึ้น
     - **Hardware Fallback Compatibility:** ตรวจสอบความสามารถของชิปมือถือ หากเป็นรุ่นเก่าที่ไม่รองรับ Coded PHY จะถอยกลับมาใช้ `1M PHY` ดั้งเดิมอัตโนมัติ 100%
 - [ ] **Task 7.3: Adaptive Context-Aware Battery Duty Cycle (BLE-Only Radio Scheduling ⭐️)**
   - พัฒนา `src/core/battery/DutyCycleManager.ts` จัดตารางเวลาสแกนคลื่นวิทยุ **BLE ล้วน 100%** (ปิด Wi-Fi สนิทเพื่อประหยัดไฟ) และปรับความถี่ตามการประสานข้อมูล (Sensor Fusion) ระหว่าง **Hardware Accelerometer (<20µA - ไม่ใช้ Gyroscope เพื่อกันไฟรั่ว)** ร่วมกับ **H3 Res 9 Cell Boundary**:
