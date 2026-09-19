@@ -574,12 +574,46 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - ฝั่งส่งจะส่งซ่อมเฉพาะชิ้นที่ระบุใน NACK แทนที่จะส่งใหม่ทั้งหมด 12 ชิ้น
     - **Exponential Backoff & Jitter:** สุ่มดีเลย์ 50–200ms ในการส่งซ่อมเพื่อป้องกันไม่ให้ชนกันซ้ำกับแพ็กเก็ตของโหนดเพื่อนบ้าน (Collision Avoidance)
 
+- [ ] **Task 2.6: Comprehensive Protocol & Wire Engine Unit Test Suite (`tests/unit/protocol/` ⭐️)**
+  - พัฒนาชุดทดสอบอัตโนมัติ 100% ครอบคลุมทุกฟังก์ชันของโพรโทคอล TOG v1.1 ด้วย `bun test` / Vitest:
+    - **1. `PacketSerializer.test.ts` (Unit Test โครงสร้างบิตและ Header):**
+      - ทดสอบ Serialize และ Deserialize ครบทั้ง 6 Packet Types (`0x01: SOS`, `0x02: CHAT`, `0x04: CRISIS`, `0x05: ACK`, `0x06: NACK`, `0x07: CHIRP`)
+      - ทดสอบ Big-Endian Byte Order และตรวจสอบความถูกต้องของ `Message ID` (64b), `Sender Hash` (64b), `Recipient Hash` (64b), `Target H3` (64b)
+      - ทดสอบขอบเขตค่าผิดปกติ (Boundary & Overflow Cases): Payload ขนาด 0 ไบต์, Payload เต็มขีดจำกัด 65,535 ไบต์, TTL = 0, TTL = 255
+      - ทดสอบ **Buffer Pool Leak Test:** วนลูป Serialize/Deserialize 50,000 ครั้ง และยืนยันว่าไม่มี Memory Leak หรือ Unreleased Buffer ค้าง
+    - **2. `CRC16.test.ts` (Unit Test ตรวจสอบความถูกต้องของบิต):**
+      - ตรวจสอบค่า Checksum ตรงตามมาตรฐานสากล **CRC-16-CCITT (`0x1021`, Initial `0xFFFF`)** เทียบกับ Known Test Vectors
+      - ทดสอบ **Bit-Flip Detection:** จำลองคลื่นรบกวนสุ่มกลับบิต (Single-bit flip, Burst 4-bit error) ตรวจจับและปฏิเสธแพ็กเก็ตเสียได้ถูกต้อง 100%
+    - **3. `H3DeltaCompressor.test.ts` (Unit Test บีบอัดพิกัด GPS เหลือ 4 ไบต์):**
+      - ทดสอบแปลงพิกัด GPS จริงทั่วโลก (เช่น อนุสาวรีย์ชัยสมรภูมิ กรุงเทพฯ, เชียงใหม่, ภูเก็ต, นิวยอร์ก, โตเกียว)
+      - ตรวจสอบระยะกระจัด `Delta X (int16)` + `Delta Y (int16)` ขนาด 4 ไบต์
+      - ยืนยันว่าพิกัดที่ถอดรหัสกลับมามีความคลาดเคลื่อนเชิงตำแหน่ง **$< 0.5 เมตร (ระดับหลังคาบ้าน)**
+      - ทดสอบจุดพิกัดนอกขอบเขตรังผึ้ง (>3.2 กม.) และยืนยันว่าระบบคืนค่า Error / Out-of-Bounds อย่างถูกต้อง
+    - **4. `ErasureCoder.test.ts` (Unit Test กู้คืนแพ็กเก็ตตกหล่น Reed-Solomon FEC 8+4):**
+      - ทดสอบสร้าง 8 Data Shards + 4 Parity Shards (รวม 12 Shards)
+      - ทดสอบจำลอง Drop Packets สูญหายในอากาศ:
+        - สุ่มลบ 1 ชิ้นส่วน $\rightarrow$ กู้คืนได้สมบูรณ์แบบ 100% (SHA-256 ตรงเป๊ะ)
+        - สุ่มลบ 2 ชิ้นส่วน $\rightarrow$ กู้คืนได้สมบูรณ์แบบ 100%
+        - สุ่มลบ 3 ชิ้นส่วน $\rightarrow$ กู้คืนได้สมบูรณ์แบบ 100%
+        - สุ่มลบ 4 ชิ้นส่วน (สูญหายสูงสุด 33.3%) $\rightarrow$ กู้คืนได้สมบูรณ์แบบ 100%
+        - จำลองลบ 5 ชิ้นส่วน (เกินกำลัง FEC) $\rightarrow$ ระบบแจ้งเตือน Fail สุภาพ และส่งต่อเข้าคิว Selective NACK
+      - ทดสอบความเร็วในการถอดรหัส (Performance Benchmark): ต้องกู้คืนเสร็จสิ้นภายในเวลา **$< 15\text{ms}$**
+    - **5. `FragmenterAndReassembler.test.ts` (Unit Test ซอยชิ้นส่วนและประกอบร่างไฟล์):**
+      - ทดสอบหั่นไฟล์ภาพ Auto-WebP (10 KB) และเสียง Opus (12 KB) เป็นชิ้นส่วนขนาด $\le 180$ ไบต์
+      - ทดสอบการส่งชิ้นส่วนสลับลำดับ (Out-of-Order Shuffle เช่น ส่งชิ้นที่ #5, #1, #8, #2...) และยืนยันว่าปลายทางใช้ Bitmask ประกอบกลับมาได้ถูกต้อง 100%
+      - ทดสอบรับชิ้นส่วนซ้ำซ้อน (Duplicate Fragments) และยืนยันว่า Bitmask ไม่นับเบิ้ล
+      - ทดสอบ Reassembly Timeout (15 นาที) ล้างแคชคืน RAM เมื่อชิ้นส่วนมาไม่ครบ
+    - **6. `SlidingWindowNack.test.ts` (Unit Test คิวส่งและ Selective NACK):**
+      - ทดสอบสร้างแพ็กเก็ต `DELIVERY_NACK (0x06)` แนบ Bitmask ระบุชิ้นส่วนที่ขาดหาย
+      - ทดสอบการตอบสนองของฝั่งส่ง: ส่งซ่อมเฉพาะชิ้นที่ระบุใน NACK อย่างถูกต้อง
+      - ทดสอบ Exponential Backoff Jitter หน่วงเวลาสุ่ม 50–200ms ป้องกันการชนกัน
+
 #### 🎯 Acceptance Criteria (Definition of Done for Phase 2):
 - **100% Deterministic Bitfield Serialization:** แปลงไป-กลับทุกประเภทแพ็กเก็ต (SOS, Chat, ACK, NACK, Chirp) ข้อมูลตรงกันระดับบิต ไร้ Memory Leak
 - **High-Precision Delta Compression:** พิกัด GPS หลังถอดรหัสมีความคลาดเคลื่อนเชิงตำแหน่ง $< 0.5$ เมตร เทียบกับพิกัดจริง
 - **CRC-16 Error Trap:** ดักจับแพ็กเก็ตที่ถูกแกล้งกลับบิต (Bit-flip attack) หรือคลื่นกวนได้ถูกต้อง 100%
 - **Erasure Coding Resilience Drill:** ในการทดสอบจำลอง Drop Packets สูญหาย 4 ใน 12 ชิ้น ระบบสามารถกู้คืนไฟล์รูปภาพและเสียง Opus กลับมาได้ครบถ้วน 100% โดยใช้เวลาคำนวณ $< 15\text{ms}$ บน CPU มือถือ
-- **Unit Test Coverage:** มีชุดทดสอบใน `tests/unit/core/protocol/` ผ่าน 100% ทุกกรณีขอบเขต (Boundary Cases)
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/protocol/` (ทั้ง 6 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาดและมี Code Coverage $\ge 95\%$
 
 ---
 
