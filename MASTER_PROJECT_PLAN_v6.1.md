@@ -674,12 +674,49 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - [ ] **Task 3.5: Digital Signature & Authority Broadcast Verification**
   - พัฒนาการเซ็นและตรวจสอบลายเซ็น Ed25519 สำหรับประกาศทางการของศูนย์กู้ภัย/เตือนภัยพิบัติ (CAP Ingestion)
   - สกัดกั้นข่าวปลอม (Fake News / Panic Hoax) โดยแอปจะปฏิเสธการบรอดแคสต์ประกาศใดๆ ที่ไม่มี Master Authority Signature ที่ถูกต้อง
+- [ ] **Task 3.6: Re-Key Handshake & Seamless Friend Migration Engine (Anti-Replay & Fresh Identity Reconnection ⭐️)**
+  - พัฒนา `src/core/crypto/ReKeyHandshakeEngine.ts` จัดการกรณีผู้ใช้ลงแอปใหม่แล้วได้รับ Fresh Node ID:
+  - **Cross-Curve Birational Conversion:**
+    - แปลง Ed25519 Public Key ไปเป็น X25519 Encryption Key ด้วย Birational Equivalence (`edwardsToMontgomeryPub`) ผ่าน `@noble/curves/ed25519` ช่วยลดขนาด Metadata บนแพ็กเก็ตคลื่นวิทยุเหลือเพียง 32 ไบต์เดียว
+  - **Re-Key Migration Packet Protocol:**
+    - เมื่อผู้ใช้ติดตั้งแอปใหม่และกู้คืนรายชื่อเพื่อนผ่าน Passkey ตัวเครื่องจะส่ง Re-Key Announcement ข้ามคลื่น LoRa/BLE ไปยังเพื่อนในระยะ
+    - โครงสร้างแพ็กเก็ต: `[Migrate_Op 1B: 0x52 ("R")]` + `[Old_Node_ID 8B]` + `[New_Node_ID 8B]` + `[New_Ed25519_PubKey 32B]` + `[New_X25519_PubKey 32B]` + `[Passkey_Receipt_Sig 64B]`
+    - เครื่องของเพื่อนจะทำการตรวจสอบลายเซ็น เมื่อผ่านจะอัปเดต Public Key และ Node ID ในสมุดผู้ติดต่อ (Contact Book) ท้องถิ่นโดยอัตโนมัติ พร้อมแจ้งเตือนให้ผู้ใช้ทราบว่า "เพื่อนของคุณได้ติดตั้งแอปใหม่ รหัสความปลอดภัยได้รับการอัปเดตเรียบร้อยแล้ว"
+  - **Anti-Replay Guard & Monotonic Ephemeral Nonce Clamping:**
+    - ทุกข้อความ E2EE จะมี Monotonic Packet Counter คู่กับ IV 12 ไบต์
+    - มี LRU Replay Cache ขนาด 1,024 รายการ ดักจับแพ็กเก็ตซ้ำซ้อนหรือการโจมตี Replay Attack ทันทีที่คลื่นวิทยุถูกบันทึกและส่งซ้ำโดยผู้ไม่หวังดี
+- [ ] **Task 3.7: Comprehensive Cryptography & Anti-Tamper Unit Test Suite (`tests/unit/crypto/` ⭐️)**
+  - พัฒนาชุดทดสอบหน่วยสำหรับเครื่องจักรการเข้ารหัสลับ ป้องกันช่องโหว่ความปลอดภัย 100%:
+  - **`KeyManager.test.ts`:**
+    - ทดสอบการสุ่ม Entropy ด้วย CSPRNG ความเร็วสูง $(<10\text{ms})$
+    - ทดสอบ Deterministic Key Derivation และ Birational Curve Conversion (Ed25519 $\leftrightarrow$ X25519) ตรวจสอบค่าจุดบนเส้นโค้ง Curve25519 ตรงตามมาตรฐาน RFC 7748 / RFC 8032
+    - ทดสอบ Node ID Truncated SHA-256 Hashing ว่าไม่มีการชนกัน (Collision test บน 10,000 keys)
+  - **`CipherEngine.test.ts`:**
+    - ทดสอบ HKDF-SHA256 Key Derivation ด้วย Test Vectors มาตรฐาน RFC 5869
+    - ทดสอบการเข้ารหัสและถอดรหัส AES-256-GCM ตรวจสอบความถูกต้องของ Plaintext 100%
+    - ทดสอบ Wire Overhead คงที่เป๊ะที่ 28 ไบต์ (`12B IV + 16B Tag`)
+    - ทดสอบ Tamper Detection: แก้ไข Ciphertext หรือ Tag แม้เพียง 1 บิต ต้องโยนข้อผิดพลาด `AuthenticationTagMismatchException` เสมอ
+  - **`QrPairing.test.ts`:**
+    - ทดสอบการ Serialize/Deserialize Compact Binary QR Payload ขนาด 80–110 ไบต์
+    - ทดสอบ Magic Byte `0x4F47 ("OG")` และการตรวจสอบ Version
+    - ทดสอบการคำนวณ Safety Numbers 8 หลัก `SHA-256(Key_A || Key_B)` ว่าทั้งสองอุปกรณ์คำนวณได้ตัวเลขชุดเดียวกันตรงกัน 100%
+  - **`SecureStorageAdapter.test.ts`:**
+    - ทดสอบ Mock Hardware Keystore บน Android (TEE / StrongBox) และ WebCrypto `non-extractable` CryptoKey
+    - ทดสอบการดึงและบันทึกกุญแจลับ ป้องกัน Memory Leak และการหลุดรอดของ Raw Private Seed
+  - **`DigitalSignature.test.ts`:**
+    - ทดสอบการเซ็นและตรวจสอบลายเซ็น Ed25519 ด้วย Test Vectors RFC 8032
+    - ทดสอบระบบ Authority Broadcast: หากข้อความถูกปลอมแปลง ลายเซ็นไม่ตรง หรือถูกแก้ไข ต้อง Reject แพ็กเก็ตทิ้งทันที
+  - **`ReKeyHandshake.test.ts`:**
+    - ทดสอบ Handshake ย้ายตัวตน (Seamless Migration) ของเพื่อนที่เพิ่งติดตั้งแอปใหม่
+    - ทดสอบ Anti-Replay Guard: ส่งแพ็กเก็ต Re-Key ซ้ำ หรือ Replay ข้อความเก่า ระบบต้องตัดทิ้งและตรวจจับได้ 100%
 
 #### 🎯 Acceptance Criteria:
 - สร้าง Keypair Ed25519/X25519 ได้ทันทีใน <10ms โดยไม่ต้องบังคับผู้ใช้จดรหัส 12 คำ
-- ฟังก์ชันเข้ารหัส/ถอดรหัส E2EE ทนทานต่อการแก้ไขข้อมูล (Auth Tag Mismatch ถอดรหัสไม่ผ่าน) และกิน Overhead เพียง 28 ไบต์
+- ฟังก์ชันเข้ารหัส/ถอดรหัส E2EE ทนทานต่อการแก้ไขข้อมูล (Auth Tag Mismatch ถอดรหัสไม่ผ่าน) และกิน Overhead คงที่เพียง 28 ไบต์
 - Dynamic QR Code สามารถอ่านค่า Keypair ครบถ้วนในขนาด <110 ไบต์ และ Safety Numbers 8 หลักคำนวณตรงกันทั้งสองฝั่ง 100%
+- ระบบ Re-Key Handshake อัปเดตกุญแจเพื่อนใหม่อัตโนมัติหลัง Reinstall พร้อม Anti-Replay Guard สกัดการโจมตีได้ 100%
 - ระบบป้องกันการสวมรอยข่าวปลอมด้วย Ed25519 Signature ตรวจสอบผ่าน 100% และ Private Key จัดเก็บใน Hardware Keystore ปลอดภัย
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/crypto/` (ทั้ง 6 ไฟล์ทดสอบ) รันผ่าน 100% ไร้ข้อผิดพลาด และครอบคลุม Cryptographic Corner Cases ทั้งหมด
 
 ---
 
