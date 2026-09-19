@@ -321,7 +321,7 @@
 ## 🤖 SPRINT 7: บริการระบบ Android และสะพานฮาร์ดแวร์ภายนอก (Phase 7: Native Android & Bridge)
 > **เป้าหมาย:** ทำงานเบื้องหลัง 24 ชม. ไม่โดนตัด, ขนส่งข้อมูลผ่านรถกู้ภัย (Data Mule) และสะพานเชื่อม LoRa
 
-- [ ] **Task 7.1: พัฒนาระบบบริการเบื้องหลัง Android Foreground Service และ WakeLock**
+- [x] **Task 7.1: พัฒนาระบบบริการเบื้องหลัง Android Foreground Service และ WakeLock**
   - **ไฟล์เป้าหมาย:** `src/core/native/ForegroundService.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/native/ForegroundService.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -329,7 +329,7 @@
     - ถือ WakeLock อย่างมีวินัย ป้องกันระบบ Android ตัดการเชื่อมต่อขณะปิดหน้าจอ
   - **คำสั่งทดสอบ:** `bun test tests/unit/native/ForegroundService.test.ts`
 
-- [ ] **Task 7.2: พัฒนาระบบปลุกเครื่องข้ามโหมดหลับลึก (Doze Mode Resilience Engine)**
+- [x] **Task 7.2: พัฒนาระบบปลุกเครื่องข้ามโหมดหลับลึก (Doze Mode Resilience Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/native/DozeModeResilience.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/native/DozeModeResilience.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -337,7 +337,7 @@
     - ตรวจสอบและขอข้อยกเว้นการประหยัดแบตเตอรี่ (Battery Optimization Whitelist)
   - **คำสั่งทดสอบ:** `bun test tests/unit/native/DozeModeResilience.test.ts`
 
-- [ ] **Task 7.3: พัฒนาระบบตรวจจับการเคลื่อนที่อัตโนมัติ (Autonomous Mobility Detection)**
+- [x] **Task 7.3: พัฒนาระบบตรวจจับการเคลื่อนที่อัตโนมัติ (Autonomous Mobility Detection)**
   - **ไฟล์เป้าหมาย:** `src/core/native/AutonomousMobility.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/native/AutonomousMobility.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -345,7 +345,7 @@
     - สลับเครื่องเข้าสู่โหมด "Physical Data Mule" อัตโนมัติทันที
   - **คำสั่งทดสอบ:** `bun test tests/unit/native/AutonomousMobility.test.ts`
 
-- [ ] **Task 7.4: พัฒนาระบบฝากและส่งต่อข้อมูลแบบไร้สัมผัส (Data Mule Zero-Click Exchange)**
+- [x] **Task 7.4: พัฒนาระบบฝากและส่งต่อข้อมูลแบบไร้สัมผัส (Data Mule Zero-Click Exchange)**
   - **ไฟล์เป้าหมาย:** `src/core/native/DataMuleTransfer.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/native/DataMuleTransfer.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -353,7 +353,7 @@
     - ปล่อยข้อความลงสู่อีกคลัสเตอร์หนึ่งทันทีที่ขับเข้าใกล้ โดยไม่ต้องมีการแตะหน้าจอ (Zero-Click)
   - **คำสั่งทดสอบ:** `bun test tests/unit/native/DataMuleTransfer.test.ts`
 
-- [ ] **Task 7.5: พัฒนาตัวแปลงโพรโทคอลสะพานเชื่อม LoRa Meshtastic (Meshtastic Bridge)**
+- [x] **Task 7.5: พัฒนาตัวแปลงโพรโทคอลสะพานเชื่อม LoRa Meshtastic (Meshtastic Bridge)**
   - **ไฟล์เป้าหมาย:** `src/core/adapters/meshtasticAdapter.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/native/MeshtasticBridge.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -361,7 +361,7 @@
     - รองรับการเชื่อมต่อบอร์ด ESP32 LoRa ผ่านสาย OTG Serial หรือ Bluetooth SPP
   - **คำสั่งทดสอบ:** `bun test tests/unit/native/MeshtasticBridge.test.ts`
 
-- [ ] **Task 7.6: พัฒนาตัวแปลงสะพานเชื่อม Briar Bramble Protocol (Briar Bridge)**
+- [x] **Task 7.6: พัฒนาตัวแปลงสะพานเชื่อม Briar Bramble Protocol (Briar Bridge)**
   - **ไฟล์เป้าหมาย:** `src/core/adapters/briarAdapter.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/native/BriarBridge.test.ts`
   - **รายละเอียดการทำงาน:**

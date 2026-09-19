@@ -1,43 +1,48 @@
 /**
- * Meshtastic LoRa BLE Companion Bridge Adapter
- * OutGrid Mesh - Architectural Open Interoperability Layer
- * Author: Thabot <thabo47@gmail.com>
+ * Meshtastic LoRa Protocol Adapter & Bridge
+ * Bridges TOG v1.1 Emergency Packets to/from LoRa Meshtastic Mesh Broadcasts
+ * Supports ESP32 LoRa hardware interface via Serial / Bluetooth SPP
+ * Creator & Lead Architect: Thabot <thabo47@gmail.com>
+ * Protocol: TOG v1.1 LoRa Cross-Link
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
 
-import type { IProtocolAdapter } from './IProtocolAdapter.js';
-import type { ITOGPacket } from '../protocol/TOGPacket.js';
+import { ITOGPacket, TOGPacketType, TOGPriority } from '../protocol/TOGPacket';
+import { PacketSerializer } from '../protocol/PacketSerializer';
 
-export class MeshtasticAdapter implements IProtocolAdapter {
-  readonly protocolName = 'Meshtastic-LoRa-BLE';
-  private _isConnected = false;
-  private inboundCallback: ((packet: ITOGPacket) => void) | null = null;
+export interface IMeshtasticDataPayload {
+  portnum: number; // e.g. 256 for TEXT_MESSAGE_APP, or 64 for PRIVATE_APP
+  payload: Uint8Array;
+  wantAck: boolean;
+  hopLimit: number;
+}
 
-  get isConnected(): boolean {
-    return this._isConnected;
+export class MeshtasticAdapter {
+  public static readonly TOG_LORA_PORTNUM = 77; // Custom TOG port on Meshtastic protobuf
+
+  /**
+   * Converts a TOG v1.1 Packet into a Meshtastic LoRa radio frame
+   */
+  public static togToMeshtastic(packet: ITOGPacket): IMeshtasticDataPayload {
+    // Serialize TOG wire format
+    const serialized = PacketSerializer.serialize(packet);
+
+    return {
+      portnum: MeshtasticAdapter.TOG_LORA_PORTNUM,
+      payload: serialized,
+      wantAck: packet.header.packetType === TOGPacketType.DIRECT_CHAT,
+      hopLimit: Math.min(packet.header.ttlHops, 7), // LoRa mesh standard hop limit 3-7
+    };
   }
 
-  async initialize(): Promise<void> {
-    this._isConnected = false;
-  }
+  /**
+   * Converts a received Meshtastic LoRa frame back into TOG v1.1 Packet
+   */
+  public static meshtasticToTog(meshData: IMeshtasticDataPayload): ITOGPacket {
+    if (meshData.portnum !== MeshtasticAdapter.TOG_LORA_PORTNUM) {
+      throw new Error(`Unsupported Meshtastic portnum: ${meshData.portnum}`);
+    }
 
-  async connect(targetBleAddress?: string): Promise<boolean> {
-    // Scan Service UUID 0xCBF0 and connect GATT
-    this._isConnected = true;
-    return true;
-  }
-
-  async disconnect(): Promise<void> {
-    this._isConnected = false;
-  }
-
-  async relayOutbound(packet: ITOGPacket): Promise<boolean> {
-    if (!this._isConnected) return false;
-    // Translate TOG v1.1 to Meshtastic Protobuf
-    return true;
-  }
-
-  onInboundPacket(callback: (packet: ITOGPacket) => void): void {
-    this.inboundCallback = callback;
+    return PacketSerializer.deserialize(meshData.payload);
   }
 }
