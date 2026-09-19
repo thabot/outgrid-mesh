@@ -230,7 +230,7 @@
 ## 📷 SPRINT 5: สื่อมีเดียและการส่งตรงความเร็วสูง (Phase 6: Wi-Fi P2P & Media Engine)
 > **เป้าหมาย:** การบีบอัดรูปภาพ WebP อัตโนมัติ, คลิปเสียงสั้น Opus 15 วิ พร้อมปุ่มฟังทวน และ Wi-Fi Direct P2P
 
-- [ ] **Task 5.1: พัฒนาระบบบีบอัดภาพถ่ายฉุกเฉินอัตโนมัติ (Client-Side WebP Compressor)**
+- [x] **Task 5.1: พัฒนาระบบบีบอัดภาพถ่ายฉุกเฉินอัตโนมัติ (Client-Side WebP Compressor)**
   - **ไฟล์เป้าหมาย:** `src/core/media/ImageCompressor.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/media/ImageCompressor.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -239,7 +239,7 @@
     - ปิดกั้นการส่งวิดีโอออฟไลน์ 100% เพื่อประหยัดพลังงาน
   - **คำสั่งทดสอบ:** `bun test tests/unit/media/ImageCompressor.test.ts`
 
-- [ ] **Task 5.2: พัฒนาระบบบันทึกเสียงแจ้งเหตุฉุกเฉิน (Voice Memo Recorder - Opus 15s)**
+- [x] **Task 5.2: พัฒนาระบบบันทึกเสียงแจ้งเหตุฉุกเฉิน (Voice Memo Recorder - Opus 15s)**
   - **ไฟล์เป้าหมาย:** `src/core/media/VoiceMemoRecorder.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/media/VoiceMemoRecorder.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -247,7 +247,7 @@
     - มีระบบเล่นฟังทวนซ้ำ (Review & Preview) และต้องกดยืนยันส่งด้วยตนเองเสมอ
   - **คำสั่งทดสอบ:** `bun test tests/unit/media/VoiceMemoRecorder.test.ts`
 
-- [ ] **Task 5.3: พัฒนาระบบจัดการ Wi-Fi Direct Peer-to-Peer (WifiP2pManager)**
+- [x] **Task 5.3: พัฒนาระบบจัดการ Wi-Fi Direct Peer-to-Peer (WifiP2pManager)**
   - **ไฟล์เป้าหมาย:** `src/core/media/WifiP2pManager.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/media/WifiP2pManager.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -255,7 +255,7 @@
     - เปิดการเชื่อมต่อ P2P ส่งข้อมูลรูปภาพข้ามเครื่องด้วยความเร็วสูง
   - **คำสั่งทดสอบ:** `bun test tests/unit/media/WifiP2pManager.test.ts`
 
-- [ ] **Task 5.4: พัฒนาระบบสตรีมข้อมูลชิ้นส่วนไฟล์และตรวจสอบความถูกต้อง (P2P Stream Socket)**
+- [x] **Task 5.4: พัฒนาระบบสตรีมข้อมูลชิ้นส่วนไฟล์และตรวจสอบความถูกต้อง (P2P Stream Socket)**
   - **ไฟล์เป้าหมาย:** `src/core/media/P2pStreamSocket.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/media/P2pStreamSocket.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -263,7 +263,7 @@
     - ตรวจสอบความถูกต้องของแต่ละชิ้นส่วนด้วย CRC32 Checksum
   - **คำสั่งทดสอบ:** `bun test tests/unit/media/P2pStreamSocket.test.ts`
 
-- [ ] **Task 5.5: พัฒนาระบบเข้ารหัสไฟล์มีเดียสองชั้น (Media Payload E2EE Security)**
+- [x] **Task 5.5: พัฒนาระบบเข้ารหัสไฟล์มีเดียสองชั้น (Media Payload E2EE Security)**
   - **ไฟล์เป้าหมาย:** `src/core/media/MediaPayloadSecurity.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/media/MediaPayloadSecurity.test.ts`
   - **รายละเอียดการทำงาน:**
