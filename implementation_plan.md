@@ -780,17 +780,19 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - รองรับการอัดเสียงแจ้งเหตุสำหรับผู้ป่วย/ผู้สูงอายุ ทั้งในห้องแชต 1-on-1, ห้องกลุ่ม, และแนบไปกับสัญญาณ SOS
       - **ความยาวสูงสุด 15 วินาที** (ตัดหยุดบันทึกอัตโนมัติเมื่อครบ 15 วิ ขนาด ~8–15 KB บีบอัดด้วย Opus Mono 6–12 kbps)
       - **Review & Confirm Flow (ห้ามส่งทันที):** เมื่ออัดเสร็จจะขึ้นแถบพรีวิวให้ผู้ใช้ **กดฟังเสียงทบทวนความชัดเจนได้ก่อน** พร้อมปุ่ม "อัดใหม่" และ **ผู้ใช้ต้องกดปุ่มยืนยันส่ง (Confirm Send) ด้วยตนเองเสมอ** เพื่อป้องกันการเผลอกดส่งไฟล์เสียงขยะไปแช่คลื่นวิทยุในอากาศ
-- [ ] **Task 10.3: 3-Tier Smart Spatial Pyramid & Dual-Platform Offline Map Engine (Android & Web PWA)**
-  - **สถาปัตยกรรมแผนที่ทั้งโลกขนาดเล็ก 3 ระดับ (3-Tier Smart Spatial Pyramid ไม่เกิน 25-30MB):**
-    - **Level 1 (Global Low-Poly Basemap ~1.5MB):** เส้นเวกเตอร์ธรรมชาติ (Natural Earth) ขอบเขตทวีป มหาสมุทร และแนวเขตทุกประเทศทั่วโลก เปิดดูได้ทั้งโลกแบบออฟไลน์ 100%
-    - **Level 2 (Regional Master Roads & Rivers ~3.5MB):** ฝังเส้นทางหลวงสายหลัก แม่น้ำ ลำคลอง และโรงพยาบาลศูนย์ประจำภูมิภาค/ประเทศ
-    - **Level 3 (Local Geo-Fence On-Demand Cache ~5MB):** แคชแผนที่ซอยบ้านละเอียดรัศมี 15–30 กม. รอบพิกัดปัจจุบันของผู้ใช้ พร้อมระบบตัดทอน **FIFO Auto-Prune ไม่เกิน 50MB**
-  - **100% Offline Map Architecture (ทั้งบน Android App และ Web PWA):**
-    - **ฝั่ง Android:** ฝังไฟล์ Vector Basemap บีบอัด (`vector-basemap.pbf` $\le 5\text{MB}$) ใน Local Asset เปิดอ่านได้ทันทีแม้เปิดโหมดเครื่องบิน (No SIM / No Internet 100%)
-    - **ฝั่ง Web Dashboard:** พัฒนาระบบ **Service Worker + Cache Storage API / IndexedDB** แคชไฟล์แผนที่และ H3 Grid ลงในเบราว์เซอร์อัตโนมัติ เข้าเว็บครั้งเดียว ครั้งต่อไปไม่มีเน็ตก็เปิดดูแผนที่และพิกัดได้แบบ Offline PWA ทันที
-  - **OpenStreetMap (OSM) + Pure Math H3 Hexagon Overlay:**
-    - ตารางรังผึ้ง H3 ไม่ใช้พื้นที่ไฟล์เก็บรูปภาพ แต่คำนวณผ่านสูตรคณิตศาสตร์สดๆ (`h3-js` `cellToBoundary`) ครอบคลุมทุกตารางนิ้วบนโลกใบนี้แบบ 0 ไบต์
-    - ซ้อนทับ GeoJSON Polygons บนแผนที่ OSM แบบเรียลไทม์ (Zoom 14+ = Res 9 ~100m, Zoom 11-13 = Res 7 ~1.2km, Zoom <10 = Res 5 ~8.5km)
+- [ ] **Task 10.3: Hybrid Smart Spatial Pyramid & Dual-Platform Offline Map Engine (Android & Web PWA ⭐️)**
+  - **สถาปัตยกรรมแผนที่ออฟไลน์แบบผสมผสาน (Hybrid Pragmatic Spatial Architecture):**
+    - **1. Base Offline Vector Bundle (3–5 MB ฝังใน App ตั้งแต่วินาทีแรก):**
+      - ฝังไฟล์ Vector สำเร็จรูป (`vector-basemap.pbf` $\le 5\text{MB}$) ที่แปลงจาก Protomaps / Natural Earth / OpenStreetMap (ODbL) ลงใน Local Asset ของแอป Android และ IndexedDB บน Web PWA
+      - **Zero-Internet Guarantee:** รับประกันว่าแม้จะเพิ่งลงแอปแล้วเกิดแผ่นดินไหว/เสาสัญญาณล่มทันที ผู้ใช้จะยังมีแผนที่ขอบเขตประเทศ ชายฝั่ง แม่น้ำสายหลัก และทางหลวงเปิดดูได้ 100% โดยไม่เจอหน้าจอสีเทาว่างเปล่า
+    - **2. Cloudflare Edge Tile Cache Proxy (สำหรับซูมดูถนน/ซอยบ้านความละเอียดสูงเมื่อมีเน็ต):**
+      - พัฒนา Cloudflare Worker ให้ทำหน้าที่เป็น **Edge Cache Proxy** ดึง Map Tile ระดับลึก (Zoom 14+) จาก OpenStreetMap / CARTO มาเก็บไว้ที่ Global Edge Cache
+      - **ODbL Compliance & OSM Protection:** ป้องกันการยิงรัวกวนเซิร์ฟเวอร์กลางของ OSM โดย Cloudflare จะดูดซับ Request ซ้ำ (Cache Hit Rate >95%) ส่งให้ผู้ใช้ได้เร็ว 5–10ms และถูกกฎ Tile Usage Policy 100%
+      - **On-Demand Local Sync:** เมื่อผู้ใช้เปิดดูแผนที่ซอยบ้านขณะมีเน็ต แอปจะบันทึกชิ้นส่วนแผนที่นั้นลงใน SQLite / IndexedDB ในเครื่องอัตโนมัติ (เพดานไม่เกิน 50MB ด้วย FIFO Auto-Prune) เพื่อให้ยังเปิดดูซอยบ้านนั้นได้แม้เน็ตตัดในภายหลัง
+    - **3. Pure Math H3 Hexagon Overlay (แผนที่กู้ภัยขนาด 0 ไบต์):**
+      - ใช้ `h3-js` คำนวณขอบเขตรังผึ้งหกเหลี่ยมด้วยสูตรคณิตศาสตร์สดบนหน้าจอ (0 ไบต์) ซ้อนทับบนเวกเตอร์แผนที่ (Zoom 14+ = Res 9 ~100m, Zoom 11-13 = Res 7 ~1.2km, Zoom <10 = Res 5 ~8.5km)
+      - แสดงเข็มทิศเรดาร์นำทางและระยะทางเป็นเมตร ชี้เป้าตรงไปยังหมุดผู้ประสบภัยที่ถอดรหัสจาก H3 Local Delta Offset ได้แม่นยำระดับ < 1 เมตร (ระดับหลังคาบ้าน)
+    - **4. Legal Attribution:** ใส่ข้อความเครดิต `© OpenStreetMap contributors` อย่างถูกต้องในหน้าจอเกี่ยวกับ (About) และมุมแผนที่
   - **Live Anonymous Heatmap & SOS Radar:**
     - ระบายสีช่องหกเหลี่ยมตามความหนาแน่นสัญญาณจริง (เขียว/เหลือง/ส้ม/แดง) พร้อมปักหมุดตำแหน่งตนเอง และหมุดขอความช่วยเหลือ SOS สีแดงชัดเจน
 - [ ] **Task 10.4: End-to-End Disaster Simulation & Field Drills**
