@@ -724,8 +724,12 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 **เป้าหมาย:** ฐานข้อมูลออฟไลน์ประสิทธิภาพสูงบน SQLite (Native) และ IndexedDB (Web) จัดเก็บประวัติ ข้อความ ข้อมูลคู่สนทนา แผนที่ พร้อมระบบจำกัดโควตาอัตโนมัติเข้มงวด 50MB (Strict 50MB Quota Clamping), การกวาดล้างข้อมูลหมดอายุ (Auto-Pruning), Counting Bloom Filter สกัดกั้นลูปแพ็กเก็ต และ LRU Suppression Cache ป้องกัน Broadcast Storm วนลูป 100%
 
 #### 📋 TaskList Detail:
-- [ ] **Task 4.1: SQLite Database Engine, Migration Schema & Transaction Batching (`src/core/storage/` ⭐️)**
-  - พัฒนา `src/core/storage/DatabaseSchema.ts` และ `src/core/storage/SqliteStorageAdapter.ts`:
+- [ ] **Task 4.1: SQLite Database Engine, Migration Schema & Dual Storage Driver (`src/core/storage/` ⭐️)**
+  - พัฒนา `src/core/storage/DatabaseSchema.ts`, `src/platform/storage/SqliteStorageAdapter.ts`, และ `src/platform/storage/IndexedDbStorageAdapter.ts`:
+  - **Dual Storage Driver Architecture (Hexagonal Ports & Adapters):**
+    - **`SqliteStorageAdapter.ts` (Android Native Shell):** ขับเคลื่อนด้วย SQLite Native Driver / Capacitor SQLite เปิดใช้งาน `PRAGMA journal_mode = WAL;` และ `PRAGMA synchronous = NORMAL;` เพื่อความเร็วสูงสุด
+    - **`IndexedDbStorageAdapter.ts` (Web PWA / Desktop Shell):** ขับเคลื่อนด้วย IndexedDB API บริหารจัดเก็บ Object Store โครงสร้างเทียบเท่าตาราง SQL เพื่อรองรับการทำงานออฟไลน์ 100% บนเบราว์เซอร์
+    - **`StorageAdapterFactory.ts`:** ตรวจสอบสภาพแวดล้อม Runtime (`Capacitor.isNativePlatform()`) และสลับเลือก Adapter อัตโนมัติไร้รอยต่อ
   - **Relational Tables & Indexing (Pure Offline Schema):**
     - `messages`:
       - คอลัมน์: `id (TEXT/uint64 PRIMARY KEY)`, `type (INT)`, `sender_hash (TEXT)`, `recipient_hash (TEXT)`, `payload (BLOB)`, `status (INT: PENDING/SENT/DELIVERED/FAILED)`, `timestamp (INT)`, `ttl (INT)`, `hops (INT)`, `is_emergency (BOOLEAN)`
@@ -740,14 +744,16 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - `vector_tiles`:
       - คอลัมน์: `tile_id (TEXT PRIMARY KEY)`, `zoom (INT)`, `x (INT)`, `y (INT)`, `pbf_data (BLOB)`, `size_bytes (INT)`, `last_accessed (INT)`
       - ดัชนี: `CREATE INDEX idx_tiles_accessed ON vector_tiles(last_accessed ASC);`
-  - **Transaction Batching & WAL Mode:**
-    - เปิดใช้งาน `PRAGMA journal_mode = WAL;` และ `PRAGMA synchronous = NORMAL;` เพื่อความเร็วในการเขียนสูงสุดขณะเกิดเหตุฉุกเฉิน
-    - รองรับ Bulk Insert ผ่าน Transaction เดียวยามเกิดคลื่นพายุข้อความเข้าพร้อมกัน (Burst Ingestion)
+  - **Transaction Batching & Burst Ingestion:**
+    - รองรับ Bulk Insert ผ่าน Transaction เดียว ยามเกิดคลื่นพายุข้อความเข้าพร้อมกัน (Burst Ingestion) ขณะเกิดภัยพิบัติ
 
-- [ ] **Task 4.2: Strict 50MB Storage Quota Clamping & Auto-Pruning Engine (`src/core/storage/StorageManager.ts` ⭐️)**
-  - ควบคุมขนาดพื้นที่ฐานข้อมูลรวมไม่ให้เกิน 50MB บนโทรศัพท์เครื่องกู้ภัย/ผู้ประสบภัย:
-  - **Continuous Size Monitoring:**
-    - คำนวณขนาดหน่วยความจำจริงผ่าน `PRAGMA page_count * PRAGMA page_size` และขนาด BLOB ของตาราง Vector Tiles
+- [ ] **Task 4.2: Strict 50MB Storage Quota Clamping, Auto-Pruning & Data-at-Rest Encryption Envelope (`src/core/storage/StorageManager.ts` ⭐️)**
+  - **Data-at-Rest Encryption Envelope (Zero-Knowledge Local Security):**
+    - ห่อหุ้ม `payload` ของข้อความในตาราง `messages` ด้วย **AES-256-GCM Local Key Envelope** ก่อนบันทึกลงดิสก์ โดยกุญแจดึงมาจาก Hardware Keystore / WebCrypto Subtle
+    - ป้องกันการดัมป์ไฟล์ฐานข้อมูลออกจากเครื่อง แม้เครื่องจะถูกขโมยหรือถูกดึงไฟล์ SQLite ออกไป ก็ไม่สามารถเปิดอ่านข้อความได้ 100%
+  - **Strict 50MB Storage Quota Clamping:**
+    - ควบคุมขนาดพื้นที่ฐานข้อมูลรวมไม่ให้เกิน 50MB บนโทรศัพท์เครื่องกู้ภัย/ผู้ประสบภัย
+    - คำนวณขนาดหน่วยความจำจริงผ่าน `PRAGMA page_count * PRAGMA page_size` และขนาด BLOB ของตาราง Vector Tiles / IndexedDB Storage Estimate
   - **Prioritized Auto-Pruning Waterfall (นโยบายกวาดล้างตามลำดับความสำคัญเมื่อแตะ 80% หรือ 40MB):**
     1. **Tier 1 (ลบก่อนเสมอ):** Presence Chirps และ Peer Heartbeats ที่หมดอายุ (> 24 ชั่วโมง)
     2. **Tier 2:** Vector Map Tiles ที่ไม่ได้เปิดดูนานที่สุด (LRU Tile Eviction)
@@ -773,6 +779,12 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - ทดสอบการรัน Migration สร้างตาราง `messages`, `peers`, `dtn_bundles`, `vector_tiles`
     - ทดสอบ CRUD Operations ทุกตาราง และความถูกต้องของ Data Types
     - ทดสอบการทำ Transaction Batching รับแพ็กเก็ต 1,000 รายการพร้อมกันโดยไม่เกิด Lock Timeout
+  - **`StorageAdapterFactory.test.ts`:**
+    - ทดสอบการสลับ Adapter ระหว่าง `SqliteStorageAdapter` (บน Native) และ `IndexedDbStorageAdapter` (บน Web)
+    - ตรวจสอบความถูกต้องของอินเทอร์เฟซ `IStorageDriver` ทั้งสองฝั่งให้ได้ผลลัพธ์ข้อมูลตรงกัน 100%
+  - **`EncryptedPayloadEnvelope.test.ts`:**
+    - ทดสอบการเข้ารหัสและถอดรหัส Payload ก่อนบันทึกลง Database
+    - ยืนยันว่า Raw Payload ในไฟล์ Database ไม่เป็น Plaintext และอ่านไม่ออกหากไม่มี Key
   - **`QuotaClamping.test.ts`:**
     - จำลองอัดข้อมูล BLOB ขนาดใหญ่ 100MB เข้าสู่ฐานข้อมูล
     - ทดสอบ Auto-Pruning Waterfall: ระบบต้องล้าง Presence Chirps และ Map Tiles ออกก่อน
@@ -789,10 +801,12 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - ตรวจสอบพฤติกรรมดักจับแพ็กเก็ตซ้ำ (Duplicate Packet Drop) ต้องตอบสนองในเวลา $O(1)$
 
 #### 🎯 Acceptance Criteria:
+- รองรับระบบจัดเก็บข้อมูลทั้ง SQLite บน Native และ IndexedDB บน Web PWA ด้วย Interface `IStorageDriver` เดียวกัน
+- ข้อมูลข้อความในฐานข้อมูลถูกเข้ารหัสแบบ Data-at-Rest ป้องกันการดัมป์ไฟล์ออกไปอ่านได้ 100%
 - ทดสอบอัดข้อมูลขนาด 100MB เข้าฐานข้อมูล ระบบตัดทอน (Auto-Prune) เหลือไม่เกิน 50MB อย่างถูกต้อง
 - ข้อมูล SOS Beacon และ Critical Emergency ไม่สูญหายจากการ Pruning 100%
 - Bloom Filter สามารถกรองแพ็กเก็ตซ้ำ 10,000 ชิ้นได้ถูกต้อง และใช้เวลาตรวจสอบ $< 0.05\text{ms}$ ต่อแพ็กเก็ต
-- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/storage/` (ทั้ง 4 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/storage/` (ทั้ง 6 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
