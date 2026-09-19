@@ -123,7 +123,7 @@
 ## 📶 SPRINT 3: ไดรเวอร์วิทยุ BLE Long Range (Phase 4: BLE Radio Driver)
 > **เป้าหมาย:** พัฒนาตัวส่งสัญญาณวิทยุ Bluetooth 5 LE Coded PHY (S=8), แยกชิ้นส่วนแพ็กเก็ต และนโยบาย Duty Cycling
 
-- [ ] **Task 3.1: พัฒนาระบบกระจายสัญญาณบลูทูธ (BleAdvertiser Engine)**
+- [x] **Task 3.1: พัฒนาระบบกระจายสัญญาณบลูทูธ (BleAdvertiser Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/ble/BleAdvertiser.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ble/BleAdvertiser.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -131,7 +131,7 @@
     - รองรับการสลับระหว่าง Legacy BLE (31B) และ Extended Advertising
   - **คำสั่งทดสอบ:** `bun test tests/unit/ble/BleAdvertiser.test.ts`
 
-- [ ] **Task 3.2: พัฒนาระบบสแกนสัญญาณบลูทูธฮาร์ดแวร์ (BleScanner Engine)**
+- [x] **Task 3.2: พัฒนาระบบสแกนสัญญาณบลูทูธฮาร์ดแวร์ (BleScanner Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/ble/BleScanner.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ble/BleScanner.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -139,7 +139,7 @@
     - กรองข้อความซ้ำในระดับฮาร์ดแวร์เพื่อไม่ให้ CPU ตื่นโดยไม่จำเป็น
   - **คำสั่งทดสอบ:** `bun test tests/unit/ble/BleScanner.test.ts`
 
-- [ ] **Task 3.3: พัฒนาระบบเจรจาคลื่นระยะไกล Bluetooth 5 LE Coded PHY (S=8 / S=2)**
+- [x] **Task 3.3: พัฒนาระบบเจรจาคลื่นระยะไกล Bluetooth 5 LE Coded PHY (S=8 / S=2)**
   - **ไฟล์เป้าหมาย:** `src/core/ble/LeCodedPhy.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ble/LeCodedPhy.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -147,7 +147,7 @@
     - หากชิปเซ็ตไม่รองรับ ให้ Fallback กลับสู่ BLE 1M Legacy อัตโนมัติ
   - **คำสั่งทดสอบ:** `bun test tests/unit/ble/LeCodedPhy.test.ts`
 
-- [ ] **Task 3.4: พัฒนาระบบเชื่อมต่อ GATT Server/Client สำหรับส่งข้อความหนาแน่น**
+- [x] **Task 3.4: พัฒนาระบบเชื่อมต่อ GATT Server/Client สำหรับส่งข้อความหนาแน่น**
   - **ไฟล์เป้าหมาย:** `src/core/ble/BleConnectionManager.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ble/BleConnectionManager.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -155,7 +155,7 @@
     - ขอปรับเพิ่มขนาด MTU สูงสุด 512 ไบต์ เพื่อความรวดเร็วในการส่งข้อมูล
   - **คำสั่งทดสอบ:** `bun test tests/unit/ble/BleConnectionManager.test.ts`
 
-- [ ] **Task 3.5: พัฒนาระบบควบคุมวงจรการสแกนสลับหลับ (Duty Cycle Controller)**
+- [x] **Task 3.5: พัฒนาระบบควบคุมวงจรการสแกนสลับหลับ (Duty Cycle Controller)**
   - **ไฟล์เป้าหมาย:** `src/core/ble/DutyCycleController.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ble/DutyCycleController.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -164,7 +164,7 @@
     - แบตเตอรี่ < 20%: สแกน 2 วิ / พัก 300 วิ (Deep Hibernation Mode)
   - **คำสั่งทดสอบ:** `bun test tests/unit/ble/DutyCycleController.test.ts`
 
-- [ ] **Task 3.6: พัฒนาระบบแบ่งและประกอบชิ้นส่วนแพ็กเก็ต (BlePacketFragmentation)**
+- [x] **Task 3.6: พัฒนาระบบแบ่งและประกอบชิ้นส่วนแพ็กเก็ต (BlePacketFragmentation)**
   - **ไฟล์เป้าหมาย:** `src/core/ble/BlePacketFragmentation.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ble/BlePacketFragmentation.test.ts`
   - **รายละเอียดการทำงาน:**
