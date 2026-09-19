@@ -3,7 +3,7 @@
 
 
 ┌──► [ 1-on-1 Unicast ] ──────► E2EE (ECDH + AES-GCM) + Edge Relay
-[ Multi-Mode Messaging ] ─────────┼──► [ Group Chat ] ──────────► Shared Group Key + Targeted Flood
+[ Multi-Mode Messaging ] ─────────┼──► [ Group Chat (Roadmap v2.0) ] ► Shared Group Key + Targeted Flood
                                   └──► [ Local Broadcast / SOS ] ──► Compact Binary (Protobuf/CBOR) + Epidemic Gossip
 
                                   ┌──► [ Normal Mesh Mode ] ────► Multi-Transport (Internet Server + Local P2P)
@@ -73,7 +73,7 @@
 | :--- | :--- | :---: | :---: | :--- |
 | **1. Emergency & SOS** | **One-Tap SOS Beacon:** พิกัด GPS (Lat/Lng), H3 Index, ระดับแบตเตอรี่, สถานะผู้ประสบภัย (เด็ก/คนแก่/ผู้ป่วย/ขาดออกซิเจน) พร้อม **Optional SOS Note (จำกัดเด็ดขาด $\le 280$ ตัวอักษร)** หรือ Voice SOS (15s) | $\le 28$ bytes (Beacon)<br>+ Note $\le 280$ chars | **Bluetooth 5 Long Range (LE Coded PHY)**<br>*(Fallback: BLE 1M Legacy)* | ส่งทันทีไร้การจับคู่ รัศมีทะลุทะลวง **200–400+ เมตร** (ที่โล่งแตะ 500 ม.) กินไฟต่ำสุด เซ็นกำกับด้วย Ed25519 กันปลอม |
 | **2. Text & Chat** | **1-on-1 Private Messages (E2EE):** แชตส่วนบุคคลเข้ารหัส AES-256-GCM สองชั้น โหนดตัวกลางอ่านไม่ได้ (Security Overhead เพียง +28 bytes: IV 12B + Tag 16B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **Bluetooth 5 Long Range (LE Coded PHY)**<br>+ Extended Adv & Epidemic Gossip | ส่งข้อความแชตตัวหนังสือข้ามตึก/ซอกซอยระยะไกล **200–400 เมตร/ทอด** รวดเร็วในเสี้ยววินาที ไร้เน็ต 100% |
-| **3. Group Chat** | **กลุ่มผู้ประสบภัย / กลุ่มกู้ภัยเฉพาะจุด:** ถอดรหัสด้วย Shared Group Key (32B) ติดหัวซองด้วย `TopicID` (4B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range / Targeted Flood** | กระจายข้อความกลุ่มครอบคลุมกว้างขวาง รัศมีระดับหมู่บ้าน/ตำบล |
+| **3. Group Chat (Roadmap v2.0)** | **กลุ่มผู้ประสบภัย / กลุ่มกู้ภัยเฉพาะจุด [ถอดไปใส่ Roadmap v2.0]:** ถอดรหัสด้วย Shared Group Key (32B) ติดหัวซองด้วย `TopicID` (4B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range / Targeted Flood** | กระจายข้อความกลุ่มครอบคลุมกว้างขวาง รัศมีระดับหมู่บ้าน/ตำบล |
 | **4. Broadcast / Crisis** | **Offline Crisis Feed:** ประกาศเตือนภัย, ข่าวสารอพยพ พร้อมลายเซ็นดิจิทัล Ed25519 ป้องกันข่าวปลอม | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range Epidemic Broadcast** | กระจายข่าวสารรอบทิศทางในรัศมี 200–400 เมตร ทุกโหนดรับรู้พร้อมกัน |
 | **5. Voice Messages** | **คลิปเสียงสั้น (Push-to-Talk Voice Memo):** บันทึกเสียงแจ้งเหตุด้วย Opus Codec (Voice Mono 6–12 kbps) สำหรับผู้บาดเจ็บ/สูงอายุ **(พร้อมระบบ Preview & กดยืนยันส่งเสมอ)** | **ความยาวสูงสุด 15 วินาที**<br>(~8 KB – 15 KB, ตัดจบอัตโนมัติ) | **BLE Chunks หรือ Wi-Fi Direct** | บันทึกสูงสุด 15 วิ ผู้ใช้กดฟังทวนซ้ำได้ และ **ต้องกดยืนยันส่งด้วยตนเองเสมอ** ส่งผ่าน BLE ถึงใน 3–5 วินาที |
 | **6. Image Compression** | **ภาพถ่ายความเสียหาย (Client-Side Auto-Compress Engine):**<br>- 🔴 **Ultra-Low Emergency (Default):** 320x240 WebP<br>- 🟡 **Standard Disaster:** 640x480 WebP<br>- 🟢 **High Detail (เน็ต/Wi-Fi มา):** 1280x720 WebP | <br>**5 KB – 12 KB**<br>**18 KB – 35 KB**<br>80 KB – 150 KB | <br>**BLE Mesh ส่งได้ทันทีใน 1-2s!**<br>**Wi-Fi Direct P2P (1s)**<br>Wi-Fi / Cloud Sync | **ผู้ใช้เลือกรูปขนาดเท่าไหร่ก็ได้ ระบบย่อและแปลงเป็น WebP ในเครื่องทันทีก่อนส่ง** เห็นสะพานขาดชัดเจน<br>*(🚫 วิดีโอปิดกั้นในโหมดออฟไลน์เพื่อรักษาแบตเตอรี่)* |
@@ -93,7 +93,7 @@
 │   ┌────────────────────────────────────────────────────────────────┐   │
 │   │                     UI / Presentation Layer                    │   │
 │   │  [One-Tap SOS]  [Offline Crisis Feed]  [Diagnostics Dashboard] │   │
-│   │  [1-on-1 Chat]  [Group Chat]           [Offline Map & H3 Tile] │   │
+│   │  [1-on-1 Chat]  [Group Chat (v2.0)]    [Offline Map & H3 Tile] │   │
 │   │  [One-Tap QR Offline APK Share Modal]                          │   │
 │   └────────────────────────────────┬───────────────────────────────┘   │
 │                                    │                                   │
@@ -170,7 +170,7 @@
 3. **Packet Type (5 bits):** กำหนดประเภทหน้าที่ของแพ็กเก็ต:
    - `0x01` (`SOS_BEACON`): ขอความช่วยเหลือฉุกเฉิน (ไม่เข้ารหัสเนื้อหา แต่มีลายเซ็น Ed25519)
    - `0x02` (`DIRECT_CHAT`): ข้อความแชต 1-on-1 เข้ารหัสลับสองชั้น E2EE (AES-256-GCM)
-   - `0x03` (`GROUP_CHAT`): ข้อความกลุ่มชุมชนเฉพาะพื้นที่ ถอดรหัสด้วย Group Key
+   - `0x03` (`GROUP_CHAT`): ข้อความกลุ่มชุมชนเฉพาะพื้นที่ ถอดรหัสด้วย Group Key *(สงวนไว้สำหรับ Roadmap v2.0)*
    - `0x04` (`CRISIS_FEED`): ประกาศเตือนภัยทางการ พร้อม Ed25519 Authority Master Signature
    - `0x05` (`DELIVERY_ACK`): ใบเสร็จยืนยันข้อความส่งถึงปลายทาง (ตีกลับล้างแคช Auto-Prune)
    - `0x06` (`DELIVERY_NACK`): แจ้งเตือนข้อความส่งไม่ถึงเมื่อเส้นทางขาดหาย
@@ -533,17 +533,11 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - นำกุญแจสาธารณะของทั้งสองฝั่งมารวมกัน `SHA-256(Key_A || Key_B)` แล้วแปลงเป็น **ตัวเลข 8 หลัก แบ่งเป็น 2 ชุด** เช่น `[ 4 8 2 1 ]   [ 9 0 3 5 ]` แสดงบนหน้าจอคู่สนทนา
     - **Radio-Friendly & Hardware-Agnostic:** เหมาะอย่างยิ่งสำหรับทีมกู้ภัย สามารถอ่านออกเสียงขานรหัสสั้นๆ ผ่านวิทยุสื่อสาร วอล์คกี้-ทอล์คกี้ หรือชำเลืองมองเทียบกันได้ทันที โดยไม่มีปัญหาเรื่องฟอนต์อีโมจิเพี้ยนบนอุปกรณ์จอขาวดำ/LoRa หรือโทรศัพท์รุ่นเก่า
     - หากตัวเลขทั้ง 2 ชุดตรงกัน ➔ ยืนยันว่าไม่มีใครดักคั่นกลาง (Man-in-the-Middle) ได้ 100% โดยไม่ต้องพึ่งพาอินเทอร์เน็ต
-- [ ] **Task 3.4: Symmetric Group Key Distribution & Epoch Rotation Engine (Zero-Knowledge Group ⭐️)**
-  - พัฒนา `src/core/crypto/GroupKeyManager.ts` สำหรับห้องแชตกลุ่มผู้ประสบภัยและกลุ่มทีมกู้ภัยประจำตำบล:
-  - **Topic Secret Key (32 Bytes):** สร้างด้วย CSPRNG ประจำแต่ละ `Topic_ID` (4 Bytes)
-  - **Zero-Knowledge Multi-Party Privacy:** โหนดตัวกลางที่ช่วยรีเลย์ข้อความกลุ่ม จะเห็นเฉพาะ `Topic_ID` เพื่อส่งต่อตามเส้นทาง แต่ไม่สามารถถอดรหัสอ่านข้อความข้างในได้
-  - **Epoch Key Rotation (การขับไล่สมาชิกหรือเปลี่ยนเวร):**
-    - กำกับหัวซองกลุ่มด้วย `Key_Epoch (1 Byte)` เมื่อต้องการเตะสมาชิกหรือหมดกะกู้ภัย หัวหน้าห้องจะสร้าง Epoch ใหม่แล้วแจกจ่ายกุญแจใหม่ผ่าน 1-on-1 E2EE ให้สมาชิกที่เหลือ
-- [ ] **Task 3.5: Hardware-Backed Secure Keystore & WebCrypto Storage Adapter (⭐️)**
+- [ ] **Task 3.4: Hardware-Backed Secure Keystore & WebCrypto Storage Adapter (⭐️)**
   - พัฒนา `src/core/crypto/SecureStorageAdapter.ts`:
   - **Android Native Shell:** จัดเก็บ Private Seed ใน **Android Keystore System (TEE / StrongBox Hardware-Backed)** เข้ารหัสทับด้วยระดับ Master Key ป้องกันการขโมยกุญแจแม้เครื่องจะถูกรูท (Root)
   - **Web PWA / Desktop Shell:** จัดเก็บผ่าน **Web Crypto API (SubtleCrypto non-extractable CryptoKey)** หรือ IndexedDB เข้ารหัสลับด้วย PBKDF2/Argon2id Passphrase
-- [ ] **Task 3.6: Digital Signature & Authority Broadcast Verification**
+- [ ] **Task 3.5: Digital Signature & Authority Broadcast Verification**
   - พัฒนาการเซ็นและตรวจสอบลายเซ็น Ed25519 สำหรับประกาศทางการของศูนย์กู้ภัย/เตือนภัยพิบัติ (CAP Ingestion)
   - สกัดกั้นข่าวปลอม (Fake News / Panic Hoax) โดยแอปจะปฏิเสธการบรอดแคสต์ประกาศใดๆ ที่ไม่มี Master Authority Signature ที่ถูกต้อง
 
@@ -551,7 +545,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - Unit Test สร้าง Mnemonic 12 คำ และแตกแขนง Ed25519/X25519 ได้ค่าเดียวกันสม่ำเสมอ (Deterministic)
 - ฟังก์ชันเข้ารหัส/ถอดรหัส E2EE ทนทานต่อการแก้ไขข้อมูล (Auth Tag Mismatch ถอดรหัสไม่ผ่าน) และกิน Overhead เพียง 28 ไบต์
 - Dynamic QR Code สามารถอ่านค่า Keypair ครบถ้วนในขนาด <110 ไบต์ และ Safety Numbers 8 หลักคำนวณตรงกันทั้งสองฝั่ง 100%
-- ข้อความกลุ่มถอดรหัสได้เฉพาะผู้ถือ Group Topic Key และโหนดตัวกลางไม่สามารถดักอ่านข้อมูลได้ 100%
+- ระบบป้องกันการสวมรอยข่าวปลอมด้วย Ed25519 Signature ตรวจสอบผ่าน 100% และ Private Key จัดเก็บใน Hardware Keystore ปลอดภัย
 
 ---
 
@@ -646,7 +640,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - สั่งเปิดหน้าจออัตโนมัติแม้ล็อกหน้าจอ/จอดับอยู่ด้วย **Android Full-Screen Intent**
       - แสดง **Emergency Overlay Modal** สีแดงเต็มจอ ทะลุผ่านโหมดห้ามรบกวน (Bypass Do Not Disturb / Silent Mode)
       - ส่งสัญญาณเสียงไซเรนกู้ภัยสั้นและสั่นรหัส Morse Code (`... --- ...`) พร้อมปุ่มกด *"กำลังไปช่วย"* และพิกัดระยะทางทันที
-    - **Tier-2 Direct/Group Chat (`0x02`, `0x03`):**
+    - **Tier-2 Direct Chat (`0x02`):**
       - เด้ง **In-App Toast Banner** ลอยลงมาเมื่อเปิดแอปอยู่
       - เด้ง **Heads-Up Notification** พร้อมปุ่มพิมพ์ตอบกลับด่วน (Quick Reply) เมื่อแอปอยู่เบื้องหลัง
     - **Tier-3 Crisis Feed (`0x04`):**
@@ -815,15 +809,15 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - ออกแบบ UI แบบสัญลักษณ์สากล (Universal Icons) ใช้งานได้แม้ผู้ประสบภัยอ่านหนังสือไม่ออก
   - คอนทราสต์สูงพิเศษ (High Contrast Mode) สำหรับมองกลางแดดจ้าหรือในควันไฟ
   - ปุ่ม Emergency SOS สีแดงขนาดใหญ่ กดครั้งเดียวส่งพิกัดและกระจายสัญญาณฉุกเฉินทันที
-  - **Unified Chat, Group, Crisis Feed & SOS Media Engine (มาตรฐานเดียวกันทุกช่องทาง):**
+  - **Unified Chat, Crisis Feed & SOS Media Engine (มาตรฐานเดียวกันทุกช่องทาง):**
     - **1. Text Message Hard Limit:**
-      - บังคับล็อกช่องพิมพ์ **ห้ามเกิน 280 ตัวอักษรเด็ดขาด** (Hard Limit) ครอบคลุมทั้ง **1-on-1 Chat, Group Chat, Crisis Feed และ SOS Emergency Note**
+      - บังคับล็อกช่องพิมพ์ **ห้ามเกิน 280 ตัวอักษรเด็ดขาด** (Hard Limit) ครอบคลุมทั้ง **1-on-1 Chat, Crisis Feed และ SOS Emergency Note** (รวมถึง Group Chat ในอนาคต)
       - แสดง Counter ตัวอักษรสด `0/280` ป้องกันแพ็กเก็ตเกินขนาด เพื่อให้ส่งทะลวงผ่านคลื่น BLE Coded PHY (S=8) ได้ใน 1 ทอด
     - **2. Client-Side Auto-Compress Image Engine (`ImageCompressorModal.tsx`):**
       - ผู้ใช้เลือกภาพถ่ายขนาดใดก็ได้จากกล้อง/แกลเลอรี ระบบจะบีบอัดและแปลงเป็น **WebP ในเครื่องทันที**
       - เริ่มต้นที่ **320x240 px ขนาดเพียง 5–12 KB** (เห็นสะพานขาด/ป้ายชัดเจน) เพื่อให้ส่งผ่าน BLE Mesh ได้ใน 1–2 วินาที พร้อมแถบพรีวิวยืนยัน
     - **3. Push-to-Talk Voice Memo with Review & Confirm (`VoiceRecorderModal.tsx`):**
-      - รองรับการอัดเสียงแจ้งเหตุสำหรับผู้ป่วย/ผู้สูงอายุ ทั้งในห้องแชต 1-on-1, ห้องกลุ่ม, และแนบไปกับสัญญาณ SOS
+      - รองรับการอัดเสียงแจ้งเหตุสำหรับผู้ป่วย/ผู้สูงอายุ ทั้งในห้องแชต 1-on-1 และแนบไปกับสัญญาณ SOS
       - **ความยาวสูงสุด 15 วินาที** (ตัดหยุดบันทึกอัตโนมัติเมื่อครบ 15 วิ ขนาด ~8–15 KB บีบอัดด้วย Opus Mono 6–12 kbps)
       - **Review & Confirm Flow (ห้ามส่งทันที):** เมื่ออัดเสร็จจะขึ้นแถบพรีวิวให้ผู้ใช้ **กดฟังเสียงทบทวนความชัดเจนได้ก่อน** พร้อมปุ่ม "อัดใหม่" และ **ผู้ใช้ต้องกดปุ่มยืนยันส่ง (Confirm Send) ด้วยตนเองเสมอ** เพื่อป้องกันการเผลอกดส่งไฟล์เสียงขยะไปแช่คลื่นวิทยุในอากาศ
 - [ ] **Task 10.3: Hybrid Smart Spatial Pyramid & Dual-Platform Offline Map Engine (Android & Web PWA ⭐️)**
@@ -938,4 +932,27 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - **Git Branch:** เมื่อพัฒนาและทดสอบผ่าน 100% แล้ว จะทำการ Commit และ Push ไปยัง branch `uat` เท่านั้น (ไม่ Push ไป `main` โดยตรง)
 - **UI Integrity:** ไม่ลบปุ่มหรือคอมโพเนนต์เดิม คงความสมบูรณ์ 100% สำหรับผู้ใช้ทั้ง Guest และ Authenticated User
 - **Comprehensive Delivery:** พัฒนาระบบให้ครบถ้วนเชื่อมโยงทั้ง End-to-End ตามโครงสร้าง v6.1
+
+---
+
+## 8. แผนงานในอนาคตและฟีเจอร์ระยะถัดไป (Future Roadmap & Post-MVP Backlog v2.0)
+เพื่อรักษาความกระชับ ความเสถียร และความรวดเร็วในการกู้ภัยของระบบ MVP ให้โฟกัสที่ **1-on-1 E2EE Chat (`0x02`), Emergency SOS (`0x01`) และ Crisis Feed (`0x04`)** ระบบจึงได้ถอดฟีเจอร์ด้านล่างนี้ไปพัฒนาในเวอร์ชันถัดไป (Roadmap v2.0):
+
+### 8.1 Group Chat & Topic Multi-Party Privacy Engine (Zero-Knowledge Group)
+- **Symmetric Group Key Distribution & Epoch Rotation Engine:**
+  - พัฒนา `src/core/crypto/GroupKeyManager.ts` สำหรับห้องแชตกลุ่มผู้ประสบภัยและกลุ่มทีมกู้ภัยประจำตำบล
+  - **Topic Secret Key (32 Bytes):** สร้างด้วย CSPRNG ประจำแต่ละ `Topic_ID` (4 Bytes)
+  - **Zero-Knowledge Multi-Party Privacy:** โหนดตัวกลางที่ช่วยรีเลย์ข้อความกลุ่ม จะเห็นเฉพาะ `Topic_ID` เพื่อส่งต่อตามเส้นทาง แต่ไม่สามารถถอดรหัสอ่านข้อความข้างในได้
+  - **Epoch Key Rotation (การขับไล่สมาชิกหรือเปลี่ยนเวร):**
+    - กำกับหัวซองกลุ่มด้วย `Key_Epoch (1 Byte)` เมื่อต้องการเตะสมาชิกหรือหมดกะกู้ภัย หัวหน้าห้องจะสร้าง Epoch ใหม่แล้วแจกจ่ายกุญแจใหม่ผ่าน 1-on-1 E2EE ให้สมาชิกที่เหลือ
+  - **Packet Frame `0x03` (`GROUP_CHAT`):** เปิดใช้งานเมื่อติดตั้งเอนจิน Group Key เต็มรูปแบบ
+  - UI Room Management: ระบบสร้างห้องกลุ่ม สแกน QR เข้าร่วมกลุ่มเฉพาะจุด และรายชื่อสมาชิกในห้อง
+
+### 8.2 LoRa ESP32 External Radio Bridge & Satellite Gateway
+- การเชื่อมต่อฮาร์ดแวร์ภายนอกผ่าน Serial/BLE สู่บอร์ด ESP32 LoRa 433/868/915 MHz สำหรับส่งสัญญาณข้ามเขา 10-30 กิโลเมตร
+- เชื่อมต่อ Iridium Go / Garmin InReach สำหรับทีมกู้ภัยพิเศษ
+
+### 8.3 Offline Voice Stream & Drone Data Mule Auto-Sync
+- ระบบสตรีมมิ่งเสียงแบบกดพูด Push-to-Talk ข้ามวง Mesh แบบกึ่งเรียลไทม์
+- โดรนบินสำรวจตรวจจับจุดขอความช่วยเหลือและดึงข้อมูลกลับฐานอัตโนมัติ (Drone Ferry Integration)
 

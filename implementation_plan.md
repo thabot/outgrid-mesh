@@ -2,19 +2,43 @@
 ### Disaster-Resilient & Production-Ready Edition: OutGrid Mesh
 
 
-แผนงานนี้แปลงข้อกำหนดและโครงสร้างระบบจาก Master Project Plan v6.1 ให้เป็นขั้นตอนการพัฒนาทางเทคนิคจริง (Implementation & Architecture Plan) โดยครอบคลุมทั้ง 4 เฟส ตั้งแต่ระดับโครงสร้างข้อมูล, เครือข่าย Mesh, Native Shell (Android/Capacitor), ระบบความปลอดภัย, ตลอดจน UI/UX Dashboard และระบบจำลองการทำงาน
+┌──► [ 1-on-1 Unicast ] ──────► E2EE (ECDH + AES-GCM) + Edge Relay
+[ Multi-Mode Messaging ] ─────────┼──► [ Group Chat (Roadmap v2.0) ] ► Shared Group Key + Targeted Flood
+                                  └──► [ Local Broadcast / SOS ] ──► Compact Binary (Protobuf/CBOR) + Epidemic Gossip
+
+                                  ┌──► [ Normal Mesh Mode ] ────► Multi-Transport (Internet Server + Local P2P)
+[ Network & Disaster Engine ] ────┼──► [ Server Timeout / Down ] ──► Standalone Local Mesh (Timeout 5s Auto-fallback)
+                                  └──► [ Disaster Emergency Mode ]► Emergency SOS + Physical Store-Carry-Forward
+
+                                  ┌──► [ Normal Duty Cycling ] ─► สแกนสลับหลับ (สแกน 5s / นอน 55s)
+[ Power & Storage Management ] ───┼──► [ Disaster Power Policy ] ─► Max Power Saving (BLE-first / Wi-Fi on Demand)
+                                  └──► [ Battery-Aware Bridge ] ──► ถือไฟล์เมื่อแบต > 50% หรือชาร์จอยู่ (แบต < 20% = Receiver Only)
+
+                                  ┌──► [ Wi-Fi Hotspot + QR ] ──► สแกน QR แล้วโหลดตรงผ่านเบราว์เซอร์ทันที (No App Required)
+[ Offline App Sideloading ] ──────┼──► [ Wi-Fi Direct P2P ] ────► ส่งต่อ APK ข้ามเครื่องแบบความเร็วสูง
+                                  └──► [ Anti-Tampering Check ] ─► ตรวจสอบ SHA-256 Checksum ป้องกัน APK ปลอม
+
+                                  ┌──► [ Physical Data Mule ] ──► ฝากส่งผ่านคน/รถกู้ภัยข้ามพื้นที่สีแดง (Zero-click Delivery)
+[ DTN Offline Delivery Engine ] ──┼──► [ Spatial H3 Drop-box ] ─► ฝากไว้ที่โทรศัพท์เพื่อนบ้านในหกเหลี่ยม H3 เดียวกัน
+                                  └──► [ Reverse Delivery ACK ] ─► ส่งใบเสร็จยืนยันกลับเข้า Mesh + สั่ง Auto-Prune คืนเมม
+
+                                  ┌──► [ In-Person QR Scan ] ───► สแกน QR แอดเพื่อน/ครอบครัวแบบเห็นหน้า ป้องกัน MITM 100%
+[ QR Peer Pairing & Identity ] ───┼──► [ Dual-Key Exchange ] ──► แลกเปลี่ยน X25519 (E2EE) + Ed25519 (ลายเซ็นดิจิทัล)
+                                  └──► [ Trusted Contacts ] ────► บันทึกลงสมุดผู้ติดต่อพร้อมตราสัญลักษณ์ Verified ออฟไลน์
 
 ---
 
-## 0. การวิเคราะห์คู่แข่งในตลาด (Competitive Analysis & Benchmarking)
 
-### 0.1 คู่แข่งหลัก 4 กลุ่ม
+
+## 1. การวิเคราะห์คู่แข่งในตลาด (Competitive Analysis & Benchmarking)
+
+### 1.1 คู่แข่งหลัก 4 กลุ่ม
 1. **Bridgefy (Commercial Mobile Mesh):** แอปพลิเคชันส่งข้อความออฟไลน์ผ่าน Bluetooth ยอดนิยมในสภาวะภัยพิบัติและการชุมนุม แต่เป็น Closed-source และกินแบตเตอรี่สูง
 2. **Briar (Anti-Censorship & Disaster Mesh):** โอเพนซอร์สเน้นความปลอดภัยสูง ทำงานแบบกระจายศูนย์ผ่าน Tor, Wi-Fi Direct และ Bluetooth แต่ไม่มีระบบส่งพิกัดฉุกเฉินเฉพาะทางและยังกินทรัพยากรสูง
 3. **Meshtastic (LoRa Off-Grid Mesh):** เครือข่าย Mesh ยอดนิยมในกลุ่มกู้ภัย ทำงานระยะไกลได้ดีและกินไฟต่ำมาก แต่มีข้อจำกัดเรื่อง Barrier to Entry สูง เพราะต้องซื้อบอร์ด LoRa ภายนอกมาต่อเพิ่ม
 4. **Serval Mesh / Disaster Radio (Legacy / Research):** โครงการวิจัยระบบเครือข่ายบรรเทาสาธารณภัย เน้น Wi-Fi Ad-hoc แต่ขาดความต่อเนื่องในการพัฒนาบน Mobile OS สมัยใหม่
 
-### 0.2 ตารางเปรียบเทียบฟีเจอร์เชิงลึก (Deep Feature Comparison Matrix)
+### 1.2 ตารางเปรียบเทียบฟีเจอร์เชิงลึก (Deep Feature Comparison Matrix)
 
 | ฟีเจอร์ / มิติการประเมิน | **OutGrid Mesh (Plan v6.1)** | **Bridgefy (Commercial)** | **Briar (Anti-Censorship)** | **Meshtastic (LoRa Mesh)** |
 | :--- | :---: | :---: | :---: | :---: |
@@ -34,7 +58,7 @@
 | **14. ความปลอดภัยและความเป็นส่วนตัว (Security)** | **E2EE (ECDH+AES-GCM) + Ed25519 Signature + QR In-Person Pairing** | E2EE (แต่ Proprietary Code ปิด) | E2EE สมบูรณ์แบบ (Audited) | E2EE (PSK / Pre-shared Channel Key) |
 | **15. สิทธิ์ทางกฎหมายและโมเดลธุรกิจ (Business Model)** | **AGPL v3.0 + Dual-Licensing (Lead: Thabot)** ขาย Commercial ได้ | Closed-source (ผูกขาด) | โอเพนซอร์ส (GPLv3) ไม่มีโมเดลธุรกิจชัดเจน | โอเพนซอร์ส (GPLv3) ทำกำไรจากการขายบอร์ด |
 
-### 0.3 จุดเด่นเชิงยุทธศาสตร์ที่ OutGrid Mesh เหนือกว่าคู่แข่ง (Strategic Competitive Advantages)
+### 1.3 จุดเด่นเชิงยุทธศาสตร์ที่ OutGrid Mesh เหนือกว่าคู่แข่ง (Strategic Competitive Advantages)
 1. **เหนือกว่า Bridgefy ด้านประสิทธิภาพ ความโปร่งใส และการประหยัดพลังงาน:**
    - Bridgefy กินพลังงานสูงมากและเป็นระบบปิด ไม่สามารถตรวจสอบความปลอดภัยได้ ขณะที่ OutGrid Mesh มีระบบ Battery-Aware Duty Cycling (3 ระดับ) และใช้ Open Cryptography มาตรฐานโลก
 2. **เหนือกว่า Meshtastic ด้านความพร้อมใช้งานของประชาชนทั่วไป (Zero Hardware Barrier):**
@@ -42,30 +66,23 @@
 3. **เหนือกว่า Briar ด้านความเร็วในการกู้ภัยและความกระชับของข้อมูล (Disaster Optimization):**
    - Briar ออกแบบมาสำหรับนักกิจกรรมหลบเลี่ยงการดักฟัง ทำให้กระบวนการ Handshake มีขนาดใหญ่และช้า ในขณะที่ OutGrid Mesh ออกแบบมาเพื่อ "ช่วยชีวิต" จึงใช้ Thabot OutGrid Protocol (TOG v1.1) ขนาดเพียง 21 ไบต์ ยิงสัญญาณ SOS ขึ้นแผนที่ได้ในเสี้ยววินาที พร้อมระบบกระจายไฟล์ APK ออฟไลน์ผ่าน Wi-Fi QR Code ที่โหลดได้ผ่านเบราว์เซอร์ทันที
 
----
+### 1.4 สิ่งที่ระบบรองรับการรับ-ส่ง (Supported Payloads & Transports Matrix)
+ระบบถูกออกแบบด้วยนโยบาย Hybrid Transport เลือกช่องทางส่งตามขนาดข้อมูลและระดับแบตเตอรี่อัตโนมัติ:
 
-### รูปแบบข้อมูลและสิ่งที่ระบบรองรับการรับ-ส่ง (Supported Payloads & Transports Matrix)
 | หมวดหมู่ข้อมูล | ข้อมูลที่สามารถส่งได้ (Supported Payloads) | ขนาดข้อมูล / ความยาว | ช่องทางการส่ง (Transport) | สภาพแวดล้อมการทำงาน |
 | :--- | :--- | :---: | :---: | :--- |
-| **1. Emergency & SOS** | **One-Tap SOS Beacon:** พิกัด GPS (Lat/Lng), H3 Index, ระดับแบตเตอรี่, สถานะผู้เปราะบาง (เด็ก/คนแก่/ผู้ป่วย/ออกซิเจน) พร้อม **Optional SOS Note (จำกัดเด็ดขาด $\le 280$ ตัวอักษร)** หรือ Voice SOS (15s) | $\le 28$ bytes (Beacon)<br>+ Note $\le 280$ chars | **Bluetooth 5 Long Range (LE Coded PHY)**<br>*(Fallback: BLE 1M Legacy)* | ส่งได้ทันทีโดยไม่ต้องเชื่อมต่อ/จับคู่ รัศมี 200-400+ ม. กินไฟต่ำสุด ปลอดภัยด้วย Ed25519 Signature |
-| **2. Text & Chat** | **1-on-1 Private Messages (E2EE):** แชตส่วนบุคคลเข้ารหัส AES-256-GCM สองชั้น โหนดตัวกลางอ่านไม่ได้ (Security Overhead +28 bytes) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **Bluetooth 5 Long Range (LE Coded PHY)**<br>+ Extended Adv & Epidemic Gossip | ส่งผ่าน Relay โหนด 3-15 ทอดตามความหนาแน่น ไร้เน็ต 100% |
-| **3. Group Chat** | **กลุ่มผู้ประสบภัย / กลุ่มกู้ภัยเฉพาะจุด:** ถอดรหัสด้วย Group Secret Key (32B) + `TopicID` (4B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range / Targeted Flood** | ครอบคลุมผู้ใช้ในพื้นที่เดียวกัน รัศมีระดับหมู่บ้าน/ตำบล |
+| **1. Emergency & SOS** | **One-Tap SOS Beacon:** พิกัด GPS (Lat/Lng), H3 Index, ระดับแบตเตอรี่, สถานะผู้ประสบภัย (เด็ก/คนแก่/ผู้ป่วย/ขาดออกซิเจน) พร้อม **Optional SOS Note (จำกัดเด็ดขาด $\le 280$ ตัวอักษร)** หรือ Voice SOS (15s) | $\le 28$ bytes (Beacon)<br>+ Note $\le 280$ chars | **Bluetooth 5 Long Range (LE Coded PHY)**<br>*(Fallback: BLE 1M Legacy)* | ส่งทันทีไร้การจับคู่ รัศมีทะลุทะลวง **200–400+ เมตร** (ที่โล่งแตะ 500 ม.) กินไฟต่ำสุด เซ็นกำกับด้วย Ed25519 กันปลอม |
+| **2. Text & Chat** | **1-on-1 Private Messages (E2EE):** แชตส่วนบุคคลเข้ารหัส AES-256-GCM สองชั้น โหนดตัวกลางอ่านไม่ได้ (Security Overhead เพียง +28 bytes: IV 12B + Tag 16B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **Bluetooth 5 Long Range (LE Coded PHY)**<br>+ Extended Adv & Epidemic Gossip | ส่งข้อความแชตตัวหนังสือข้ามตึก/ซอกซอยระยะไกล **200–400 เมตร/ทอด** รวดเร็วในเสี้ยววินาที ไร้เน็ต 100% |
+| **3. Group Chat (Roadmap v2.0)** | **กลุ่มผู้ประสบภัย / กลุ่มกู้ภัยเฉพาะจุด [ถอดไปใส่ Roadmap v2.0]:** ถอดรหัสด้วย Shared Group Key (32B) ติดหัวซองด้วย `TopicID` (4B) | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range / Targeted Flood** | กระจายข้อความกลุ่มครอบคลุมกว้างขวาง รัศมีระดับหมู่บ้าน/ตำบล |
 | **4. Broadcast / Crisis** | **Offline Crisis Feed:** ประกาศเตือนภัย, ข่าวสารอพยพ พร้อมลายเซ็นดิจิทัล Ed25519 ป้องกันข่าวปลอม | **จำกัดเด็ดขาด $\le 280$ ตัวอักษร**<br>(Hard Limit ห้ามส่งเกิน) | **BT 5 Long Range Epidemic Broadcast** | กระจายข่าวสารรอบทิศทางในรัศมี 200–400 เมตร ทุกโหนดรับรู้พร้อมกัน |
 | **5. Voice Messages** | **คลิปเสียงสั้น (Push-to-Talk Voice Memo):** บันทึกเสียงแจ้งเหตุด้วย Opus Codec (Voice Mono 6–12 kbps) สำหรับผู้บาดเจ็บ/สูงอายุ **(พร้อมระบบ Preview & กดยืนยันส่งเสมอ)** | **ความยาวสูงสุด 15 วินาที**<br>(~8 KB – 15 KB, ตัดจบอัตโนมัติ) | **BLE Chunks หรือ Wi-Fi Direct** | บันทึกสูงสุด 15 วิ ผู้ใช้กดฟังทวนซ้ำได้ และ **ต้องกดยืนยันส่งด้วยตนเองเสมอ** ส่งผ่าน BLE ถึงใน 3–5 วินาที |
 | **6. Image Compression** | **ภาพถ่ายความเสียหาย (Client-Side Auto-Compress Engine):**<br>- 🔴 **Ultra-Low Emergency (Default):** 320x240 WebP<br>- 🟡 **Standard Disaster:** 640x480 WebP<br>- 🟢 **High Detail (เน็ต/Wi-Fi มา):** 1280x720 WebP | <br>**5 KB – 12 KB**<br>**18 KB – 35 KB**<br>80 KB – 150 KB | <br>**BLE Mesh ส่งได้ทันทีใน 1-2s!**<br>**Wi-Fi Direct P2P (1s)**<br>Wi-Fi / Cloud Sync | **ผู้ใช้เลือกรูปขนาดเท่าไหร่ก็ได้ ระบบย่อและแปลงเป็น WebP ในเครื่องทันทีก่อนส่ง** เห็นสะพานขาดชัดเจน<br>*(🚫 วิดีโอปิดกั้นในโหมดออฟไลน์เพื่อรักษาแบตเตอรี่)* |
 | **7. App Sideloading** | **ตัวติดตั้งแอปเต็ม (`OutGridMesh.apk`):** ส่งต่อแอปให้เครื่องข้างเคียงผ่าน Web Browser โดยตรง | 15 - 30 MB | **Local Wi-Fi Hotspot + QR Code** | อีกเครื่องใช้แค่กล้องสแกน QR โหลดผ่าน Chrome ได้เลย |
 | **8. Physical Signals** | **Acoustic Siren & Flash Strobe:** เสียงไซเรนความถี่สูง/อัลตราโซนิก (ใต้ซากตึก) + แฟลช LED SOS | - | **Phone Speaker & Camera LED** | ใช้ค้นหาด้วยเสียงและสายตาในความมืด |
 
-### 1.1 กลไกการทำงานและการส่งข้อความเมื่อเซิร์ฟเวอร์ล่มหรือเกิดภัยพิบัติ (Server Down & Offline Message Delivery)
-เมื่อเครือข่ายอินเทอร์เน็ตล่ม หรือระบบตัดขาดจาก Cloudflare เกิน 5 วินาที ระบบจะสลับเข้าสู่ **Standalone Local Mesh** ทันที 100% โดยผู้ใช้สามารถสื่อสารได้ผ่าน 4 ช่องทาง:
-1. **One-Tap SOS Beacon:** ส่งแพ็กเก็ตจิ๋ว $\le 28$ bytes ผ่าน BLE Advertising กระจายรัศมี 30-100 เมตร โดยไม่ต้องจับคู่
-2. **1-on-1 Multi-Hop Relay:** ส่งแชต E2EE กระโดดข้ามเครื่องข้างเคียง 3-7 ทอด ไร้เน็ต โดยเครื่องตัวกลางอ่านเนื้อหาไม่ได้
-3. **Topic-Based Group Flood:** แชตกลุ่มกู้ภัย/ชุมชน เข้ารหัสด้วย Group Key กระจายในหกเหลี่ยม H3 ท้องถิ่น
-4. **Physical Data Mule & H3 Drop-box:** ฝากข้อความไปกับยานพาหนะ/ทีมกู้ภัยข้ามพื้นที่สีแดง หรือฝากไว้ที่โทรศัพท์เพื่อนบ้านในโซน H3 เดียวกัน และส่งมอบอัตโนมัติเมื่อเข้าใกล้ผู้รับ
-
 ---
 
-## 1. ภาพรวมสถาปัตยกรรมระบบ (System Architecture Overview)
+## 2. ภาพรวมสถาปัตยกรรมระบบ (System Architecture Overview)
 
 
 ```
@@ -76,10 +93,9 @@
 │   ┌────────────────────────────────────────────────────────────────┐   │
 │   │                     UI / Presentation Layer                    │   │
 │   │  [One-Tap SOS]  [Offline Crisis Feed]  [Diagnostics Dashboard] │   │
-│   │  [1-on-1 Chat]  [Group Chat]           [Offline Map & H3 Tile] │   │
-│   │  [One-Tap QR Offline APK Share]        [QR Add Friend Modal]   │   │
+│   │  [1-on-1 Chat]  [Group Chat (v2.0)]    [Offline Map & H3 Tile] │   │
+│   │  [One-Tap QR Offline APK Share Modal]                          │   │
 │   └────────────────────────────────┬───────────────────────────────┘   │
-
 │                                    │                                   │
 │   ┌────────────────────────────────▼───────────────────────────────┐   │
 │   │                     Application State Engine                   │   │
@@ -99,8 +115,7 @@
 │   │                     Data & Forwarding Layer                    │   │
 │   │  - Epidemic Gossip & Targeted Flood Router                     │   │
 │   │  - Counting Bloom Filter & LRU Cache (Duplicate Storm Guard)   │   │
-│   │  - DTN Data Mule & Spatial H3 Drop-box Delivery Engine         │   │
-│   │  - SQLite Store-Carry-Forward & Reverse ACK Auto-Pruning       │   │
+│   │  - SQLite Store-Carry-Forward & Deferred Sync Queue            │   │
 │   └────────────────────────────────┬───────────────────────────────┘   │
 │                                    │                                   │
 │   ┌────────────────────────────────▼───────────────────────────────┐   │
@@ -108,7 +123,9 @@
 │   │     ┌───────────────────────┬────────────────────────────┐     │   │
 │   │     │      BLE Plugin       │   Wi-Fi Direct / Nearby    │     │   │
 │   │     │ (Text, SOS, GPS, Ping)│   (Images / Large Media)   │     │   │
-│   │     └───────────────────────┴────────────────────────────┘     │   │
+│   │     ├───────────────────────┴────────────────────────────┤     │   │
+│   │     │  Local Hotspot + Embedded HTTP Server (APK Share)  │     │   │
+│   │     └────────────────────────────────────────────────────┘     │   │
 │   └────────────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -153,7 +170,7 @@
 3. **Packet Type (5 bits):** กำหนดประเภทหน้าที่ของแพ็กเก็ต:
    - `0x01` (`SOS_BEACON`): ขอความช่วยเหลือฉุกเฉิน (ไม่เข้ารหัสเนื้อหา แต่มีลายเซ็น Ed25519)
    - `0x02` (`DIRECT_CHAT`): ข้อความแชต 1-on-1 เข้ารหัสลับสองชั้น E2EE (AES-256-GCM)
-   - `0x03` (`GROUP_CHAT`): ข้อความกลุ่มชุมชนเฉพาะพื้นที่ ถอดรหัสด้วย Group Key
+   - `0x03` (`GROUP_CHAT`): ข้อความกลุ่มชุมชนเฉพาะพื้นที่ ถอดรหัสด้วย Group Key *(สงวนไว้สำหรับ Roadmap v2.0)*
    - `0x04` (`CRISIS_FEED`): ประกาศเตือนภัยทางการ พร้อม Ed25519 Authority Master Signature
    - `0x05` (`DELIVERY_ACK`): ใบเสร็จยืนยันข้อความส่งถึงปลายทาง (ตีกลับล้างแคช Auto-Prune)
    - `0x06` (`DELIVERY_NACK`): แจ้งเตือนข้อความส่งไม่ถึงเมื่อเส้นทางขาดหาย
@@ -235,23 +252,25 @@
 ---
 
 
-## 2. สแต็กเทคโนโลยีและภาษาที่ใช้ในการพัฒนา (Technology Stack & Languages)
+## 3. สแต็กเทคโนโลยีและภาษาที่ใช้ในการพัฒนา (Technology Stack & Languages)
 
-เพื่อให้ระบบทำงานได้ทั้งบนเว็บและสมาร์ตโฟนทั่วไป 100% พร้อมเข้าถึงฮาร์ดแวร์บลูทูธและแบตเตอรี่ในระดับลึก จึงเลือกใช้สถาปัตยกรรมแบบ **Hybrid Architecture (TypeScript Core + Native Kotlin Driver)**:
+เพื่อให้ระบบทำงานได้รวดเร็ว เบาหวิว และทนทานสูงสุดบนมือถือราคาประหยัด 100% จึงเลือกใช้สถาปัตยกรรม **Bun-Powered Modern Hybrid Architecture (Bun + TypeScript Core + Svelte 5 + Native Kotlin Driver)**:
 
-| ส่วนของระบบ (Component) | ภาษาที่ใช้ (Language) | เฟรมเวิร์ก & ไลบรารีหลัก (Key Frameworks & Libraries) | เหตุผลความจำเป็นทางเทคนิค |
+| ส่วนของระบบ (Component) | ภาษาที่ใช้ (Language) | เฟรมเวิร์ก & เครื่องมือหลัก (Key Frameworks & Tools) | เหตุผลความจำเป็นทางเทคนิค |
 | :--- | :---: | :--- | :--- |
-| **1. UI & Screen Presentation** | **TypeScript** | **React / Vue 3 + TailwindCSS + Lucide Icons** | พัฒนาหน้าจอ Responsive UI ได้รวดเร็ว เบา และทนทานแบบ Offline-first รองรับ Dark/High-Contrast Mode สำหรับภัยพิบัติ |
-| **2. Mesh Protocol & Core Logic** | **TypeScript** | **Thabot OutGrid Protocol (TOG v1.1), `h3-js`, Counting Bloom Filter, LRU Cache** | Single Source of Truth สำหรับตรรกะเครือข่ายทั้งหมด รองรับการประมวลผล Compact Binary (`ArrayBuffer`, `Uint8Array`, `DataView`) ได้แม่นยำ ไร้ Runtime Type Errors |
-| **3. Security & Cryptography** | **TypeScript** | **`@noble/ciphers` (AES-256-GCM), `@noble/curves` (Ed25519, X25519)** | ไลบรารีการเข้ารหัสความเร็วสูง มาตรฐานความปลอดภัยระดับสากล ผ่านการ Audit และ Zero-Dependency |
-| **4. Native Mobile Shell** | **TypeScript & Native Bridge** | **Capacitor 6** | สะพานเชื่อมต่อระหว่าง Web UI กับ Native Android ที่น้ำหนักเบา ให้ประสิทธิภาพสูงกว่า React Native และไม่ปิดกั้นการเรียก Native APIs |
-| **5. Native Android Radios & Hardware** | **Kotlin** | **Android BLE APIs (`BluetoothLeScanner`, `BluetoothLeAdvertiser`), Wi-Fi P2P Manager** | เข้าถึง Low-level Hardware ของชิปบลูทูธโดยตรง, ควบคุม Duty Cycle และฝัง Hardware ScanFilter ในระดับฮาร์ดแวร์วิทยุ |
-| **6. Background Engine & OS Resilience** | **Kotlin** | **Android Foreground Service (`connectedDevice`), `BatteryManager`, `PowerManager` (Smart WakeLock)** | รักษาการทำงาน 24/7 เบื้องหลัง ไม่ให้โดน Android Doze Mode สั่งปิด และดักจับเปอร์เซ็นต์แบตเตอรี่เพื่อปรับ Duty Cycle อัตโนมัติ |
+| **0. Runtime & Package Manager** | **Bun (Zig / C++)** | **Bun v1.4+ (`bun install`, `bun test`, `bun run build`)** | ติดตั้ง Dependencies เร็วขึ้น 25 เท่า, รัน TypeScript ตรงๆ โดยไม่ต้องแปลงไฟล์, เบาเครื่อง และกินแรมน้อยกว่า Node.js มหาศาล |
+| **1. UI & Screen Presentation** | **TypeScript** | **Svelte 5 (Runes) + TailwindCSS + Lucide Icons** | **ไม่มี Virtual DOM** คอมไพล์เป็น Pure JS ขนาดเล็กจิ๋ว (<15 KB), ไม่หน่วง ไม่ค้างบนมือถือราคาประหยัด RAM 1.5–2GB, เรนเดอร์ 60 FPS ลื่นไหล |
+| **2. Mesh Protocol & Core Logic** | **TypeScript (Pure)** | **Thabot OutGrid Protocol (TOG v1.1), `h3-js`, Counting Bloom Filter** | Single Source of Truth สำหรับตรรกะเครือข่ายทั้งหมด ปราศจาก Browser/Capacitor Dependency, รันเทสบน `bun test` เร็วในเสี้ยววินาที |
+| **3. Security & Cryptography** | **TypeScript** | **`@noble/ciphers` (AES-256-GCM), `@noble/curves` (Ed25519, X25519)** | ไลบรารีการเข้ารหัสความเร็วสูง มาตรฐานสากล Zero-Dependency ปลอดภัย 100% |
+| **4. Native Mobile Shell** | **TypeScript & Native Bridge** | **Capacitor 6** | สะพานเชื่อมต่อ Web UI เข้ากับ Native Android ที่น้ำหนักเบาและคลีน ให้ประสิทธิภาพสูงกว่า React Native |
+| **5. Native Android Radios & Hardware** | **Kotlin** | **Android BLE APIs (`BluetoothLeScanner`, `BluetoothLeAdvertiser`), Wi-Fi P2P** | เข้าถึง Low-level Hardware ของชิปบลูทูธโดยตรง, เปิดโหมด **Bluetooth 5 Long Range (LE Coded PHY)** และฝัง Hardware ScanFilter |
+| **6. Background Engine & OS Resilience** | **Kotlin** | **Android Foreground Service (`connectedDevice`), `BatteryManager`, WakeLock** | รักษาการทำงาน 24/7 เบื้องหลัง ไม่ให้โดน Android Doze Mode สั่งปิด และดักจับเปอร์เซ็นต์แบตเตอรี่เพื่อปรับ Duty Cycle อัตโนมัติ |
 | **7. Local Database (Offline-first)** | **SQL / TypeScript** | **`@capacitor-community/sqlite` (SQLite3 Engine)** | จัดเก็บข้อความออฟไลน์, ตารางเพื่อนบ้าน, คิว DTN Relay Queue และ Public Key รายชื่อเพื่อน (เพดาน 50 MB FIFO) |
-| **8. Cloud Serverless Coordinator** | **TypeScript** | **Cloudflare Workers, Cloudflare D1 (SQLite Edge), Cloudflare R2** | รันบน Edge ใกล้ผู้ใช้ในไทย (BKK Node Latency 5–15ms), Zero-Egress Fee สำหรับแจก APK ฟรี และแชร์โมเดลไทป์ TypeScript ร่วมกับ Client ได้ 100% |
-| **9. Automated Testing & Verification** | **TypeScript** | **Vitest, Node.js Test Runner, Syntax Checker (`node -c`)** | ชุดทดสอบ Unit Test อัตโนมัติ 100% สำหรับทดสอบ Encoder/Decoder, Erasure Coding, Bloom Filter และจำลองเครือข่ายเสมือน Multi-node |
+| **8. Cloud Serverless Coordinator** | **TypeScript** | **Cloudflare Workers, Cloudflare D1 (SQLite Edge), Cloudflare R2** | รันบน Edge ใกล้ผู้ใช้ในไทย (BKK Latency 5–15ms), Zero-Egress Fee สำหรับแจก APK ฟรี และแชร์ Data Types ร่วมกับ Client 100% |
+| **9. Automated Testing & Tooling** | **TypeScript** | **Bun Built-in Test Runner (`bun test`), `scripts/checkSyntax.js`** | รันการทดสอบ Unit Test ระดับพันรอบได้ในเสี้ยววินาที และตรวจสอบ Syntax ทุกไฟล์ก่อน Commit สู่ `uat` |
 
-### 2.1 ข้อกำหนดคุณสมบัติอุปกรณ์ที่รองรับ (Device Hardware & OS Specifications)
+
+### 3.1 ข้อกำหนดคุณสมบัติอุปกรณ์ที่รองรับ (Device Hardware & OS Specifications)
 
 ระบบถูกออกแบบภายใต้ปรัชญา **"Universal Disaster Accessibility"** เพื่อให้ทำงานได้บนสมาร์ตโฟนราคาประหยัดของชาวบ้านทั่วไป 100% รวมถึงเครื่องเก่าที่ไม่ได้ใส่ซิมการ์ด (No SIM Required):
 
@@ -283,8 +302,6 @@
 - **Backhaul (ออปชันเสริม):** รองรับการต่อเชื่อม Starlink / 4G / Wi-Fi เพื่อทำหน้าที่เป็นสะพานส่งข้อมูลขึ้น Cloudflare D1
 
 ---
-
-## 3. แผนการพัฒนารายเฟส (Phased Implementation Roadmap)
 
 
 ### 3.2 โครงสร้างไดเรกทอรีโปรเจกต์มาตรฐาน (Recommended Project Structure)
@@ -516,17 +533,11 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - นำกุญแจสาธารณะของทั้งสองฝั่งมารวมกัน `SHA-256(Key_A || Key_B)` แล้วแปลงเป็น **ตัวเลข 8 หลัก แบ่งเป็น 2 ชุด** เช่น `[ 4 8 2 1 ]   [ 9 0 3 5 ]` แสดงบนหน้าจอคู่สนทนา
     - **Radio-Friendly & Hardware-Agnostic:** เหมาะอย่างยิ่งสำหรับทีมกู้ภัย สามารถอ่านออกเสียงขานรหัสสั้นๆ ผ่านวิทยุสื่อสาร วอล์คกี้-ทอล์คกี้ หรือชำเลืองมองเทียบกันได้ทันที โดยไม่มีปัญหาเรื่องฟอนต์อีโมจิเพี้ยนบนอุปกรณ์จอขาวดำ/LoRa หรือโทรศัพท์รุ่นเก่า
     - หากตัวเลขทั้ง 2 ชุดตรงกัน ➔ ยืนยันว่าไม่มีใครดักคั่นกลาง (Man-in-the-Middle) ได้ 100% โดยไม่ต้องพึ่งพาอินเทอร์เน็ต
-- [ ] **Task 3.4: Symmetric Group Key Distribution & Epoch Rotation Engine (Zero-Knowledge Group ⭐️)**
-  - พัฒนา `src/core/crypto/GroupKeyManager.ts` สำหรับห้องแชตกลุ่มผู้ประสบภัยและกลุ่มทีมกู้ภัยประจำตำบล:
-  - **Topic Secret Key (32 Bytes):** สร้างด้วย CSPRNG ประจำแต่ละ `Topic_ID` (4 Bytes)
-  - **Zero-Knowledge Multi-Party Privacy:** โหนดตัวกลางที่ช่วยรีเลย์ข้อความกลุ่ม จะเห็นเฉพาะ `Topic_ID` เพื่อส่งต่อตามเส้นทาง แต่ไม่สามารถถอดรหัสอ่านข้อความข้างในได้
-  - **Epoch Key Rotation (การขับไล่สมาชิกหรือเปลี่ยนเวร):**
-    - กำกับหัวซองกลุ่มด้วย `Key_Epoch (1 Byte)` เมื่อต้องการเตะสมาชิกหรือหมดกะกู้ภัย หัวหน้าห้องจะสร้าง Epoch ใหม่แล้วแจกจ่ายกุญแจใหม่ผ่าน 1-on-1 E2EE ให้สมาชิกที่เหลือ
-- [ ] **Task 3.5: Hardware-Backed Secure Keystore & WebCrypto Storage Adapter (⭐️)**
+- [ ] **Task 3.4: Hardware-Backed Secure Keystore & WebCrypto Storage Adapter (⭐️)**
   - พัฒนา `src/core/crypto/SecureStorageAdapter.ts`:
   - **Android Native Shell:** จัดเก็บ Private Seed ใน **Android Keystore System (TEE / StrongBox Hardware-Backed)** เข้ารหัสทับด้วยระดับ Master Key ป้องกันการขโมยกุญแจแม้เครื่องจะถูกรูท (Root)
   - **Web PWA / Desktop Shell:** จัดเก็บผ่าน **Web Crypto API (SubtleCrypto non-extractable CryptoKey)** หรือ IndexedDB เข้ารหัสลับด้วย PBKDF2/Argon2id Passphrase
-- [ ] **Task 3.6: Digital Signature & Authority Broadcast Verification**
+- [ ] **Task 3.5: Digital Signature & Authority Broadcast Verification**
   - พัฒนาการเซ็นและตรวจสอบลายเซ็น Ed25519 สำหรับประกาศทางการของศูนย์กู้ภัย/เตือนภัยพิบัติ (CAP Ingestion)
   - สกัดกั้นข่าวปลอม (Fake News / Panic Hoax) โดยแอปจะปฏิเสธการบรอดแคสต์ประกาศใดๆ ที่ไม่มี Master Authority Signature ที่ถูกต้อง
 
@@ -534,7 +545,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - Unit Test สร้าง Mnemonic 12 คำ และแตกแขนง Ed25519/X25519 ได้ค่าเดียวกันสม่ำเสมอ (Deterministic)
 - ฟังก์ชันเข้ารหัส/ถอดรหัส E2EE ทนทานต่อการแก้ไขข้อมูล (Auth Tag Mismatch ถอดรหัสไม่ผ่าน) และกิน Overhead เพียง 28 ไบต์
 - Dynamic QR Code สามารถอ่านค่า Keypair ครบถ้วนในขนาด <110 ไบต์ และ Safety Numbers 8 หลักคำนวณตรงกันทั้งสองฝั่ง 100%
-- ข้อความกลุ่มถอดรหัสได้เฉพาะผู้ถือ Group Topic Key และโหนดตัวกลางไม่สามารถดักอ่านข้อมูลได้ 100%
+- ระบบป้องกันการสวมรอยข่าวปลอมด้วย Ed25519 Signature ตรวจสอบผ่าน 100% และ Private Key จัดเก็บใน Hardware Keystore ปลอดภัย
 
 ---
 
@@ -629,7 +640,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - สั่งเปิดหน้าจออัตโนมัติแม้ล็อกหน้าจอ/จอดับอยู่ด้วย **Android Full-Screen Intent**
       - แสดง **Emergency Overlay Modal** สีแดงเต็มจอ ทะลุผ่านโหมดห้ามรบกวน (Bypass Do Not Disturb / Silent Mode)
       - ส่งสัญญาณเสียงไซเรนกู้ภัยสั้นและสั่นรหัส Morse Code (`... --- ...`) พร้อมปุ่มกด *"กำลังไปช่วย"* และพิกัดระยะทางทันที
-    - **Tier-2 Direct/Group Chat (`0x02`, `0x03`):**
+    - **Tier-2 Direct Chat (`0x02`):**
       - เด้ง **In-App Toast Banner** ลอยลงมาเมื่อเปิดแอปอยู่
       - เด้ง **Heads-Up Notification** พร้อมปุ่มพิมพ์ตอบกลับด่วน (Quick Reply) เมื่อแอปอยู่เบื้องหลัง
     - **Tier-3 Crisis Feed (`0x04`):**
@@ -798,15 +809,15 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - ออกแบบ UI แบบสัญลักษณ์สากล (Universal Icons) ใช้งานได้แม้ผู้ประสบภัยอ่านหนังสือไม่ออก
   - คอนทราสต์สูงพิเศษ (High Contrast Mode) สำหรับมองกลางแดดจ้าหรือในควันไฟ
   - ปุ่ม Emergency SOS สีแดงขนาดใหญ่ กดครั้งเดียวส่งพิกัดและกระจายสัญญาณฉุกเฉินทันที
-  - **Unified Chat, Group, Crisis Feed & SOS Media Engine (มาตรฐานเดียวกันทุกช่องทาง):**
+  - **Unified Chat, Crisis Feed & SOS Media Engine (มาตรฐานเดียวกันทุกช่องทาง):**
     - **1. Text Message Hard Limit:**
-      - บังคับล็อกช่องพิมพ์ **ห้ามเกิน 280 ตัวอักษรเด็ดขาด** (Hard Limit) ครอบคลุมทั้ง **1-on-1 Chat, Group Chat, Crisis Feed และ SOS Emergency Note**
+      - บังคับล็อกช่องพิมพ์ **ห้ามเกิน 280 ตัวอักษรเด็ดขาด** (Hard Limit) ครอบคลุมทั้ง **1-on-1 Chat, Crisis Feed และ SOS Emergency Note** (รวมถึง Group Chat ในอนาคต)
       - แสดง Counter ตัวอักษรสด `0/280` ป้องกันแพ็กเก็ตเกินขนาด เพื่อให้ส่งทะลวงผ่านคลื่น BLE Coded PHY (S=8) ได้ใน 1 ทอด
     - **2. Client-Side Auto-Compress Image Engine (`ImageCompressorModal.tsx`):**
       - ผู้ใช้เลือกภาพถ่ายขนาดใดก็ได้จากกล้อง/แกลเลอรี ระบบจะบีบอัดและแปลงเป็น **WebP ในเครื่องทันที**
       - เริ่มต้นที่ **320x240 px ขนาดเพียง 5–12 KB** (เห็นสะพานขาด/ป้ายชัดเจน) เพื่อให้ส่งผ่าน BLE Mesh ได้ใน 1–2 วินาที พร้อมแถบพรีวิวยืนยัน
     - **3. Push-to-Talk Voice Memo with Review & Confirm (`VoiceRecorderModal.tsx`):**
-      - รองรับการอัดเสียงแจ้งเหตุสำหรับผู้ป่วย/ผู้สูงอายุ ทั้งในห้องแชต 1-on-1, ห้องกลุ่ม, และแนบไปกับสัญญาณ SOS
+      - รองรับการอัดเสียงแจ้งเหตุสำหรับผู้ป่วย/ผู้สูงอายุ ทั้งในห้องแชต 1-on-1 และแนบไปกับสัญญาณ SOS
       - **ความยาวสูงสุด 15 วินาที** (ตัดหยุดบันทึกอัตโนมัติเมื่อครบ 15 วิ ขนาด ~8–15 KB บีบอัดด้วย Opus Mono 6–12 kbps)
       - **Review & Confirm Flow (ห้ามส่งทันที):** เมื่ออัดเสร็จจะขึ้นแถบพรีวิวให้ผู้ใช้ **กดฟังเสียงทบทวนความชัดเจนได้ก่อน** พร้อมปุ่ม "อัดใหม่" และ **ผู้ใช้ต้องกดปุ่มยืนยันส่ง (Confirm Send) ด้วยตนเองเสมอ** เพื่อป้องกันการเผลอกดส่งไฟล์เสียงขยะไปแช่คลื่นวิทยุในอากาศ
 - [ ] **Task 10.3: Hybrid Smart Spatial Pyramid & Dual-Platform Offline Map Engine (Android & Web PWA ⭐️)**
@@ -852,7 +863,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 
 ## 5. แผนการตรวจสอบและทดสอบระบบ (Verification & Testing Plan)
 
-### 4.1 Automated Tests (100% Coverage Target)
+### 5.1 Automated Tests (100% Coverage Target)
 - **Unit Tests:**
   - Compact Binary Serialization/Deserialization (ตรวจสอบขนาด Payload ≤ 28 bytes)
   - Cryptography Engine (ECDH Key Exchange, AES-GCM Encrypt/Decrypt Overhead +28B, Ed25519 Sign/Verify)
@@ -864,7 +875,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - Image Compression Engine (ทดสอบลดขนาดรูปภาพเหลือ 5–15 KB และ 20–40 KB WebP)
   - Local SQLite & D1 Database Mapping (ทดสอบการบันทึกและจับคู่โหนดปลายทาง)
   - Battery Policy State Transitions (จำลองสถานการณ์แบตเตอรี่ >50%, 20-50%, <20%)
-  - Local HTTP Server & QR Code Generation (ทดสอบการสร้าง Wi-Fi QR Payload และความถูกต้องของ SHA-256 Checksum)
+  - Local HTTP Server & QR Code Generation (ทดสอบสร้าง Wi-Fi QR Payload และตรวจสอบ SHA-256 Checksum)
 - **Integration Tests:**
   - 5-second Server Timeout & Auto-fallback Simulation
   - Multi-hop Mesh Relay Simulation (จำลองการส่งข้อมูลผ่าน 3-5 โหนดเสมือน)
@@ -872,10 +883,11 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - End-to-End DTN Data Mule & Reverse ACK Flow (จำลองพาหนะขนข้อความข้ามโซนและส่งมอบ Zero-click พร้อมตีกลับใบเสร็จ)
   - Deferred Sync Queue (จำลองสถานะ Offline -> บันทึก SQLite -> Online -> Batch Upload)
   - Offline APK Sideload Flow (จำลองการร้องขอไฟล์ APK จาก Local Server เสมือน)
+
 - **Syntax & Lint:**
   - รัน `node -c` หรือ script syntax validation ก่อนการส่งมอบทุกครั้ง
 
-### 4.2 Manual & Simulation Verification
+### 5.2 Manual & Simulation Verification
 - ทดสอบปิดเครือข่ายอินเทอร์เน็ต (Airplane mode / Sim down) และจับเวลาการสลับโหมดเข้าสู่ Disaster Mesh ภายใน 5 วินาที
 - ทดสอบ One-Tap SOS และตรวจสอบการแสดงผลบน Crisis Feed ของโหนดข้างเคียง
 - ตรวจสอบความถูกต้องของ UI ทั้งในสถานะ Guest และ Logged-in ผู้ใช้งาน
@@ -920,4 +932,27 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - **Git Branch:** เมื่อพัฒนาและทดสอบผ่าน 100% แล้ว จะทำการ Commit และ Push ไปยัง branch `uat` เท่านั้น (ไม่ Push ไป `main` โดยตรง)
 - **UI Integrity:** ไม่ลบปุ่มหรือคอมโพเนนต์เดิม คงความสมบูรณ์ 100% สำหรับผู้ใช้ทั้ง Guest และ Authenticated User
 - **Comprehensive Delivery:** พัฒนาระบบให้ครบถ้วนเชื่อมโยงทั้ง End-to-End ตามโครงสร้าง v6.1
+
+---
+
+## 8. แผนงานในอนาคตและฟีเจอร์ระยะถัดไป (Future Roadmap & Post-MVP Backlog v2.0)
+เพื่อรักษาความกระชับ ความเสถียร และความรวดเร็วในการกู้ภัยของระบบ MVP ให้โฟกัสที่ **1-on-1 E2EE Chat (`0x02`), Emergency SOS (`0x01`) และ Crisis Feed (`0x04`)** ระบบจึงได้ถอดฟีเจอร์ด้านล่างนี้ไปพัฒนาในเวอร์ชันถัดไป (Roadmap v2.0):
+
+### 8.1 Group Chat & Topic Multi-Party Privacy Engine (Zero-Knowledge Group)
+- **Symmetric Group Key Distribution & Epoch Rotation Engine:**
+  - พัฒนา `src/core/crypto/GroupKeyManager.ts` สำหรับห้องแชตกลุ่มผู้ประสบภัยและกลุ่มทีมกู้ภัยประจำตำบล
+  - **Topic Secret Key (32 Bytes):** สร้างด้วย CSPRNG ประจำแต่ละ `Topic_ID` (4 Bytes)
+  - **Zero-Knowledge Multi-Party Privacy:** โหนดตัวกลางที่ช่วยรีเลย์ข้อความกลุ่ม จะเห็นเฉพาะ `Topic_ID` เพื่อส่งต่อตามเส้นทาง แต่ไม่สามารถถอดรหัสอ่านข้อความข้างในได้
+  - **Epoch Key Rotation (การขับไล่สมาชิกหรือเปลี่ยนเวร):**
+    - กำกับหัวซองกลุ่มด้วย `Key_Epoch (1 Byte)` เมื่อต้องการเตะสมาชิกหรือหมดกะกู้ภัย หัวหน้าห้องจะสร้าง Epoch ใหม่แล้วแจกจ่ายกุญแจใหม่ผ่าน 1-on-1 E2EE ให้สมาชิกที่เหลือ
+  - **Packet Frame `0x03` (`GROUP_CHAT`):** เปิดใช้งานเมื่อติดตั้งเอนจิน Group Key เต็มรูปแบบ
+  - UI Room Management: ระบบสร้างห้องกลุ่ม สแกน QR เข้าร่วมกลุ่มเฉพาะจุด และรายชื่อสมาชิกในห้อง
+
+### 8.2 LoRa ESP32 External Radio Bridge & Satellite Gateway
+- การเชื่อมต่อฮาร์ดแวร์ภายนอกผ่าน Serial/BLE สู่บอร์ด ESP32 LoRa 433/868/915 MHz สำหรับส่งสัญญาณข้ามเขา 10-30 กิโลเมตร
+- เชื่อมต่อ Iridium Go / Garmin InReach สำหรับทีมกู้ภัยพิเศษ
+
+### 8.3 Offline Voice Stream & Drone Data Mule Auto-Sync
+- ระบบสตรีมมิ่งเสียงแบบกดพูด Push-to-Talk ข้ามวง Mesh แบบกึ่งเรียลไทม์
+- โดรนบินสำรวจตรวจจับจุดขอความช่วยเหลือและดึงข้อมูลกลับฐานอัตโนมัติ (Drone Ferry Integration)
 
