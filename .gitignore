@@ -14,3 +14,6 @@ android/build/
 *.keystore
 *.jks
 scratch/
+implementation_plan.md
+TASK_LIST.md
+ROADMAP.md
