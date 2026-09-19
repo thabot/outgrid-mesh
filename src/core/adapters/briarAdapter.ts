@@ -1,43 +1,46 @@
 /**
- * Briar Bramble Transport Protocol (BTP) Bridge Adapter
- * OutGrid Mesh - Architectural Open Interoperability Layer
- * Author: Thabot <thabo47@gmail.com>
+ * Briar Bramble Transport Protocol (BTP) Adapter & Cross-Bridge
+ * Encapsulates TOG v1.1 packets into Briar Bramble Data Frame format
+ * Enables cross-network disaster communication between TOG and Briar nodes
+ * Creator & Lead Architect: Thabot <thabo47@gmail.com>
+ * Protocol: TOG v1.1 Briar Bramble Cross-Link
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
 
-import type { IProtocolAdapter } from './IProtocolAdapter.js';
-import type { ITOGPacket } from '../protocol/TOGPacket.js';
+import { ITOGPacket } from '../protocol/TOGPacket';
+import { PacketSerializer } from '../protocol/PacketSerializer';
 
-export class BriarAdapter implements IProtocolAdapter {
-  readonly protocolName = 'Briar-BTP-GPLv3';
-  private _isConnected = false;
-  private inboundCallback: ((packet: ITOGPacket) => void) | null = null;
+export interface IBrambleFrame {
+  streamId: number;
+  frameSequence: number;
+  payloadLength: number;
+  data: Uint8Array;
+}
 
-  get isConnected(): boolean {
-    return this._isConnected;
+export class BriarAdapter {
+  public static readonly BRIAR_TOG_STREAM_ID = 0x47; // 'G' for OutGrid
+
+  /**
+   * Packages TOG packet into a Briar Bramble Transport frame
+   */
+  public static togToBriar(packet: ITOGPacket, frameSequence = 0): IBrambleFrame {
+    const rawPacket = PacketSerializer.serialize(packet);
+    return {
+      streamId: BriarAdapter.BRIAR_TOG_STREAM_ID,
+      frameSequence,
+      payloadLength: rawPacket.length,
+      data: rawPacket,
+    };
   }
 
-  async initialize(): Promise<void> {
-    this._isConnected = false;
-  }
+  /**
+   * Extracts TOG packet from Briar Bramble Transport frame
+   */
+  public static briarToTog(frame: IBrambleFrame): ITOGPacket {
+    if (frame.streamId !== BriarAdapter.BRIAR_TOG_STREAM_ID) {
+      throw new Error(`Invalid Briar Stream ID: 0x${frame.streamId.toString(16)}`);
+    }
 
-  async connect(targetSocket?: string): Promise<boolean> {
-    // Connect Bluetooth RFCOMM / Wi-Fi Local Socket to Briar peer
-    this._isConnected = true;
-    return true;
-  }
-
-  async disconnect(): Promise<void> {
-    this._isConnected = false;
-  }
-
-  async relayOutbound(packet: ITOGPacket): Promise<boolean> {
-    if (!this._isConnected) return false;
-    // Translate TOG v1.1 to BTP Framing
-    return true;
-  }
-
-  onInboundPacket(callback: (packet: ITOGPacket) => void): void {
-    this.inboundCallback = callback;
+    return PacketSerializer.deserialize(frame.data);
   }
 }
