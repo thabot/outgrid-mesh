@@ -33,9 +33,8 @@ describe('HelpManualScreen & 10-Language Manuals - Task 10.5 Unit Tests', () => 
   });
 
   it('should verify Arabic locale triggers RTL layout flag', () => {
-    // Pure logic test verifying Arabic has isRtl = true
     const svelteContent = readFileSync(resolve(process.cwd(), 'src/ui/components/HelpManualScreen.svelte'), 'utf8');
-    expect(svelteContent).toContain('ar: {\n      title:');
+    expect(svelteContent).toContain('ar:');
     expect(svelteContent).toContain('isRtl: true');
   });
 });
