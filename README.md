@@ -5,7 +5,7 @@
 ### Autonomous, Decentralized, Zero-Cost Spatial Mesh Communication Grid for Disaster Response & Remote Operations
 
 [![GitHub Release](https://img.shields.io/github/v/release/thabot/outgrid-mesh?color=blue&include_prereleases&style=for-the-badge&logo=github)](https://github.com/thabot/outgrid-mesh/releases)
-[![Build & Release APK](https://img.shields.io/github/actions/workflow/status/thabot/outgrid-mesh/android-release.yml?branch=uat&style=for-the-badge&logo=githubactions)](https://github.com/thabot/outgrid-mesh/actions)
+[![Build & Release APK](https://img.shields.io/github/actions/workflow/status/thabot/outgrid-mesh/android-release.yml?branch=main&style=for-the-badge&logo=githubactions)](https://github.com/thabot/outgrid-mesh/actions)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-orange.svg?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web%20PWA-green.svg?style=for-the-badge&logo=android)](https://github.com/thabot/outgrid-mesh/releases/tag/v1.1.0-uat)
 [![Tests Passing](https://img.shields.io/badge/Tests-245%20passed%20(100%25)-brightgreen.svg?style=for-the-badge&logo=bun)](tests)
@@ -17,8 +17,8 @@
 
 [📥 Download Android APK](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0-uat/outgrid-rescue-uat.apk) •
 [📖 GitHub Releases](https://github.com/thabot/outgrid-mesh/releases/tag/v1.1.0-uat) •
+[📱 How to Use](#-how-to-use-3-simple-steps) •
 [🗺️ System Architecture](#-system-architecture) •
-[⚡ Getting Started](#-getting-started) •
 [🌐 10-Language Manuals](docs/manuals/) •
 [📄 License & Author](#-license--author)
 
@@ -34,17 +34,32 @@ Powered by the bit-level **Thabot OutGrid Protocol (TOG v1.1)**, every consumer 
 
 ---
 
-## 📥 Download & Install
+## 📥 Download & Install (For Users)
 
-Download the latest releases directly from GitHub:
+Users do not need to install any developer tools or compile code. Simply download the APK directly onto your Android phone and start communicating immediately:
 
 | Distribution | Version | Download Link | Details |
 | :--- | :---: | :---: | :--- |
 | **Android APK (Direct Sideload)** | `v1.1.0-uat` | [📲 **outgrid-rescue-uat.apk**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0-uat/outgrid-rescue-uat.apk) | Direct install on Android 8.0+ (Oreo to Android 15) |
 | **GitHub Releases Page** | `v1.1.0-uat` | [📦 **Release Notes & Assets**](https://github.com/thabot/outgrid-mesh/releases/tag/v1.1.0-uat) | Changelog, APK artifacts, and SHA-256 Checksums |
-| **Web PWA / Offline Bundle** | `v1.1.0` | [🌐 **SvelteKit PWA**](#-getting-started) | Runs in any modern browser with Service Worker offline cache |
+| **Web PWA / Browser App** | `v1.1.0` | [🌐 **Web Dashboard PWA**](https://outgrid-rescue.pages.dev) | Runs in any modern browser with offline service worker cache |
 
 > 💡 **Offline Wi-Fi Sideloading:** In isolated disaster zones without any internet connectivity, users can connect to the local Wi-Fi hotspot of an existing OutGrid Mesh device and open `http://192.168.49.1:8080` in their browser to download and install `OutGridMesh.apk` directly over-the-air.
+
+---
+
+## 📱 How to Use (3 Simple Steps)
+
+You don't need an account, phone number verification, or internet access to use OutGrid Mesh:
+
+1. **Step 1: Install & Open the APK**
+   - Download [`outgrid-rescue-uat.apk`](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0-uat/outgrid-rescue-uat.apk) and open the file on your Android device. Allow "Install from Unknown Sources" if prompted.
+2. **Step 2: Turn ON Bluetooth & Location**
+   - Grant Bluetooth and Nearby Devices permissions. The app will automatically discover neighbor nodes and establish an autonomous mesh grid in the background.
+3. **Step 3: Start Chatting or Press SOS**
+   - **Send Messages:** Tap any detected nearby survivor or rescuer to initiate end-to-end encrypted chats and voice memos.
+   - **Emergency SOS:** In critical danger, press the big **Red SOS Button** to blast your GPS coordinates, battery level, and triage status to all nodes within hopping range.
+   - **Share with Friends Offline:** Use the in-app **"Emergency APK Sideload"** feature to let friends without internet download the app directly from your phone.
 
 ---
 
@@ -142,8 +157,11 @@ graph LR
 
 ---
 
-## 📂 Project Directory Structure
+## 💻 Developer & Contributor Guide
 
+*(This section is strictly for open-source developers contributing to the codebase. End-users only need the APK above.)*
+
+### 1. Project Directory Structure
 ```text
 OutGridMesh/
 ├── .github/workflows/          # CI/CD Pipelines (Android APK build & GitHub Releases)
@@ -156,16 +174,6 @@ OutGridMesh/
 │   └── build.gradle                      # Android Build Configuration (AGP 8.2.2)
 ├── docs/
 │   └── manuals/                # 10-Language Emergency Field Survival Manuals
-│       ├── manual.en.md        # English
-│       ├── manual.th.md        # Thai
-│       ├── manual.zh.md        # Chinese
-│       ├── manual.es.md        # Spanish
-│       ├── manual.hi.md        # Hindi
-│       ├── manual.ar.md        # Arabic (RTL)
-│       ├── manual.fr.md        # French
-│       ├── manual.ru.md        # Russian
-│       ├── manual.pt.md        # Portuguese
-│       └── manual.ja.md        # Japanese
 ├── src/
 │   ├── core/                   # Platform-Independent Core Engine (Clean Architecture)
 │   │   ├── crypto/             # E2EE (X25519 + AES-256-GCM), Ed25519 Signatures, HKDF
@@ -177,8 +185,8 @@ OutGridMesh/
 │   │   ├── routing/            # Epidemic Gossip Router, Dynamic Hop Decay, Bloom Filter
 │   │   ├── spatial/            # 4-Tier H3 Geo-Hashing, Vector Basemap Parser, Radar Nav
 │   │   └── storage/            # 50MB FIFO Quota Clamping Engine, SQLite/IndexedDB
-│   └── ui/                     # Svelte 5 / SvelteKit High-Contrast Dark Mode UI & PWA
-│       └── components/         # DonationDashboard, HelpManualScreen, CrisisFeed, RadarView
+│   ├── routes/                 # SvelteKit Root Pages & Layouts
+│   └── ui/                     # Svelte 5 High-Contrast Dark Mode UI Components
 ├── scripts/
 │   ├── checkSyntax.js          # AST Syntax Verification Guard (Scans 160+ files)
 │   └── generateTestVectorMap.js# 5MB Offline Basemap Generator
@@ -186,53 +194,24 @@ OutGridMesh/
 └── package.json                # SvelteKit, Bun, Noble Cryptography, H3 Spatial
 ```
 
----
-
-## ⚡ Getting Started
-
-### Prerequisites
-- [Bun](https://bun.sh/) (recommended for sub-second automated test execution) or [Node.js](https://nodejs.org/) v20+
-- [Android Studio](https://developer.android.com/studio) / Android SDK 34 (for compiling native Android APK)
-
-### 1. Install Dependencies
+### 2. Local Setup & Testing
 ```bash
+# Install dependencies
 bun install
-```
 
-### 2. Verify Syntax across Codebase
-Run AST syntax checks across all TypeScript, JavaScript, and JSON files:
-```bash
+# Verify codebase syntax
 bun run check:syntax
-# or node scripts/checkSyntax.js
-```
 
-### 3. Run Automated Test Suite
-Execute all 245 unit and integration tests:
-```bash
+# Run 245 automated unit & integration tests
 bun test
-```
 
-### 4. Run Web UI in Development Mode
-```bash
-bun dev
-```
-Navigate your browser to `http://localhost:5173`.
-
----
-
-## 🛠️ Building Android APK
-
-Build the APK locally or rely on automated GitHub Actions CI/CD workflows:
-
-```bash
-cd android
-./gradlew assembleDebug
-# Generated APK will be available at: android/app/build/outputs/apk/debug/app-debug.apk
+# Build Web PWA bundle
+bun run build
 ```
 
 ---
 
-## 🗺️ Project Milestones & Roadmap
+## 🗺️ Project Milestones & Completed Roadmap
 
 - [x] **Phase 1:** Clean Architecture, Strict TypeScript, Bun Tooling & AST Syntax Guard.
 - [x] **Phase 2:** TOG v1.1 Bitfield Packing, Reed-Solomon 8+4 FEC & Sliding Window NACK.
