@@ -14,8 +14,10 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@noble/hashes": "^1.7.1",
+    "@noble/ciphers": "^2.4.0",
+    "@noble/curves": "^2.4.0",
     "@noble/ed25519": "^2.2.3",
+    "@noble/hashes": "^1.7.1",
     "h3-js": "^4.1.0",
     "idb": "^8.0.2"
   },

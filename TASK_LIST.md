@@ -30,7 +30,7 @@
 ## 📦 SPRINT 1: โพรโทคอลระดับบิตและความปลอดภัย (Phase 1: Protocol & Crypto Engine)
 > **เป้าหมาย:** สร้างรากฐานการแปลงข้อมูลเป็นไบต์ตามมาตรฐาน TOG v1.1, การคำนวณ H3 Delta Offset <1m, การเข้ารหัส E2EE AES-256-GCM สองชั้น และลายเซ็น Ed25519
 
-- [ ] **Task 1.1: พัฒนาเอนจินเข้ารหัส/ถอดรหัสแพ็กเก็ต TOG v1.1 Wire Format**
+- [x] **Task 1.1: พัฒนาเอนจินเข้ารหัส/ถอดรหัสแพ็กเก็ต TOG v1.1 Wire Format**
   - **ไฟล์เป้าหมาย:** `src/core/protocol/PacketSerializer.ts`, `src/core/protocol/TOGPacket.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/protocol/PacketSerializer.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -39,7 +39,7 @@
     - ตรวจสอบขนาด SOS Beacon ดั้งเดิมต้อง $\le 21$ ไบต์
   - **คำสั่งทดสอบ:** `bun test tests/unit/protocol/PacketSerializer.test.ts`
 
-- [ ] **Task 1.2: พัฒนาระบบบีบอัดพิกัด GPS แม่นยำสูง H3 Delta Compressor (<1 เมตร)**
+- [x] **Task 1.2: พัฒนาระบบบีบอัดพิกัด GPS แม่นยำสูง H3 Delta Compressor (<1 เมตร)**
   - **ไฟล์เป้าหมาย:** `src/core/spatial/H3DeltaCompressor.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/protocol/H3DeltaCompressor.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -47,7 +47,7 @@
     - ฟังก์ชันถอดรหัส Delta Offset กลับเป็นพิกัด GPS ละติจูด/ลองจิจูด ความคลาดเคลื่อนต้องน้อยกว่า 1 เมตร
   - **คำสั่งทดสอบ:** `bun test tests/unit/protocol/H3DeltaCompressor.test.ts`
 
-- [ ] **Task 1.3: พัฒนาระบบเข้ารหัสลับสองชั้นแบบ End-to-End Encryption (E2EE Engine)**
+- [x] **Task 1.3: พัฒนาระบบเข้ารหัสลับสองชั้นแบบ End-to-End Encryption (E2EE Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/crypto/CryptoEngine.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/protocol/CryptoEngine.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -56,7 +56,7 @@
     - ควบคุม Security Overhead เพิ่มเติมไม่เกิน 28 ไบต์ (IV 12B + Tag 16B)
   - **คำสั่งทดสอบ:** `bun test tests/unit/protocol/CryptoEngine.test.ts`
 
-- [ ] **Task 1.4: พัฒนาระบบลายเซ็นดิจิทัลและสกัดกั้นการปลอมแปลง (Ed25519 Sign/Verify Engine)**
+- [x] **Task 1.4: พัฒนาระบบลายเซ็นดิจิทัลและสกัดกั้นการปลอมแปลง (Ed25519 Sign/Verify Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/crypto/DigitalSignature.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/protocol/DigitalSignature.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -64,7 +64,7 @@
     - ตรวจสอบความถูกต้องของ Signature ป้องกันการส่งสปอยล์หรือข่าวปลอมเข้าสู่วง Mesh
   - **คำสั่งทดสอบ:** `bun test tests/unit/protocol/DigitalSignature.test.ts`
 
-- [ ] **Task 1.5: พัฒนาตัวกรองข้อความซ้ำ Counting Bloom Filter และ LRU Cache**
+- [x] **Task 1.5: พัฒนาตัวกรองข้อความซ้ำ Counting Bloom Filter และ LRU Cache**
   - **ไฟล์เป้าหมาย:** `src/core/protocol/BloomFilter.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/protocol/BloomFilter.test.ts`
   - **รายละเอียดการทำงาน:**
