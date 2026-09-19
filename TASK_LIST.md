@@ -177,7 +177,7 @@
 ## 🗺️ SPRINT 4: แผนที่เวกเตอร์ออฟไลน์และเรดาร์ H3 (Phase 5: Spatial Engine & Map)
 > **เป้าหมาย:** แผนที่โลกเวกเตอร์ออฟไลน์ขนาดเล็ก <5MB, เข็มทิศเรดาร์หาพิกัด SOS และการรักษาความเป็นส่วนตัว K-Anonymity
 
-- [ ] **Task 4.1: พัฒนาระบบรวมพิกัดหกเหลี่ยมแบบลำดับชั้น (H3 Hierarchy Fallback Engine)**
+- [x] **Task 4.1: พัฒนาระบบรวมพิกัดหกเหลี่ยมแบบลำดับชั้น (H3 Hierarchy Fallback Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/spatial/H3Hierarchy.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/spatial/H3HierarchyFallback.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -185,7 +185,7 @@
     - ช่วยให้แสดงผลแผนที่ภาพรวมระดับอำเภอ/จังหวัดได้โดยไม่ต้องโหลดพิกัดระดับเมตร
   - **คำสั่งทดสอบ:** `bun test tests/unit/spatial/H3HierarchyFallback.test.ts`
 
-- [ ] **Task 4.2: พัฒนาระบบอ่านไฟล์แผนที่เวกเตอร์โลกออฟไลน์ (Vector Tile Parser)**
+- [x] **Task 4.2: พัฒนาระบบอ่านไฟล์แผนที่เวกเตอร์โลกออฟไลน์ (Vector Tile Parser)**
   - **ไฟล์เป้าหมาย:** `src/core/spatial/VectorTileParser.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/spatial/VectorTileParser.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -193,7 +193,7 @@
     - วาดแผนที่ลง Canvas / MapLibre GL ได้โดยไม่ต้องเชื่อมต่ออินเทอร์เน็ต
   - **คำสั่งทดสอบ:** `bun test tests/unit/spatial/VectorTileParser.test.ts`
 
-- [ ] **Task 4.3: พัฒนาระบบแคชข้อมูลแผนที่ออฟไลน์ในเครื่อง (Offline Spatial Cache)**
+- [x] **Task 4.3: พัฒนาระบบแคชข้อมูลแผนที่ออฟไลน์ในเครื่อง (Offline Spatial Cache)**
   - **ไฟล์เป้าหมาย:** `src/core/spatial/OfflineSpatialCache.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/spatial/OfflineSpatialCache.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -201,7 +201,7 @@
     - จัดการพื้นที่ด้วยนโยบาย FIFO Eviction เมื่อขนาดเกินโควตา
   - **คำสั่งทดสอบ:** `bun test tests/unit/spatial/OfflineSpatialCache.test.ts`
 
-- [ ] **Task 4.4: พัฒนาเอนจินเข็มทิศเรดาร์นำทางสู่จุดขอความช่วยเหลือ (SOS Radar Engine)**
+- [x] **Task 4.4: พัฒนาเอนจินเข็มทิศเรดาร์นำทางสู่จุดขอความช่วยเหลือ (SOS Radar Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/spatial/SosRadarEngine.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/spatial/SosRadarEngine.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -209,7 +209,7 @@
     - อัปเดตทิศทางการเดินแบบ Real-time นำทางทีมกู้ภัยเข้าหาผู้ประสบภัยแม้ไม่มีถนน
   - **คำสั่งทดสอบ:** `bun test tests/unit/spatial/SosRadarEngine.test.ts`
 
-- [ ] **Task 4.5: พัฒนาระบบทำแผนที่ความร้อนแบบไม่ระบุตัวตน (K-Anonymity Heatmap)**
+- [x] **Task 4.5: พัฒนาระบบทำแผนที่ความร้อนแบบไม่ระบุตัวตน (K-Anonymity Heatmap)**
   - **ไฟล์เป้าหมาย:** `src/core/spatial/KAnonymityHeatmap.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/spatial/KAnonymityHeatmap.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -217,7 +217,7 @@
     - แสดงจุดความหนาแน่นเฉพาะเมื่อมีโหนดในหกเหลี่ยมนั้นตั้งแต่ 3 เครื่องขึ้นไป ($K \ge 3$)
   - **คำสั่งทดสอบ:** `bun test tests/unit/spatial/KAnonymityHeatmap.test.ts`
 
-- [ ] **Task 4.6: พัฒนาระบบดึงแผนที่ผ่าน Cloudflare Edge Cache (Tile Proxy Client)**
+- [x] **Task 4.6: พัฒนาระบบดึงแผนที่ผ่าน Cloudflare Edge Cache (Tile Proxy Client)**
   - **ไฟล์เป้าหมาย:** `src/core/spatial/TileProxyClient.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/spatial/TileProxyClient.test.ts`
   - **รายละเอียดการทำงาน:**
