@@ -505,24 +505,52 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 ---
 
 ### 🔹 Phase 3: Zero-Knowledge Cryptography Engine & Offline QR Pairing
-**เป้าหมาย:** พัฒนาระบบเข้ารหัสลับ End-to-End ไร้ศูนย์กลาง (E2EE) ด้วย X25519, AES-256-GCM, Ed25519 พร้อมจับคู่กุญแจแบบ Offline QR Code
+**เป้าหมาย:** พัฒนาระบบเข้ารหัสลับ End-to-End ไร้ศูนย์กลาง (E2EE) ประสิทธิภาพสูงด้วย Ed25519, X25519 ECDH, HKDF-SHA256, AES-256-GCM พร้อมระบบจับคู่กุญแจ Offline Dynamic QR Code และ Visual Emoji Fingerprint
 
 #### 📋 TaskList Detail:
-- [ ] **Task 3.1: Identity Keypair Generation & Storage**
-  - พัฒนา `src/core/crypto/KeyManager.ts` สร้าง Master Ed25519/X25519 Keypair
-  - ระบบ Keystore ปลอดภัย (Android Hardware Keystore / SecureStorage)
-- [ ] **Task 3.2: E2EE Direct Messaging (ECDH + AES-256-GCM)**
-  - พัฒนา `src/core/crypto/CipherEngine.ts` คำนวณ Shared Secret ผ่าน X25519 ECDH
-  - เข้ารหัสและถอดรหัสแบบ AES-256-GCM (Ciphertext + 12B IV + 16B Auth Tag = 28B Overhead)
-- [ ] **Task 3.3: Digital Signature & Authority Broadcast Verification**
-  - พัฒนาการเซ็นและตรวจสอบลายเซ็น Ed25519 สำหรับประกาศทางการของศูนย์กู้ภัย/เตือนภัยพิบัติ
-- [ ] **Task 3.4: Offline QR Code Out-of-Band Pairing Engine**
-  - พัฒนาโมดูลสร้างและสแกน Dynamic QR Code บรรจุ Public Key + Ephemeral Nonce
-  - ป้องกันการโจมตีแบบ Man-in-the-Middle (MitM) โดยไม่ต้องใช้อินเทอร์เน็ต
+- [ ] **Task 3.1: BIP-39 Seed Derivation & Dual-Keypair Identity Engine (Ed25519 + X25519 ⭐️)**
+  - พัฒนา `src/core/crypto/KeyManager.ts` จัดการวงจรชีวิตตัวตนดิจิทัล (Self-Sovereign Identity)
+  - **Deterministic Derivation:** สุ่มสร้าง Entropy 128-bit แปลงเป็น **Mnemonic Seed 12 คำ (BIP-39)** ครั้งเดียว และแตกแขนงกุญแจผ่าน SLIP-0010 / HKDF:
+    - **Ed25519 Identity Signing Key (32B Private / 32B Public):** สำหรับเซ็นกำกับตัวตน (Digital Signature) ในแพ็กเก็ต SOS, Heartbeat, ใบเสร็จ ACK, และการรับรองสิทธิ์กู้ภัย
+    - **X25519 Diffie-Hellman Key (32B Private / 32B Public):** สำหรับทำ Key Agreement แลกเปลี่ยนกุญแจเข้ารหัสแชต 1-on-1 แบบสองชั้น
+  - **Node ID Generation:** สร้าง `node_id_hash` (8 Bytes uint64) จาก Truncated SHA-256 ของ Ed25519 Public Key เพื่อใช้เป็นรหัสประจำตัวความยาวคงที่ใน Header TOG v1.1
+  - รองรับการ Export / Import กู้คืนกระเป๋ากุญแจด้วย Mnemonic Phrase 12 คำ 100%
+- [ ] **Task 3.2: E2EE Direct Messaging Engine (Static-Ephemeral ECDH + HKDF + AES-256-GCM ⭐️)**
+  - พัฒนา `src/core/crypto/CipherEngine.ts` ป้องกันการดักฟังและปลอมแปลงข้อความ:
+  - **Session Key Derivation:**
+    - ผู้ส่งสร้าง Ephemeral X25519 Keypair ชั่วคราว สลับกุญแจกับ Recipient Public Key ได้ Shared Secret 32 ไบต์
+    - ปั่นกุญแจผ่าน **HKDF-SHA256** พร้อม Salt สุ่ม และ Info String `"TOG-v1.1-E2EE-Direct"` ได้ `Key_enc` (32 Bytes)
+  - **Authenticated Encryption (AEAD):**
+    - เข้ารหัสด้วย **AES-256-GCM** สุ่ม Initial Vector (`IV` 12 Bytes) ต่อข้อความ
+    - สร้าง Authentication Tag (`Tag` 16 Bytes) เพื่อตรวจจับการแก้ไขข้อมูลระหว่างทาง (Tamper-Proof)
+    - **Strict Wire Overhead:** ควบคุม Overhead คงที่เป๊ะที่ **28 ไบต์** (`12B IV + 16B Tag`) ทำให้ข้อความ Text 280 ตัวอักษรส่งผ่าน BLE Coded PHY ได้เร็วในเสี้ยววินาที
+- [ ] **Task 3.3: Dynamic QR Code Binary Protocol & Visual Emoji Fingerprint (Anti-MitM Pairing ⭐️)**
+  - พัฒนา `src/core/crypto/QrPairingEngine.ts` สร้างและสแกน Dynamic QR Code แบบออฟไลน์ 100%
+  - **Compact Binary QR Payload (ความยาวกะทัดรัดเพียง 80–110 Bytes เพื่อให้กล้องมือถือราคาถูกสแกนติดง่ายในที่มืด/จอแตก):**
+    - `[Magic 2B: 0x4F47 ("OG")]` + `[Version 1B: 0x01]` + `[Pairing_Type 1B]` (0x01=Friend, 0x02=Responder Delegation, 0x03=Group Key)
+    - `[Ed25519_PubKey 32B]` + `[X25519_PubKey 32B]` + `[Ephemeral_Nonce 8B]` + `[Nickname UTF-8 1-16B]` + `[Ed25519_Signature 64B]`
+  - **Visual Emoji Fingerprint & Safety Numbers (ยืนยันความปลอดภัยด้วยสายตา):**
+    - ปั่นแฮช `SHA-256(Key_A || Key_B)` แปลงเป็น **อีโมจิ 4 ตัวสากล** (เช่น 🦁 🌊 🏔️ 🚀) แสดงบนหน้าจอคู่สนทนา
+    - ผู้ใช้มองเห็นหน้ากันเทียบอีโมจิ 4 ตัวตรงกัน ➔ สกัดกั้นการโจมตีแบบสวมรอยตัวกลาง (Man-in-the-Middle) ได้ 100% โดยไม่ต้องพึ่งพาอินเทอร์เน็ต
+- [ ] **Task 3.4: Symmetric Group Key Distribution & Epoch Rotation Engine (Zero-Knowledge Group ⭐️)**
+  - พัฒนา `src/core/crypto/GroupKeyManager.ts` สำหรับห้องแชตกลุ่มผู้ประสบภัยและกลุ่มทีมกู้ภัยประจำตำบล:
+  - **Topic Secret Key (32 Bytes):** สร้างด้วย CSPRNG ประจำแต่ละ `Topic_ID` (4 Bytes)
+  - **Zero-Knowledge Multi-Party Privacy:** โหนดตัวกลางที่ช่วยรีเลย์ข้อความกลุ่ม จะเห็นเฉพาะ `Topic_ID` เพื่อส่งต่อตามเส้นทาง แต่ไม่สามารถถอดรหัสอ่านข้อความข้างในได้
+  - **Epoch Key Rotation (การขับไล่สมาชิกหรือเปลี่ยนเวร):**
+    - กำกับหัวซองกลุ่มด้วย `Key_Epoch (1 Byte)` เมื่อต้องการเตะสมาชิกหรือหมดกะกู้ภัย หัวหน้าห้องจะสร้าง Epoch ใหม่แล้วแจกจ่ายกุญแจใหม่ผ่าน 1-on-1 E2EE ให้สมาชิกที่เหลือ
+- [ ] **Task 3.5: Hardware-Backed Secure Keystore & WebCrypto Storage Adapter (⭐️)**
+  - พัฒนา `src/core/crypto/SecureStorageAdapter.ts`:
+  - **Android Native Shell:** จัดเก็บ Private Seed ใน **Android Keystore System (TEE / StrongBox Hardware-Backed)** เข้ารหัสทับด้วยระดับ Master Key ป้องกันการขโมยกุญแจแม้เครื่องจะถูกรูท (Root)
+  - **Web PWA / Desktop Shell:** จัดเก็บผ่าน **Web Crypto API (SubtleCrypto non-extractable CryptoKey)** หรือ IndexedDB เข้ารหัสลับด้วย PBKDF2/Argon2id Passphrase
+- [ ] **Task 3.6: Digital Signature & Authority Broadcast Verification**
+  - พัฒนาการเซ็นและตรวจสอบลายเซ็น Ed25519 สำหรับประกาศทางการของศูนย์กู้ภัย/เตือนภัยพิบัติ (CAP Ingestion)
+  - สกัดกั้นข่าวปลอม (Fake News / Panic Hoax) โดยแอปจะปฏิเสธการบรอดแคสต์ประกาศใดๆ ที่ไม่มี Master Authority Signature ที่ถูกต้อง
 
 #### 🎯 Acceptance Criteria:
-- Unit Test ฟังก์ชันเข้ารหัส/ถอดรหัส E2EE ทนทานต่อการแก้ไขข้อมูล (Auth Tag Mismatch ถอดรหัสไม่ผ่าน)
-- การทดสอบจับคู่ Public Key ผ่าน QR Code ได้รับการยืนยัน Fingerprint ตรงกัน 100%
+- Unit Test สร้าง Mnemonic 12 คำ และแตกแขนง Ed25519/X25519 ได้ค่าเดียวกันสม่ำเสมอ (Deterministic)
+- ฟังก์ชันเข้ารหัส/ถอดรหัส E2EE ทนทานต่อการแก้ไขข้อมูล (Auth Tag Mismatch ถอดรหัสไม่ผ่าน) และกิน Overhead เพียง 28 ไบต์
+- Dynamic QR Code สามารถอ่านค่า Keypair ครบถ้วนในขนาด <110 ไบต์ และ Visual Emoji Fingerprint คำนวณตรงกันทั้งสองฝั่ง 100%
+- ข้อความกลุ่มถอดรหัสได้เฉพาะผู้ถือ Group Topic Key และโหนดตัวกลางไม่สามารถดักอ่านข้อมูลได้ 100%
 
 ---
 
