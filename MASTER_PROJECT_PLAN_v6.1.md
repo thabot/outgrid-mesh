@@ -1452,18 +1452,117 @@ OutGridMesh/                               # Root Directory (เดิมคื�
    - มีหน้า Dashboard แสดงค่าใช้จ่ายจริงของคลาวด์เทียบกับยอดเงินบริจาคคงเหลือแบบ Real-time
    - หากมียอดบริจาคคงเหลือ จะนำไปจัดซื้ออุปกรณ์ฮาร์ดแวร์จริง เช่น บอร์ด **ESP32 Solar Repeater** มอบให้แก่ชุมชนในพื้นที่เสี่ยงภัยน้ำท่วม/ดินถล่มในถิ่นทุรกันดาร
 3. **P2P Federation (การกระจายภาระแม่ข่าย):**
-   - เปิดให้มหาวิทยาลัย, เทศบาล, หรือศูนย์กู้ภัยท้องถิ่น สามารถรันแม่ข่ายประจำจังหวัดเพื่อช่วยกระจายภาระค่าใช้จ่ายและทำให้เครือข่ายไม่มีวันล่ม
+---
+
+## 7. แผนและขั้นตอนการ Deploy ระบบสู่สภาพแวดล้อมจริง (Deployment Architecture, Pipeline & Release Strategy 🚀)
+
+เพื่อให้การปล่อยระบบ OutGrid Mesh สู่การใช้งานจริงของเจ้าหน้าที่กู้ภัยและประชาชนเป็นไปอย่างแม่นยำ ปลอดภัย และไร้ค่าใช้จ่ายเซิร์ฟเวอร์ ($0) แผนการ Deploy จึงถูกแบ่งออกเป็น **4 ช่องทางหลัก (4 Deployment Pipelines)** พร้อมระบบตรวจสอบอัตโนมัติ (Automated CI/CD):
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                OutGrid Mesh End-to-End Deployment Pipeline                             │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                        │
+│  [ Git Push: uat ] ──► [ GitHub Actions CI Pipeline ]                                                 │
+│                             │                                                                          │
+│                             ├─► Step 1: Syntax Check (`node scripts/checkSyntax.js`)                   │
+│                             ├─► Step 2: Full Unit Tests 51 Suites (`bun test`)                         │
+│                             ├─► Step 3: TypeScript Typecheck (`svelte-check`)                          │
+│                             └─► Step 4: Svelte/Vite Static Assets Compile (`bun run build`)            │
+│                                           │                                                            │
+│     ┌─────────────────────────────────────┼─────────────────────────────────────┐                      │
+│     ▼                                     ▼                                     ▼                      │
+│ [ Pipeline 1: Frontend Web ]    [ Pipeline 2: Cloudflare Worker ]    [ Pipeline 3: Android APK ]       │
+│ • Cloudflare Pages              • Wrangler CLI Publish              • Gradle Release Build             │
+│ • Deploy: `build/`              • Deploy: `cloudflare/worker.ts`    • Sign: Ed25519 / APK Keystore     │
+│ • URL: outgrid-rescue.pages.dev • URL: api.outgrid-mesh.workers.dev • Output: `outgrid-rescue.apk`      │
+│ • Zero Egress Bandwidth         • Auto-Migrate D1 Schema            • Upload to GitHub Release & R2    │
+│                                                                                 │                      │
+│                                                                                 ▼                      │
+│                                                                     [ Pipeline 4: Offline P2P ]        │
+│                                                                     • ฝังไฟล์ APK ลง Asset ในแอป       │
+│                                                                     • กระจายต่อผ่าน Local Hotspot      │
+│                                                                     • Zero-Internet Sideload (Port 8080)│
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 7.1 รายละเอียดการ Deploy แต่ละช่องทาง (4 Target Deployment Environments)
+
+#### 🌐 1. Deployment: Cloudflare Pages (Frontend Web Dashboard & Responders Map)
+- **เครื่องมือ Deploy:** Cloudflare Pages Git Integration หรือผ่าน Wrangler CLI:
+  ```bash
+  # บิลด์เว็บแอปพลิเคชัน Static Bundle
+  bun run build
+  # ปล่อยขึ้น Cloudflare Pages
+  npx wrangler pages deploy build/ --project-name outgrid-rescue --branch production
+  ```
+- **ผลลัพธ์การ Deploy:** 
+  - เข้าถึงได้ทั่วโลกผ่านโดเมน: `https://outgrid-rescue.pages.dev` (หรือ Custom Domain เช่น `rescue.outgrid.org`)
+  - โหลดไว <50ms ผ่าน Edge Data Center 300+ เมืองทั่วโลก (รวมถึงโหนดกรุงเทพฯ BKK)
+  - มีระบบ Instant Rollback ถอยเวอร์ชันได้ทันทีใน 1 วินาทีหากเกิดข้อผิดพลาด
+
+#### ⚡ 2. Deployment: Cloudflare Workers & D1 Spatial Database (Backend API Gateway)
+- **เครื่องมือ Deploy:** Cloudflare Wrangler CLI v3+
+- **คำสั่งและขั้นตอน Deploy:**
+  ```bash
+  # 1. รันการอัปเดตโครงสร้างฐานข้อมูล D1 (Database Schema Migration)
+  npx wrangler d1 execute outgrid-mesh-db --file=./cloudflare/schema.sql --remote
+
+  # 2. ปล่อยโค้ด API Gateway ขึ้น Cloudflare Edge ทั่วโลก
+  npx wrangler deploy --env production
+  ```
+- **คอนฟิกสำคัญ (`wrangler.toml`):**
+  - กำหนด Environment Variables: `COMPLIANCE_MODE=PRODUCTION`, `ALERT_INGEST_RATE_LIMIT=60`
+  - ผูกโยง D1 Database Binding (`DB`) และ KV Binding (`NONCE_KV`)
+- **ผลลัพธ์การ Deploy:**
+  - Endpoint พร้อมรับโหลดทั่วโลก: `https://api.outgrid-mesh.workers.dev`
+  - ขยายขนาดรองรับแสนคำขอ/วันได้อัตโนมัติ (Zero Cold-Start)
+
+#### 📱 3. Deployment: Android Native APK & Cloudflare R2 Distribution (Mobile App Release)
+- **เครื่องมือ Deploy:** Capacitor Android CLI + Android Gradle Build
+- **คำสั่งและขั้นตอน Build & Sign:**
+  ```bash
+  # 1. ซิงก์โค้ด Frontend เข้าสู่ Native Android Wrapper
+  bun run build
+  npx cap sync android
+
+  # 2. คอมไพล์เป็น Release APK
+  cd android && ./gradlew assembleRelease
+  ```
+- **การแจกจ่ายตัวติดตั้ง (Dual Distribution Channels):**
+  - **ช่องทางที่ 1 (GitHub Releases):** อัปโหลดไฟล์ `outgrid-rescue-v1.1.apk` ขึ้น GitHub Releases อัตโนมัติ พร้อมแสดง SHA-256 Checksum ชัดเจน
+  - **ช่องทางที่ 2 (Cloudflare R2 Storage):** อัปโหลดขึ้น R2 Bucket (`r2.outgrid.org/download/outgrid-rescue.apk`) เพื่อให้ประชาชนโหลดฟรีไม่มีค่า Egress Bandwidth
+
+#### 📶 4. Deployment: Local Offline Zero-Internet Hotspot (P2P Field Distribution)
+- **การปล่อยแอปในสนามรบจริง (Disaster Zone):**
+  - ไม่ต้องพึ่งเน็ตหรือเซิร์ฟเวอร์ใดๆ ในโลก
+  - ไฟล์ `outgrid-rescue.apk` จะถูกบิลด์ฝังไว้ในที่เก็บข้อมูลภายในของแอป (App Internal Assets)
+  - เมื่อเปิดเมนู **"แชร์แอปให้อีกเครื่อง (Offline APK Sideload)"** โทรศัพท์จะเปิด Local Hotspot และรัน Micro HTTP Server (Port 8080) ส่งไฟล์ APK ให้เครื่องข้างเคียงทันที
 
 ---
 
-## 7. ข้อกำหนดการทำงานและการส่งมอบ (Compliance & Delivery Rules)
+### 7.2 ระบบตรวจสอบและไปป์ไลน์อัตโนมัติ (CI/CD Quality Gates & Release Policy)
+1. **Pre-commit Gate (ความปลอดภัยฝั่ง Local):**
+   - รัน `node scripts/checkSyntax.js` ตรวจสอบไวยากรณ์ทุกไฟล์
+   - ตรวจสอบว่าไม่มี API Keys หรือ Secret รั่วไหลลง Git
+2. **Automated Continuous Integration (GitHub Actions Workflow):**
+   - ทริกเกอร์อัตโนมัติทุกครั้งที่มีการ Push สู่ branch `uat`
+   - รัน `bun test` เพื่อยืนยันว่า **Unit Test ทั้ง 51 ชุด ต้องผ่าน 100% (Zero Failure)**
+   - หากชุดทดสอบใดเฟล ระบบจะระงับการ Deploy ทันที
+3. **Branching & Promotion Strategy (นโยบายสาขา Git):**
+   - **`uat` Branch (Active Development & Staging):** โค้ดที่ผ่านการทดสอบจะถูกพุชมาที่นี่เพื่อทดสอบระบบ E2E
+   - **`main` Branch (Production Stable):** จะทำการ Fast-forward Merge จาก `uat` เมื่อผ่านการทดสอบภาคสนาม (Field Test) และได้รับการอนุมัติอย่างเป็นทางการเท่านั้น
+
+---
+
+## 8. ข้อกำหนดการทำงานและการส่งมอบ (Compliance & Delivery Rules)
 - **Git Branch:** เมื่อพัฒนาและทดสอบผ่าน 100% แล้ว จะทำการ Commit และ Push ไปยัง branch `uat` เท่านั้น (ไม่ Push ไป `main` โดยตรง)
 - **UI Integrity:** ไม่ลบปุ่มหรือคอมโพเนนต์เดิม คงความสมบูรณ์ 100% สำหรับผู้ใช้ทั้ง Guest และ Authenticated User
 - **Comprehensive Delivery:** พัฒนาระบบให้ครบถ้วนเชื่อมโยงทั้ง End-to-End ตามโครงสร้าง v6.1
 
 ---
 
-## 8. แผนงานในอนาคตและฟีเจอร์ระยะถัดไป (Future Roadmap & Post-MVP Backlog v2.0)
+## 9. แผนงานในอนาคตและฟีเจอร์ระยะถัดไป (Future Roadmap & Post-MVP Backlog v2.0)
 เพื่อรักษาความกระชับ ความเสถียร และความรวดเร็วในการกู้ภัยของระบบ MVP ให้โฟกัสที่ **1-on-1 E2EE Chat (`0x02`), Emergency SOS (`0x01`) และ Crisis Feed (`0x04`)** ระบบจึงได้ถอดฟีเจอร์ด้านล่างนี้ไปพัฒนาในเวอร์ชันถัดไป (Roadmap v2.0):
 
 ### 8.1 Group Chat & Topic Multi-Party Privacy Engine (Zero-Knowledge Group)
