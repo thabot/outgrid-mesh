@@ -524,14 +524,15 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - เข้ารหัสด้วย **AES-256-GCM** สุ่ม Initial Vector (`IV` 12 Bytes) ต่อข้อความ
     - สร้าง Authentication Tag (`Tag` 16 Bytes) เพื่อตรวจจับการแก้ไขข้อมูลระหว่างทาง (Tamper-Proof)
     - **Strict Wire Overhead:** ควบคุม Overhead คงที่เป๊ะที่ **28 ไบต์** (`12B IV + 16B Tag`) ทำให้ข้อความ Text 280 ตัวอักษรส่งผ่าน BLE Coded PHY ได้เร็วในเสี้ยววินาที
-- [ ] **Task 3.3: Dynamic QR Code Binary Protocol & Visual Emoji Fingerprint (Anti-MitM Pairing ⭐️)**
+- [ ] **Task 3.3: Dynamic QR Code Binary Protocol & 6-8 Digit Safety Numbers (Anti-MitM Pairing ⭐️)**
   - พัฒนา `src/core/crypto/QrPairingEngine.ts` สร้างและสแกน Dynamic QR Code แบบออฟไลน์ 100%
   - **Compact Binary QR Payload (ความยาวกะทัดรัดเพียง 80–110 Bytes เพื่อให้กล้องมือถือราคาถูกสแกนติดง่ายในที่มืด/จอแตก):**
     - `[Magic 2B: 0x4F47 ("OG")]` + `[Version 1B: 0x01]` + `[Pairing_Type 1B]` (0x01=Friend, 0x02=Responder Delegation, 0x03=Group Key)
     - `[Ed25519_PubKey 32B]` + `[X25519_PubKey 32B]` + `[Ephemeral_Nonce 8B]` + `[Nickname UTF-8 1-16B]` + `[Ed25519_Signature 64B]`
-  - **Visual Emoji Fingerprint & Safety Numbers (ยืนยันความปลอดภัยด้วยสายตา):**
-    - ปั่นแฮช `SHA-256(Key_A || Key_B)` แปลงเป็น **อีโมจิ 4 ตัวสากล** (เช่น 🦁 🌊 🏔️ 🚀) แสดงบนหน้าจอคู่สนทนา
-    - ผู้ใช้มองเห็นหน้ากันเทียบอีโมจิ 4 ตัวตรงกัน ➔ สกัดกั้นการโจมตีแบบสวมรอยตัวกลาง (Man-in-the-Middle) ได้ 100% โดยไม่ต้องพึ่งพาอินเทอร์เน็ต
+  - **6-8 Digit Safety Numbers (รหัสตัวเลขยืนยันความปลอดภัยขานรหัสวิทยุ ⭐️):**
+    - นำกุญแจสาธารณะของทั้งสองฝั่งมารวมกัน `SHA-256(Key_A || Key_B)` แล้วแปลงเป็น **ตัวเลข 8 หลัก แบ่งเป็น 2 ชุด** เช่น `[ 4 8 2 1 ]   [ 9 0 3 5 ]` แสดงบนหน้าจอคู่สนทนา
+    - **Radio-Friendly & Hardware-Agnostic:** เหมาะอย่างยิ่งสำหรับทีมกู้ภัย สามารถอ่านออกเสียงขานรหัสสั้นๆ ผ่านวิทยุสื่อสาร วอล์คกี้-ทอล์คกี้ หรือชำเลืองมองเทียบกันได้ทันที โดยไม่มีปัญหาเรื่องฟอนต์อีโมจิเพี้ยนบนอุปกรณ์จอขาวดำ/LoRa หรือโทรศัพท์รุ่นเก่า
+    - หากตัวเลขทั้ง 2 ชุดตรงกัน ➔ ยืนยันว่าไม่มีใครดักคั่นกลาง (Man-in-the-Middle) ได้ 100% โดยไม่ต้องพึ่งพาอินเทอร์เน็ต
 - [ ] **Task 3.4: Symmetric Group Key Distribution & Epoch Rotation Engine (Zero-Knowledge Group ⭐️)**
   - พัฒนา `src/core/crypto/GroupKeyManager.ts` สำหรับห้องแชตกลุ่มผู้ประสบภัยและกลุ่มทีมกู้ภัยประจำตำบล:
   - **Topic Secret Key (32 Bytes):** สร้างด้วย CSPRNG ประจำแต่ละ `Topic_ID` (4 Bytes)
@@ -549,7 +550,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 #### 🎯 Acceptance Criteria:
 - Unit Test สร้าง Mnemonic 12 คำ และแตกแขนง Ed25519/X25519 ได้ค่าเดียวกันสม่ำเสมอ (Deterministic)
 - ฟังก์ชันเข้ารหัส/ถอดรหัส E2EE ทนทานต่อการแก้ไขข้อมูล (Auth Tag Mismatch ถอดรหัสไม่ผ่าน) และกิน Overhead เพียง 28 ไบต์
-- Dynamic QR Code สามารถอ่านค่า Keypair ครบถ้วนในขนาด <110 ไบต์ และ Visual Emoji Fingerprint คำนวณตรงกันทั้งสองฝั่ง 100%
+- Dynamic QR Code สามารถอ่านค่า Keypair ครบถ้วนในขนาด <110 ไบต์ และ Safety Numbers 8 หลักคำนวณตรงกันทั้งสองฝั่ง 100%
 - ข้อความกลุ่มถอดรหัสได้เฉพาะผู้ถือ Group Topic Key และโหนดตัวกลางไม่สามารถดักอ่านข้อมูลได้ 100%
 
 ---
