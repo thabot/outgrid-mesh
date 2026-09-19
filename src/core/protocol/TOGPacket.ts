@@ -1,6 +1,7 @@
 /**
- * Thabot OutGrid Protocol (TOG v1.1) Wire Specification
+ * Thabot OutGrid Protocol (TOG v1.1) Wire Specification & Frame Types
  * Creator & Lead Architect: Thabot <thabo47@gmail.com>
+ * Protocol: TOG v1.1 Wire Format
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
 
@@ -18,30 +19,30 @@ export enum TOGPacketType {
 }
 
 export enum TOGPriority {
-  LOW = 0,
-  NORMAL = 1,
-  HIGH = 2,
-  CRITICAL_SOS = 3
+  LOW = 0x0,
+  NORMAL = 0x1,
+  HIGH = 0x2,
+  CRITICAL_SOS = 0x3
 }
 
 export interface ITOGHeader {
-  magic: number;        // 16 bits (0x544F)
-  version: number;      // 3 bits
-  packetType: TOGPacketType; // 5 bits
-  ttlHops: number;      // 8 bits
-  priority: TOGPriority; // 2 bits
-  flags: number;        // 3 bits (compressed, encrypted, multipart)
-  reserved: number;     // 3 bits
+  magic: number;             // 16 bits (0x544F)
+  version: number;           // 3 bits (0b001)
+  packetType: TOGPacketType; // 5 bits (0x01 - 0x07)
+  ttlHops: number;           // 8 bits (0 - 255)
+  priority: TOGPriority;     // 4 bits (0x0 - 0xF)
+  flags: number;             // 3 bits (0b000 - 0b111)
+  reserved: number;          // 3 bits (0b000)
 }
 
 export interface ITOGPacket {
   header: ITOGHeader;
-  messageId: bigint;           // 64-bit uint
-  senderPubkeyHash: Uint8Array; // 8 bytes
-  recipientHash: Uint8Array;    // 8 bytes (or Topic hash)
-  targetH3Index: bigint;        // 64-bit uint (Uber H3 Index)
-  payloadLength: number;        // 16-bit uint
-  payload: Uint8Array;
+  messageId: bigint;           // 64-bit uint (8 Bytes)
+  senderPubkeyHash: Uint8Array; // 8 Bytes (truncated SHA-256)
+  recipientHash: Uint8Array;    // 8 Bytes (recipient / topic hash)
+  targetH3Index: bigint;        // 64-bit uint (8 Bytes)
+  payloadLength: number;        // 16-bit uint (2 Bytes)
+  payload: Uint8Array;          // Variable payload data
 }
 
 /**
@@ -52,4 +53,3 @@ export interface IH3LocalDeltaOffset {
   deltaX: number; // int16 (-1500m to +1500m)
   deltaY: number; // int16 (-1500m to +1500m)
 }
-
