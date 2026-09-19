@@ -892,24 +892,76 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 ---
 
 ### 🔹 Phase 6: DTN Data Mule, Store-and-Forward & Velocity Tracker
-**เป้าหมาย:** สถาปัตยกรรม Delay-Tolerant Networking (DTN) ขนส่งข้อมูลผ่านบุคคลและยานพาหนะเคลื่อนที่ ข้ามพื้นที่สัญญาณขาดหาย พร้อมระบบคืนชีพเครือข่าย
+**เป้าหมาย:** สถาปัตยกรรม Delay-Tolerant Networking (DTN) ขนส่งข้อมูลผ่านบุคคลและยานพาหนะเคลื่อนที่ ข้ามพื้นที่สัญญาณขาดหาย พร้อมระบบคืนชีพเครือข่าย (Network Healing & Re-anchoring) โอนย้ายสิทธิ์ดูแลสัมภาระ (Bundle Custody Transfer), การประเมินความน่าจะเป็นในการพบเจอ (PRoPHET Delivery Predictability), และระบบหยุดนับฮอปชั่วคราว (Hop Freeze)
 
 #### 📋 TaskList Detail:
-- [ ] **Task 6.1: DTN Store-and-Forward Bundle Custody Engine**
-  - พัฒนา `src/core/dtn/BundleStore.ts` พักแพ็กเก็ตลง Flash Memory นาน 5–7 วัน
-  - ตรวจจับการพบเจอโหนดใหม่ (Peer Discovery) และทำการแลกเปลี่ยนเฉพาะข้อมูลที่โหนดปลายทางยังไม่มี
-- [ ] **Task 6.2: Velocity Azimuth & Mobility Tracker**
-  - พัฒนา `src/core/dtn/MobilityTracker.ts` วิเคราะห์เวกเตอร์ความเร็วและทิศทางของอุปกรณ์จาก GPS
-  - หากอุปกรณ์เคลื่อนที่ด้วยความเร็ว 20–80 กม./ชม. (เช่น รถกู้ภัย/เรือ) ให้ยกสถานะเป็น **"High-Priority Data Mule"**
-- [ ] **Task 6.3: Hop Freeze & Extended TTL Governance**
-  - ปรับค่า Hop Count: ระหว่างถูกอุ้มโดย Data Mule จะไม่ลดทอน Hop Count (Hop Freeze)
-  - นโยบาย Extended TTL: กำหนดอายุแพ็กเก็ตฉุกเฉิน SOS 7–14 วัน, ข้อความทั่วไป 3–7 วัน
-- [ ] **Task 6.4: Network Healing & Re-anchoring Engine**
-  - พัฒนาระบบสะพานส่งต่อข้อมูลกลับเข้าสู่ระบบคลาวด์/อินเทอร์เน็ตทันทีที่ Data Mule เดินทางเข้าสู่เขตมีสัญญาณ
+- [ ] **Task 6.1: DTN Store-and-Forward Bundle Custody Engine (`src/core/dtn/BundleStore.ts` ⭐️)**
+  - พัฒนาระบบจัดเก็บและส่งต่อแพ็กเก็ตแบบทนทานต่อการตัดขาดของสัญญาณ (Disruption-Tolerant):
+  - **Bundle Structure & Serialization:**
+    - โครงสร้าง Bundle: `[Bundle_ID 16B]` + `[Creation_Timestamp 8B]` + `[Expires_At 8B]` + `[Priority 1B]` + `[Hop_Count 1B]` + `[Custodian_Node_ID 8B]` + `[Target_H3 8B]` + `[Payload_Len 2B]` + `[Encrypted_Payload BLOB]`
+  - **Custody Transfer Protocol (การโอนย้ายสิทธิ์ดูแลความปลอดภัยของข้อมูล):**
+    - เมื่อโหนด A ส่งมอบ Bundle ให้โหนด B (เช่น ผู้ประสบภัยส่งต่อให้รถกู้ภัย):
+      - โหนด A จะยังไม่ลบ Bundle ทันที แต่จะคงสถานะเป็น `CUSTODY_OFFERED`
+      - เมื่อโหนด B ตอบรับด้วยแพ็กเก็ต **`CUSTODY_ACCEPT (0x08)`** พร้อมลายเซ็น โหนด A จึงจะปลดสถานะเป็น `CUSTODY_TRANSFERRED` และลบออกจาก Flash Memory ได้อย่างปลอดภัย
+      - ป้องกันข้อมูลสูญหาย 100% หากการเชื่อมต่อหลุดขณะกำลังส่งมอบกลางทาง
+
+- [ ] **Task 6.2: Velocity Azimuth & Mobility Tracker (`src/core/dtn/MobilityTracker.ts` ⭐️)**
+  - พัฒนาระบบตรวจจับและวิเคราะห์การเคลื่อนที่เชิงเวกเตอร์ของอุปกรณ์:
+  - **Speed & Azimuth Calculation:**
+    - คำนวณความเร็วเฉลี่ย ($v$) และทิศทางมุมอะซิมัท ($\theta$) จากข้อมูล GPS ในช่วงเวลา 60 วินาทีล่าสุด:
+      - **Stationary Mode ($v < 5\text{ km/h}$):** บุคคลอยู่กับที่หรือเดินเท้าในศูนย์พักพิง จัดเป็น Normal Node
+      - **High-Priority Data Mule ($20\text{ km/h} \le v \le 120\text{ km/h}$):** รถกู้ภัย, เรือกู้ชีพ, หรือรถยนต์ที่กำลังเดินทางข้ามเขต
+  - **Target Interception Angle:**
+    - หากเวกเตอร์ความเร็วของ Data Mule กำลังมุ่งหน้าไปยัง `Target_H3` ของแพ็กเก็ต จะเพิ่มความสำคัญในการรับ Bundle นั้นมาขนส่งทันที
+
+- [ ] **Task 6.3: Hop Freeze, Extended TTL & PRoPHET Predictability Governance (⭐️)**
+  - จัดการวงจรอายุและการนับฮอปของสัมภาระระหว่างการเดินทางข้ามอำเภอ:
+  - **Hop Freeze Mechanism:**
+    - โดยปกติในโครงข่าย Mesh ค่า Hop Count จะถูกลดทอน ($TTL = TTL - 1$) ทุกครั้งที่มีการกระโดดข้ามเครื่อง
+    - **ข้อยกเว้นสำหรับ Data Mule:** ระหว่างที่แพ็กเก็ตถูกเก็บอยู่ในคลังสัมภาระของยานพาหนะที่กำลังเดินทาง ค่า Hop Count จะถูก "แช่แข็ง" (Hop Freeze) ไม่ลดทอนลงตลอดการเดินทาง เพื่อให้เมื่อไปถึงอำเภอปลายทาง แพ็กเก็ตยังมี Hop Count เต็มเปี่ยมพร้อมกระจายต่อให้ผู้รับ
+  - **Disaster-Grade Extended TTL Policy:**
+    - `0x01: SOS_BEACON`: อายุขัย **7 – 14 วัน** (ห้ามถูกทิ้งเด็ดขาดจนกว่าจะได้รับการช่วยเหลือ)
+    - `0x04: CRISIS_FEED`: อายุขัย **3 – 7 วัน**
+    - `0x02: DIRECT_CHAT`: อายุขัย **24 – 48 ชั่วโมง**
+  - **PRoPHET Delivery Predictability Metric:**
+    - คำนวณค่าความน่าจะเป็นในการพบเจอปลายทาง $P_{(a, b)} \in [0, 1]$ จากสถิติการพบเจอย้อนหลัง และ Aging Factor:
+      $$P_{(a, b)} = P_{(a, b)\text{old}} + (1 - P_{(a, b)\text{old}}) \times L_{\text{encounter}}$$
+    - คัดเลือกส่งต่อเฉพาะโหนดที่มีโอกาสเดินทางไปพบปลายทางสูงที่สุด
+
+- [ ] **Task 6.4: Network Healing & Cloud Re-anchoring Engine (`src/core/dtn/CloudReAnchorEngine.ts` ⭐️)**
+  - สะพานเชื่อมข้อมูลกู้ภัยกลับเข้าสู่ระบบคลาวด์อัตโนมัติเมื่อพ้นจุดอับสัญญาณ:
+  - **Cellular / Wi-Fi Detection & Burst Upload:**
+    - ตรวจสอบสถานะการเชื่อมต่ออินเทอร์เน็ตของ Data Mule ทันทีที่เข้าสู่เขตที่มีสัญญาณ Cellular (4G/5G) หรือ Wi-Fi
+    - บีบอัดและส่ง Bundle ฉุกเฉินทั้งหมดขึ้นสู่ **Cloudflare Workers API (`POST /api/mesh/sync-bundle`)** เป็นชุดเดียว (Batch Upload)
+    - นำเข้าข้อมูลสู่ Cloudflare D1 Database และอัปเดตสถานะ Heatmap กู้ภัยระดับประเทศแบบเรียลไทม์
+  - **Global Delivery Receipt Broadcast:**
+    - เมื่อ Cloudflare ได้รับข้อมูล จะสร้างใบเสร็จดิจิทัลส่งกลับลงมา เพื่อให้ Data Mule นำใบเสร็จกลับไปกระจายแจ้งโหนดในป่าว่า "ข้อความกู้ชีพของคุณถึงศูนย์บัญชาการแล้ว"
+
+- [ ] **Task 6.5: Comprehensive DTN & Data Mule Unit Test Suite (`tests/unit/dtn/` ⭐️)**
+  - พัฒนาชุดทดสอบหน่วยสำหรับสถาปัตยกรรม DTN และระบบ Data Mule:
+  - **`BundleStore.test.ts`:**
+    - ทดสอบ Serialize และ Deserialize โครงสร้าง DTN Bundle ขนาดต่างๆ
+    - ทดสอบกระบวนการ Custody Transfer: สถานะ `CUSTODY_OFFERED` $\rightarrow$ ได้รับ `CUSTODY_ACCEPT` $\rightarrow$ สลับสถานะเป็น `CUSTODY_TRANSFERRED` และคืนพื้นที่ Flash Memory
+    - ทดสอบกรณีส่งมอบขาดตอน (Simulated Link Drop): ยืนยันว่า Bundle ต้องไม่สูญหายและคงอยู่บนโหนดต้นทาง
+  - **`MobilityTracker.test.ts`:**
+    - ทดสอบคำนวณความเร็วและทิศทางจากลำดับพิกัด GPS จำลอง:
+      - จำลองพิกัดเดินเท้า ($3\text{ km/h}$) $\rightarrow$ สถานะ Normal Node
+      - จำลองพิกัดรถกู้ภัยวิ่งบนถนน ($60\text{ km/h}$) $\rightarrow$ สถานะ High-Priority Data Mule
+    - ทดสอบการคำนวณมุมมุ่งหน้า (Bearing/Azimuth) ไปยังเป้าหมาย Target H3
+  - **`HopFreezeAndTtl.test.ts`:**
+    - ทดสอบสถานะ Hop Freeze: แพ็กเก็ตที่ถูกจัดเก็บใน Data Mule เป็นเวลา 12 ชั่วโมง ค่า Hop Count ต้องไม่ลดลงแม้แต่หน่วยเดียว
+    - ทดสอบอายุ TTL: แพ็กเก็ต SOS ต้องคงอยู่ครบ 7 วัน และทดสอบการหมดอายุของ Direct Chat หลัง 48 ชั่วโมง
+    - ทดสอบสูตรการคำนวณ PRoPHET Predictability และ Aging Factor
+  - **`CloudReAnchor.test.ts`:**
+    - จำลองการตรวจพบอินเทอร์เน็ตบน Data Mule และการยิง Batch POST เข้า Endpoint จำลอง
+    - ตรวจสอบการแปลง Bundle เป็น D1 Record และการรับใบเสร็จ Global Delivery Receipt
 
 #### 🎯 Acceptance Criteria:
-- จำลองการเคลื่อนที่ของ Mule จากจุดอับสัญญาณไปยังเขตมีเน็ต ข้อความส่งต่อถึง Cloudflare D1 ครบถ้วน 100%
-- Hop Freeze ทำงานถูกต้อง ไม่มีการทิ้งแพ็กเก็ตก่อนเวลาอันควรระหว่างการขนส่งข้ามอำเภอ
+- จำลองการเคลื่อนที่ของ Data Mule จากจุดอับสัญญาณไปยังเขตมีอินเทอร์เน็ต สามารถส่งต่อ Bundle สู่ Cloudflare ได้ครบถ้วน 100%
+- กระบวนการ Custody Transfer มีระบบทนทานต่อสัญญาณหลุดกลางคัน โดยไม่มีข้อมูลสูญหาย 100%
+- กลไก Hop Freeze ป้องกันการลดทอน Hop Count ของ Bundle ระหว่างการเดินทางข้ามอำเภอได้อย่างถูกต้อง
+- ระบบ Mobility Tracker ระบุสถานะ High-Priority Data Mule ได้อย่างแม่นยำตามเกณฑ์ความเร็ว 20–120 กม./ชม.
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/dtn/` (ทั้ง 4 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
