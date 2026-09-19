@@ -452,24 +452,69 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 ---
 
 ### 🔹 Phase 1: Core Foundation, Clean Architecture & Developer Tooling
-**เป้าหมาย:** วางรากฐานโครงสร้างโปรเจกต์แบบ Clean Architecture แยก Platform-independent Core ออกจาก Native Layer พร้อมระบบทดสอบอัตโนมัติ 100%
+**เป้าหมาย:** วางรากฐานวิศวกรรมซอฟต์แวร์ระดับโลกแบบ **Strict Clean Architecture (Hexagonal / Ports & Adapters Architecture)** แยกแกนหลักทางคณิตศาสตร์และตรรกะโครงข่าย (Pure Core Domain) ออกจาก Native Hardware (Android/BLE), Browser DOM, และ Cloud APIs โดยสิ้นเชิง พร้อมวางระบบ Quality Gates ตรวจสอบอัตโนมัติ 100% ตั้งแต่วินาทีแรก
 
 #### 📋 TaskList Detail:
-- [ ] **Task 1.1: Git Repository & Workspace Setup**
-  - กำหนดค่า `.gitignore` ครอบคลุม Node, Vite, Capacitor, Android (Gradle/build), Keys/Keystores
-  - สร้าง Branch `uat` เป็น Branch หลักในการพัฒนาตามกฎเคร่งครัด
-- [ ] **Task 1.2: Strict TypeScript & Clean Architecture Scaffold**
-  - ตั้งค่า `tsconfig.json` แบบ Strict Mode (`"strict": true`, `"noImplicitAny": true`, `"exactOptionalPropertyTypes": true`)
-  - วางโครงสร้างโฟลเดอร์ `src/core/` (Pure TS 100% ห้ามมี Capacitor/DOM/Android imports)
-  - วางโครงสร้าง `src/platform/`, `src/ui/`, `android/`, `cloudflare/`
-- [ ] **Task 1.3: Quality Gates & Automated Tooling**
-  - ตั้งค่าระบบทดสอบอัตโนมัติด้วย Bun Test (`bun test`) / Vitest รัน Unit Tests ฝั่ง `src/core/` ในเสี้ยววินาที
-  - สร้างสคริปต์ `scripts/checkSyntax.js` ตรวจสอบ Syntax ไฟล์ `.ts`, `.js`, `.json` ทุกไฟล์ก่อน Commit
-  - สร้าง GitHub/GitLab CI workflow จำลองรัน `checkSyntax.js` และ `vitest run`
+- [ ] **Task 1.1: Git Repository & Workspace Infrastructure**
+  - **Branch Governance & Strict Workflow:**
+    - กำหนดสาขาการพัฒนาหลักเป็น **`uat`** อย่างเคร่งครัด (ห้าม Commit หรือ Push สู่ `main` โดยตรงเด็ดขาด จนกว่าจะผ่านการตรวจสอบ UAT 100%)
+    - ติดตั้งระบบ Tagging มาตรฐาน Semantic Versioning (`v1.0.0-rc1`, `v1.1.0`)
+  - **Comprehensive Disaster-Grade `.gitignore`:**
+    - ปกป้องไฟล์ความลับขั้นสูงสุด: กรอง Private Keystores (`*.jks`, `*.keystore`), Private Keys (`*.pem`, `*.key`), Mnemonic Phrases, `.env*`
+    - กรองไฟล์ Build Artifacts ของทุกแพลตฟอร์ม:
+      - **Node/Vite:** `node_modules/`, `dist/`, `.svelte-kit/`, `.vite/`
+      - **Android Native:** `android/app/build/`, `.gradle/`, `local.properties`, `captures/`, `*.apk`, `*.aab`
+      - **Capacitor Shell:** `capacitor.settings.json`
+      - **Cloudflare Serverless:** `.wrangler/`, `.mf/`
 
-#### 🎯 Acceptance Criteria:
-- `bun run check:syntax` และ `bun test` ทำงานผ่าน 100%
-- โครงสร้าง `src/core/` ปราศจาก Native/Browser Dependency โดยสิ้นเชิง
+- [ ] **Task 1.2: Strict TypeScript & Zero-Leak Clean Architecture Scaffold**
+  - **Strict Compiler Configuration (`tsconfig.json`):**
+    - เปิดการตรวจสอบประเภทข้อมูลขั้นสูงสุด:
+      - `"strict": true`, `"noImplicitAny": true`, `"strictNullChecks": true`
+      - `"exactOptionalPropertyTypes": true`, `"noImplicitReturns": true`, `"noFallthroughCasesInSwitch": true`
+      - `"target": "ES2022"`, `"moduleResolution": "bundler"`, `"useDefineForClassFields": true`
+    - กำหนด **Path Aliases** ป้องกัน Relative Path พันกัน:
+      - `@core/*` $\rightarrow$ `src/core/*` (Pure Domain Logic)
+      - `@platform/*` $\rightarrow$ `src/platform/*` (Native Plugins & Web Adapters)
+      - `@ui/*` $\rightarrow$ `src/ui/*` (Presentation & Components)
+  - **Hexagonal Domain Isolation (Ports & Adapters Boundary Guard ⭐️):**
+    - **`src/core/` (Pure Core Engine 100%):**
+      - **Zero Platform Leak:** ห้าม Import `window`, `document`, `@capacitor/*`, `localStorage`, `android.*` หรือ Web APIs อื่นๆ เด็ดขาด
+      - พัฒนาด้วย Pure TypeScript / Uint8Array เท่านั้น เพื่อให้สามารถรันบน Node.js, Bun, Cloudflare Workers, Android V8, หรือแม้แต่ ESP32 QuickJS ได้ทันที
+    - **Ports & Interfaces (`src/core/interfaces/`):**
+      - `IRadioDriver.ts`: สัญญาสำหรับส่ง/รับข้อมูลระดับบิต (BLE Long Range, Wi-Fi Direct, Mock Radio)
+      - `IStorageDriver.ts`: สัญญาสำหรับบันทึกข้อมูล (SQLite Native, IndexedDB Web, In-Memory Test)
+      - `IKeystoreDriver.ts`: สัญญาสำหรับ Hardware Keystore (Android TEE, WebCrypto Subtle)
+      - `IGpsDriver.ts`: สัญญาสำหรับดึงพิกัดภูมิศาสตร์ (Android FusedLocation, Web Geolocation)
+    - **Adapters (`src/platform/`):**
+      - นำ Ports มาต่อประสานเข้ากับฮาร์ดแวร์จริง เช่น `CapacitorBleAdapter.ts`, `WebCryptoStorageAdapter.ts`
+
+- [ ] **Task 1.3: Quality Gates, Static Analysis & Automated Tooling**
+  - **Sub-Second Core Unit Testing Engine (`bun test` / Vitest):**
+    - คอนฟิกชุดทดสอบสำหรับ `src/core/` ให้รันเสร็จสิ้นในเวลาไม่เกิน **300ms – 1 วินาที**
+    - สร้างโครงสร้าง `tests/unit/core/` ครอบคลุม: Bitfield Serialization, CRC-16, Cryptography, Bloom Filter, และ H3 Math
+  - **Pre-Commit Syntax & Lint Guard (`scripts/checkSyntax.js` ⭐️):**
+    - พัฒนาสคริปต์สแกนตรวจสอบความถูกต้องทางไวยากรณ์ (Syntax Verification) อัตโนมัติ:
+      - ตรวจสอบ AST Parsing ผ่าน Node.js / TypeScript Compiler API
+      - สแกนทุกไฟล์ `.ts`, `.js`, `.json` ใน `src/`, `scripts/`, `tests/`
+      - บังคับรัน `node scripts/checkSyntax.js` ก่อนทำการ Commit ทุกครั้ง หากพบ Error แม้แต่จุดเดียวจะปฏิเสธการ Commit ทันที
+  - **Continuous Integration (CI) Pipeline Blueprint (`.github/workflows/ci.yml`):**
+    - สเต็ปที่ 1: Checkout Branch `uat`
+    - สเต็ปที่ 2: รัน Syntax Check (`node scripts/checkSyntax.js`)
+    - สเต็ปที่ 3: รัน Core Unit Tests (`bun test`) ด้วยเป้าหมาย 100% Pass
+    - สเต็ปที่ 4: ตรวจสอบ Boundary Leak (ใช้ ESLint กฎ `no-restricted-imports` สกัดกั้นไม่ให้ `src/core/` มีการเรียกใช้ Platform APIs)
+
+- [ ] **Task 1.4: Universal Error Handling, Telemetry & Logging Architecture**
+  - พัฒนา `src/core/utils/Logger.ts` และ `src/core/errors/MeshError.ts`:
+    - **Structured Log Levels:** `DEBUG`, `INFO`, `WARN`, `ERROR`, `CRITICAL_SOS`
+    - **Log Masking & Privacy Guard:** ห้ามพิมพ์ Private Keys, Raw GPS พิกัดละเอียด, หรือข้อความแชตส่วนตัวลงใน Console Log โดยเด็ดขาด
+    - **Disaster In-Memory Ring Buffer:** เก็บ Log ย้อนหลัง 500 รายการล่าสุดในหน่วยความจำ RAM สำหรับแสดงบนหน้าจอ `NetworkDiagnostics.tsx` เพื่อให้วิเคราะห์ปัญหาหน้างานได้แบบออฟไลน์ 100%
+
+#### 🎯 Acceptance Criteria (Definition of Done for Phase 1):
+- สคริปต์ `node scripts/checkSyntax.js` และคำสั่งทดสอบ `bun test` ทำงานผ่าน 100% ไร้ข้อผิดพลาด
+- โฟลเดอร์ `src/core/` ผ่านการตรวจสอบ Boundary Isolation: ไม่มี Dependency หรือ Import ของ Browser/Capacitor/Native แม้แต่บรรทัดเดียว
+- โครงสร้างโปรเจกต์รองรับการพัฒนาข้ามระบบ (Cross-Platform) อย่างเป็นอิสระทั้ง Android Native, Web PWA และ Cloudflare Serverless
+- สาขาการพัฒนา `uat` ถูกตั้งค่าพร้อมรองรับการส่งมอบงานในเฟสถัดไปอย่างเคร่งครัดตามกฎของโครงการ
 
 ---
 
