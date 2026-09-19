@@ -1389,36 +1389,78 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 
 ---
 
-## 5. แผนการตรวจสอบและทดสอบระบบ (Verification & Testing Plan)
+## 5. แผนการตรวจสอบและทดสอบระบบที่สมบูรณ์แบบ (Comprehensive Verification & Testing Plan 🧪)
 
-### 5.1 Automated Tests (100% Coverage Target)
-- **Unit Tests:**
-  - Compact Binary Serialization/Deserialization (ตรวจสอบขนาด Payload ≤ 28 bytes)
-  - Cryptography Engine (ECDH Key Exchange, AES-GCM Encrypt/Decrypt Overhead +28B, Ed25519 Sign/Verify)
-  - Counting Bloom Filter & LRU Cache (ทดสอบการดักจับ Duplicate Storm 1,000+ packets)
-  - Adaptive Density Hop & Dynamic Hop Decay (ทดสอบการสลับ Hop 3–7 ในเมือง vs 12–15 ในชนบท และ Dynamic Clamping)
-  - 3-Level Spatial H3 Hierarchy & Fallback (ทดสอบการหา Parent `h3ToParent` Res 9 $\rightarrow$ Res 7 $\rightarrow$ Res 5)
-  - Reverse Delivery ACK & NACK Engine (ทดสอบสร้างใบเสร็จยืนยันปลายทางและการล้างแคช Auto-Prune)
-  - Tiered TTL & Storage Quota Clamping (ทดสอบ FIFO ลบประวัติแชตเก่าที่หมดอายุทิ้งเมื่อครบ 50 MB และปกป้อง SOS 72 ชม.)
-  - Image Compression Engine (ทดสอบลดขนาดรูปภาพเหลือ 5–15 KB และ 20–40 KB WebP)
-  - Local SQLite & D1 Database Mapping (ทดสอบการบันทึกและจับคู่โหนดปลายทาง)
-  - Battery Policy State Transitions (จำลองสถานการณ์แบตเตอรี่ >50%, 20-50%, <20%)
-  - Local HTTP Server & QR Code Generation (ทดสอบสร้าง Wi-Fi QR Payload และตรวจสอบ SHA-256 Checksum)
-- **Integration Tests:**
-  - 5-second Server Timeout & Auto-fallback Simulation
-  - Multi-hop Mesh Relay Simulation (จำลองการส่งข้อมูลผ่าน 3-5 โหนดเสมือน)
-  - Anti-Ghosting Loop Simulation (จำลองโหนดวิ่งวนเพื่อยืนยันว่า Hop นับถอยหลังและตัดวงจรได้จริง)
-  - End-to-End DTN Data Mule & Reverse ACK Flow (จำลองพาหนะขนข้อความข้ามโซนและส่งมอบ Zero-click พร้อมตีกลับใบเสร็จ)
-  - Deferred Sync Queue (จำลองสถานะ Offline -> บันทึก SQLite -> Online -> Batch Upload)
-  - Offline APK Sideload Flow (จำลองการร้องขอไฟล์ APK จาก Local Server เสมือน)
+เพื่อให้มั่นใจ 100% ว่าระบบจะสามารถ **"ช่วยชีวิตคนได้จริงในภาวะวิกฤต (Mission-Critical Zero-Failure Guarantee)"** แผนการทดสอบจึงถูกจัดระดับครอบคลุมตั้งแต่ระดับบิตของโพรโทคอล ไปจนถึงการจำลองโครงข่ายภัยพิบัติขนาดใหญ่ในภาคสนาม (5-Tier Verification Pyramid):
 
-- **Syntax & Lint:**
-  - รัน `node -c` หรือ script syntax validation ก่อนการส่งมอบทุกครั้ง
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                5-Tier Verification Pyramid                             │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│                    [ Tier 5: Field Disaster Simulation & Drills ]                      │
+│                    (20-50 Real Phones Blackout, RF Range, Battery 24h)                 │
+│                                                                                        │
+│               [ Tier 4: End-to-End Integration & DTN Data Mule Tests ]                 │
+│               (Multi-hop 15-Hop Relay, Store-Carry-Forward, Offline Sync)              │
+│                                                                                        │
+│          [ Tier 3: Cross-Platform Native & Hardware Emulation Tests ]                  │
+│          (BLE Scanner/Adv, LE Coded PHY, Android Doze, Audio FFT, Camera Torch)        │
+│                                                                                        │
+│     [ Tier 2: Cloud Edge, Security & Zero-Trust Verification Tests ]                   │
+│     (Worker API, D1 Buffer Coalescing, Anti-Replay, Passkey FIDO2, CAP v1.2)           │
+│                                                                                        │
+│ [ Tier 1: Core Protocol & Cryptographic Unit Tests (51 Suites - 100% Coverage) ]       │
+│ (TOG v1.1 Wire Format, Ed25519, AES-GCM, Bloom Filter, H3 Delta Offset, WebP/Opus)     │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
-### 5.2 Manual & Simulation Verification
-- ทดสอบปิดเครือข่ายอินเทอร์เน็ต (Airplane mode / Sim down) และจับเวลาการสลับโหมดเข้าสู่ Disaster Mesh ภายใน 5 วินาที
-- ทดสอบ One-Tap SOS และตรวจสอบการแสดงผลบน Crisis Feed ของโหนดข้างเคียง
-- ตรวจสอบความถูกต้องของ UI ทั้งในสถานะ Guest และ Logged-in ผู้ใช้งาน
+### 5.1 ตารางแจกแจงชุดทดสอบอัตโนมัติ 51 ชุดทดสอบ (51 Automated Unit Test Suites Matrix)
+*รันผ่าน `bun test` และ `scripts/checkSyntax.js` ก่อนการ Commit สู่ `uat` เสมอ (เป้าหมาย Pass 100% ไร้ข้อผิดพลาด)*:
+
+| หมวดหมู่ (Phase) | โฟลเดอร์ที่จัดเก็บ | จำนวนชุดทดสอบ | รายชื่อไฟล์ทดสอบและขอบเขตการตรวจสอบ (Test Coverage) |
+| :--- | :--- | :---: | :--- |
+| **Phase 1: Protocol & Crypto** | `tests/unit/protocol/` | **5 ชุด** | • `PacketSerializer.test.ts` (TOG v1.1 Frame 21B, Magic `0x544F`, Bitfields)<br>• `CryptoEngine.test.ts` (AES-256-GCM +28B overhead, X25519 ECDH)<br>• `DigitalSignature.test.ts` (Ed25519 Sign/Verify, Anti-Spoofing)<br>• `BloomFilter.test.ts` (Counting Bloom Filter, 10k packets, Collision Rate <0.1%)<br>• `H3DeltaCompressor.test.ts` (H3 Delta Offset 4B, GPS Precision <1m) |
+| **Phase 2: Storage & Router** | `tests/unit/storage/` | **5 ชุด** | • `SqliteStorageEngine.test.ts` (CRUD, SQLite Schema, 50MB FIFO Ceiling)<br>• `EpidemicRouter.test.ts` (Gossip Forwarding, Target Flooding, Anti-Loop)<br>• `DynamicHopDecay.test.ts` (Hop 3-7 Urban vs 12-15 Rural, RSSI Penalty)<br>• `DeliveryReceipt.test.ts` (Reverse ACK/NACK, Auto-Pruning)<br>• `TieredTtlManager.test.ts` (SOS 72h protection, Chat 24h prune) |
+| **Phase 3: State Machine & UI** | `tests/unit/ui/` | **5 ชุด** | • `ModeStateMachine.test.ts` (Cloud Online -> Local Mesh -> Disaster in 5s)<br>• `ParityGuestUser.test.ts` (Guest vs Auth 100% feature parity)<br>• `BatteryPolicyManager.test.ts` (State transitions: Full, Balanced, Eco, Deep)<br>• `OfflineCrisisFeed.test.ts` (Feed sorting, Emergency pin, Signature check)<br>• `OneTapSos.test.ts` (Instant dispatch, GPS payload bundling, UI lock) |
+| **Phase 4: BLE Radio Driver** | `tests/unit/ble/` | **6 ชุด** | • `BleAdvertiser.test.ts` (Legacy BLE vs Extended Adv, Payload splitting)<br>• `BleScanner.test.ts` (Hardware ScanFilter, Background scan, Deduplication)<br>• `LeCodedPhy.test.ts` (S=8 Long Range negotiation, Fallback to 1M PHY)<br>• `BleConnectionManager.test.ts` (GATT Server/Client Handshake, MTU 512B)<br>• `DutyCycleController.test.ts` (Scan/Sleep window based on Battery Tier)<br>• `BlePacketFragmentation.test.ts` (Chunking, Sequence index, Reassembly) |
+| **Phase 5: Spatial Engine & Map** | `tests/unit/spatial/` | **6 ชุด** | • `H3HierarchyFallback.test.ts` (Res 9 -> Res 7 -> Res 5 spatial aggregation)<br>• `VectorTileParser.test.ts` (Parsing `vector-basemap.pbf` <5MB, World landmass)<br>• `OfflineSpatialCache.test.ts` (IndexedDB / SQLite caching, FIFO eviction)<br>• `SosRadarEngine.test.ts` (Compass bearing, Distance in meters, Live ping)<br>• `KAnonymityHeatmap.test.ts` (K>=3 clustering guard, Res 7 anonymization)<br>• `TileProxyClient.test.ts` (Edge cache hit, ODbL attribution compliance) |
+| **Phase 6: Wi-Fi P2P & Media** | `tests/unit/media/` | **5 ชุด** | • `WifiP2pManager.test.ts` (Group Formation, GO Negotiation, Dynamic Socket)<br>• `ImageCompressor.test.ts` (Ultra-low 320x240 WebP 5-12KB, Standard 640x480)<br>• `VoiceMemoRecorder.test.ts` (Opus Mono 6-12kbps, 15s limit, Preview & Confirm)<br>• `P2pStreamSocket.test.ts` (Chunked TCP/P2P transfer, Flow control, CRC32)<br>• `MediaPayloadSecurity.test.ts` (E2EE encryption of voice/image payload chunks) |
+| **Phase 7: Native Android & Bridge**| `tests/unit/native/` | **6 ชุด** | • `ForegroundService.test.ts` (Android Foreground Service, WakeLock management)<br>• `DozeModeResilience.test.ts` (AlarmManager wakeup, Battery whitelist check)<br>• `AutonomousMobility.test.ts` (Accelerometer speed detection >=15km/h Mule mode)<br>• `DataMuleTransfer.test.ts` (Zero-click physical transfer, Exchange log)<br>• `MeshtasticBridge.test.ts` (TOG v1.1 <-> LoRa Meshtastic Protobuf conversion)<br>• `BriarBridge.test.ts` (TOG v1.1 <-> Bramble BTP framing conversion) |
+| **Phase 8: Emergency Sideload** | `tests/unit/emergency/`| **5 ชุด** | • `LocalHttpServer.test.ts` (Embedded HTTP on Port 8080, Dynamic Host IP)<br>• `MicroDnsServer.test.ts` (UDP Port 53, Captive Portal `/generate_204`)<br>• `AcousticMorseEngine.test.ts` (Sweep sine 800-1800Hz, Morse timing, Web Audio)<br>• `FskDemodulator.test.ts` (Goertzel Algorithm / FFT demodulation 18.5/19.5kHz)<br>• `FlashlightStrobe.test.ts` (Camera2/ImageCapture SOS pulse, Thermal cutoff) |
+| **Phase 9: Cloud & Zero-Trust** | `tests/unit/cloud/` | **7 ชุด** | • `WebRtcSignaling.test.ts` (Public STUN discovery, SDP exchange via H3 room)<br>• `CloudflareWorkerApi.test.ts` (Ed25519 Request Signing, Rate limit 1 req/15s)<br>• `D1DatabaseSchema.test.ts` (Tables: `active_nodes`, `node_neighbors`, TTL prune)<br>• `D1QuotaCoalescing.test.ts` (Batch upsert, Write reduction >=85%)<br>• `CapAlertIngestion.test.ts` (CAP v1.2 XML/JSON ingest, Master signature verify)<br>• `PasskeyAuthManager.test.ts` (FIDO2 challenge/verify, Contacts sync/restore)<br>• `DualTierPrivacy.test.ts` (Guest Res 7 view vs Responder Res 9/11 view) |
+| **Phase 10: i18n & E2E Drills** | `tests/unit/i18n/` | **1 ชุด** | • `I18nBundleCompleteness.test.ts` (ตรวจสอบคีย์ข้อความครบถ้วน 10 ภาษา 100%) |
+| **รวมทั้งสิ้น (Total Suites)** | **10 หมวดหมู่** | **51 ชุด** | **ครอบคลุมฟังก์ชันการทำงานทุกระดับ 100% ไร้จุดบอด** |
+
+---
+
+### 5.2 การทดสอบการผสานระบบและการจำลองเสมือนจริง (Integration & E2E Simulation Tests)
+1. **Multi-Hop Mesh Relay Simulation (จำลอง 15-Hop Relay):**
+   - รัน Virtual Mesh Nodes จำนวน 15 เครื่อง จำลองการส่งต่อข้อความ SOS และ Chat ข้ามตึกและชุมชน
+   - ตรวจสอบว่า Dynamic Hop Decay ลดทอนลงถูกต้อง และข้อความไม่เกิดการวนซ้ำ (Zero Loop Storm)
+2. **5-Second Offline Auto-Fallback Test:**
+   - จำลองเหตุการณ์เสาสัญญาณหลักถูกตัด (Network Disconnect) แอปต้องตรวจพบภายใน 5 วินาที และสลับโหมดเข้าสู่ **Disaster Mesh Mode** อัตโนมัติโดยไม่กระตุกหรือปิดแอป
+3. **DTN Data Mule & Zero-Click Exchange Flow:**
+   - จำลองโหนดติดรถยนต์เคลื่อนที่ด้วยความเร็ว 30 กม./ชม. วิ่งผ่านคลัสเตอร์ผู้ประสบภัย
+   - โหนดต้องทำการดึงแพ็กเก็ตตกค้าง (Store-and-Forward) ขึ้นมาพักใน SQLite และส่งมอบให้อีกคลัสเตอร์หนึ่งทันทีที่ขับผ่าน โดยไม่ต้องมีการแตะหน้าจอ (Zero-Click Autonomous Sync)
+4. **Offline Sideloading Captive Portal Simulation:**
+   - ใช้ Virtual Client จำลองการเชื่อมต่อ Wi-Fi Hotspot ของเครื่องโฮสต์ ตรวจสอบว่ามี HTTP Redirect ไปยังหน้าดาวน์โหลด APK (Port 8080) ถูกต้อง 100%
+
+---
+
+### 5.3 การซ้อมรับมือภัยพิบัติภาคสนามและการทดสอบฮาร์ดแวร์จริง (Disaster Drills & Hardware Acceptance)
+1. **Simulated Blackout Field Drill (ซ้อมสถานการณ์ไฟดับ-เน็ตล่มทั้งเมือง):**
+   - นำสมาร์ตโฟนจริง 20–50 เครื่อง (คละรุ่น ทั้ง Android 8 เก่าและ Android 14 ใหม่) ไปกระจายในอาคารหลายชั้นและที่โล่ง
+   - ตัดสัญญาณเน็ตและ Wi-Fi ทั้งหมด (No SIM / Airplane Mode + Bluetooth On)
+   - วัดระยะการส่งผ่าน **Bluetooth 5 Long Range (LE Coded PHY):** ต้องทะลุทะลวงได้ระยะอย่างน้อย **200–400 เมตร** ในที่โล่ง และข้ามได้ 3–5 ชั้นในอาคารคอนกรีต
+2. **24-Hour Battery Endurance Benchmark (การทดสอบกินพลังงานต่อเนื่อง 24 ชม.):**
+   - สแตนด์บายแอปเบื้องหลัง (Background Foreground Service) ข้ามคืน 24 ชั่วโมง
+   - ในโหมด **Deep Hibernation (<10% battery):** การกินแบตเตอรี่ต้อง **ไม่เกิน 0.2% ต่อชั่วโมง** เพื่อรักษาชีวิตโทรศัพท์ให้รอดจนกู้ภัยมาถึง
+3. **Acoustic & Optical Penetration Test (ทดสอบสัญญาณทะลุซากตึก):**
+   - ฝังโทรศัพท์ไว้ใต้กล่อง/ซากจำลอง ยิงเสียง **Acoustic Morse Siren (800–1800Hz)** และไฟกระพริบฉุกเฉิน
+   - ใช้โทรศัพท์ของทีมกู้ภัยดักฟังด้วย **Goertzel Algorithm / FFT Demodulator** ต้องตรวจจับความถี่และถอดรหัสพิกัด GPS ได้ในระยะ 30–50 เมตร แม้ไม่มีสัญญาณวิทยุใดๆ
+4. **Dual-Platform UI/UX & Guest Parity Verification:**
+   - ตรวจสอบว่าผู้ใช้ Guest (ไม่ล็อกอิน) และ Authenticated Users (ล็อกอินกู้ภัย) สามารถใช้งานปุ่ม Emergency SOS, แผนที่ออฟไลน์, และแชต 1-on-1 ได้อย่างราบรื่น ไม่มีหน้าจอค้างหรือปุ่มหาย 100%
 
 ---
 
