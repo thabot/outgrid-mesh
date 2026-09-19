@@ -1460,103 +1460,108 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                OutGrid Mesh End-to-End Deployment Pipeline                             │
+│                                OutGrid Mesh Dual-Environment Deployment Pipeline                       │
 ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                                        │
-│  [ Git Push: uat ] ──► [ GitHub Actions CI Pipeline ]                                                 │
-│                             │                                                                          │
-│                             ├─► Step 1: Syntax Check (`node scripts/checkSyntax.js`)                   │
-│                             ├─► Step 2: Full Unit Tests 51 Suites (`bun test`)                         │
-│                             ├─► Step 3: TypeScript Typecheck (`svelte-check`)                          │
-│                             └─► Step 4: Svelte/Vite Static Assets Compile (`bun run build`)            │
-│                                           │                                                            │
-│     ┌─────────────────────────────────────┼─────────────────────────────────────┐                      │
-│     ▼                                     ▼                                     ▼                      │
-│ [ Pipeline 1: Frontend Web ]    [ Pipeline 2: Cloudflare Worker ]    [ Pipeline 3: Android APK ]       │
-│ • Cloudflare Pages              • Wrangler CLI Publish              • Gradle Release Build             │
-│ • Deploy: `build/`              • Deploy: `cloudflare/worker.ts`    • Sign: Ed25519 / APK Keystore     │
-│ • URL: outgrid-rescue.pages.dev • URL: api.outgrid-mesh.workers.dev • Output: `outgrid-rescue.apk`      │
-│ • Zero Egress Bandwidth         • Auto-Migrate D1 Schema            • Upload to GitHub Release & R2    │
-│                                                                                 │                      │
-│                                                                                 ▼                      │
-│                                                                     [ Pipeline 4: Offline P2P ]        │
-│                                                                     • ฝังไฟล์ APK ลง Asset ในแอป       │
-│                                                                     • กระจายต่อผ่าน Local Hotspot      │
-│                                                                     • Zero-Internet Sideload (Port 8080)│
+│  [ Git Push: uat / main ] ──► [ GitHub Actions CI/CD Pipeline ]                                       │
+│                                      │                                                                 │
+│                                      ├─► Step 1: Syntax Check (`node scripts/checkSyntax.js`)          │
+│                                      ├─► Step 2: Full Unit Tests 51 Suites (`bun test`)                │
+│                                      ├─► Step 3: TypeScript Typecheck (`svelte-check`)                 │
+│                                      └─► Step 4: Svelte/Vite Static Assets Compile (`bun run build`)   │
+│                                                    │                                                   │
+│     ┌──────────────────────────────────────────────┴─────────────────────────────────────────────┐     │
+│     ▼                                                                                            ▼     │
+│ [ BRANCH: uat (Staging / UAT) ]                                           [ BRANCH: main (Production Stable) ]
+│ • Cloudflare Pages: `uat.outgrid-rescue.pages.dev`                        • Cloudflare Pages: `outgrid-rescue.pages.dev`
+│ • Worker API: `api-uat.outgrid-mesh.workers.dev`                          • Worker API: `api.outgrid-mesh.workers.dev`
+│ • D1 Database: `outgrid-mesh-db-uat` (Test Isolated Data)                 • D1 Database: `outgrid-mesh-db` (Production Live)
+│ • APK Release: `outgrid-rescue-uat.apk` (Pre-release)                      • APK Release: `outgrid-rescue-v1.1.apk` (Stable)
+│ • R2 Bucket: `r2-uat.outgrid.org`                                         • R2 Bucket: `r2.outgrid.org`
+│ • P2P Sideload: Test Hotspot SSID `OutGrid-UAT`                           • P2P Sideload: SSID `OutGrid-Rescue`
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 7.1 รายละเอียดการ Deploy แต่ละช่องทาง (4 Target Deployment Environments)
+### 7.1 รายละเอียดการ Deploy แต่ละสภาพแวดล้อม (Dual-Tier Environments: UAT & MAIN)
 
-#### 🌐 1. Deployment: Cloudflare Pages (Frontend Web Dashboard & Responders Map)
+#### 🌐 1. Deployment: Cloudflare Pages (Frontend Web Dashboard & Map)
 - **เครื่องมือ Deploy:** Cloudflare Pages Git Integration หรือผ่าน Wrangler CLI:
   ```bash
   # บิลด์เว็บแอปพลิเคชัน Static Bundle
   bun run build
-  # ปล่อยขึ้น Cloudflare Pages
-  npx wrangler pages deploy build/ --project-name outgrid-rescue --branch production
+
+  # เมื่อ Push / Deploy ที่ branch: uat
+  npx wrangler pages deploy build/ --project-name outgrid-rescue-uat --branch uat
+  # -> URL: https://uat.outgrid-rescue.pages.dev
+
+  # เมื่อ Merge / Deploy ที่ branch: main
+  npx wrangler pages deploy build/ --project-name outgrid-rescue --branch main
+  # -> URL: https://outgrid-rescue.pages.dev (Production Live)
   ```
 - **ผลลัพธ์การ Deploy:** 
-  - เข้าถึงได้ทั่วโลกผ่านโดเมน: `https://outgrid-rescue.pages.dev` (หรือ Custom Domain เช่น `rescue.outgrid.org`)
-  - โหลดไว <50ms ผ่าน Edge Data Center 300+ เมืองทั่วโลก (รวมถึงโหนดกรุงเทพฯ BKK)
-  - มีระบบ Instant Rollback ถอยเวอร์ชันได้ทันทีใน 1 วินาทีหากเกิดข้อผิดพลาด
+  - ระบบแยก Environment ชัดเจน: ทีมกู้ภัยทดสอบระบบใหม่ได้ที่ `uat.*` โดยไม่รบกวนหน้าจอ Dashboard ของศูนย์สั่งการจริงบน `main`
+  - รองรับ Instant Rollback ถอยเวอร์ชันแยกอิสระทั้งสองสภาพแวดล้อม
 
-#### ⚡ 2. Deployment: Cloudflare Workers & D1 Spatial Database (Backend API Gateway)
+#### ⚡ 2. Deployment: Cloudflare Workers & D1 Database (Backend API Gateway)
 - **เครื่องมือ Deploy:** Cloudflare Wrangler CLI v3+
-- **คำสั่งและขั้นตอน Deploy:**
+- **คำสั่งและขั้นตอน Deploy ตามสภาพแวดล้อม:**
   ```bash
-  # 1. รันการอัปเดตโครงสร้างฐานข้อมูล D1 (Database Schema Migration)
-  npx wrangler d1 execute outgrid-mesh-db --file=./cloudflare/schema.sql --remote
+  # ==========================================
+  # สำหรับสภาพแวดล้อม UAT (Branch: uat)
+  # ==========================================
+  npx wrangler d1 execute outgrid-mesh-db-uat --file=./cloudflare/schema.sql --remote
+  npx wrangler deploy --env uat
+  # -> Endpoint: https://api-uat.outgrid-mesh.workers.dev
 
-  # 2. ปล่อยโค้ด API Gateway ขึ้น Cloudflare Edge ทั่วโลก
+  # ==========================================
+  # สำหรับสภาพแวดล้อม Production (Branch: main)
+  # ==========================================
+  npx wrangler d1 execute outgrid-mesh-db --file=./cloudflare/schema.sql --remote
   npx wrangler deploy --env production
+  # -> Endpoint: https://api.outgrid-mesh.workers.dev
   ```
 - **คอนฟิกสำคัญ (`wrangler.toml`):**
-  - กำหนด Environment Variables: `COMPLIANCE_MODE=PRODUCTION`, `ALERT_INGEST_RATE_LIMIT=60`
-  - ผูกโยง D1 Database Binding (`DB`) และ KV Binding (`NONCE_KV`)
-- **ผลลัพธ์การ Deploy:**
-  - Endpoint พร้อมรับโหลดทั่วโลก: `https://api.outgrid-mesh.workers.dev`
-  - ขยายขนาดรองรับแสนคำขอ/วันได้อัตโนมัติ (Zero Cold-Start)
+  - แยก Environment ชัดเจน: `[env.uat]` ชี้ไปที่ฐานข้อมูล `outgrid-mesh-db-uat` และ `[env.production]` ชี้ไปที่ `outgrid-mesh-db`
+  - ข้อมูลทดสอบใน UAT จะถูกแยกขาดจากข้อมูลจริงในยามภัยพิบัติ 100%
 
-#### 📱 3. Deployment: Android Native APK & Cloudflare R2 Distribution (Mobile App Release)
-- **เครื่องมือ Deploy:** Capacitor Android CLI + Android Gradle Build
-- **คำสั่งและขั้นตอน Build & Sign:**
-  ```bash
-  # 1. ซิงก์โค้ด Frontend เข้าสู่ Native Android Wrapper
-  bun run build
-  npx cap sync android
+#### 📱 3. Deployment: Android Native APK & Cloudflare R2 (Mobile App Release)
+- **การคอมไพล์และแจกจ่ายแยกตาม Branch:**
+  - **UAT Staging (`branch: uat`):**
+    - คอมไพล์ได้ไฟล์ `outgrid-rescue-uat.apk` (Package: `org.outgrid.rescue.uat`)
+    - อัปโหลดเป็น **Pre-release** บน GitHub Releases และ R2 Bucket สภาพแวดล้อมทดสอบ
+  - **Production Stable (`branch: main`):**
+    - คอมไพล์ได้ไฟล์ `outgrid-rescue-v1.1.apk` (Package: `org.outgrid.rescue`)
+    - เซ็นกำกับด้วย Production Keystore อัปโหลดเป็น **Official Release** บน GitHub Releases และ R2 Bucket (`r2.outgrid.org/download/outgrid-rescue.apk`)
 
-  # 2. คอมไพล์เป็น Release APK
-  cd android && ./gradlew assembleRelease
-  ```
-- **การแจกจ่ายตัวติดตั้ง (Dual Distribution Channels):**
-  - **ช่องทางที่ 1 (GitHub Releases):** อัปโหลดไฟล์ `outgrid-rescue-v1.1.apk` ขึ้น GitHub Releases อัตโนมัติ พร้อมแสดง SHA-256 Checksum ชัดเจน
-  - **ช่องทางที่ 2 (Cloudflare R2 Storage):** อัปโหลดขึ้น R2 Bucket (`r2.outgrid.org/download/outgrid-rescue.apk`) เพื่อให้ประชาชนโหลดฟรีไม่มีค่า Egress Bandwidth
-
-#### 📶 4. Deployment: Local Offline Zero-Internet Hotspot (P2P Field Distribution)
+#### 📶 4. Deployment: Local Offline Zero-Internet Hotspot (P2P Field Sideload)
 - **การปล่อยแอปในสนามรบจริง (Disaster Zone):**
-  - ไม่ต้องพึ่งเน็ตหรือเซิร์ฟเวอร์ใดๆ ในโลก
-  - ไฟล์ `outgrid-rescue.apk` จะถูกบิลด์ฝังไว้ในที่เก็บข้อมูลภายในของแอป (App Internal Assets)
-  - เมื่อเปิดเมนู **"แชร์แอปให้อีกเครื่อง (Offline APK Sideload)"** โทรศัพท์จะเปิด Local Hotspot และรัน Micro HTTP Server (Port 8080) ส่งไฟล์ APK ให้เครื่องข้างเคียงทันที
+  - ฝังไฟล์ APK ตามสภาพแวดล้อมไว้ในเครื่อง (`uat` หรือ `main`)
+  - ให้บริการดาวน์โหลดผ่าน Local Hotspot และ Nano HTTP Server (Port 8080) โดยอัตโนมัติ
 
 ---
 
-### 7.2 ระบบตรวจสอบและไปป์ไลน์อัตโนมัติ (CI/CD Quality Gates & Release Policy)
+### 7.2 ระบบตรวจสอบและไปป์ไลน์อัตโนมัติ (Dual CI/CD Quality Gates & Release Policy)
 1. **Pre-commit Gate (ความปลอดภัยฝั่ง Local):**
-   - รัน `node scripts/checkSyntax.js` ตรวจสอบไวยากรณ์ทุกไฟล์
+   - รัน `node scripts/checkSyntax.js` ตรวจสอบไวยากรณ์ทุกไฟล์ก่อน Commit
    - ตรวจสอบว่าไม่มี API Keys หรือ Secret รั่วไหลลง Git
 2. **Automated Continuous Integration (GitHub Actions Workflow):**
-   - ทริกเกอร์อัตโนมัติทุกครั้งที่มีการ Push สู่ branch `uat`
+   - ทริกเกอร์อัตโนมัติทั้งเมื่อมีการ Push สู่ branch **`uat`** และเมื่อมีการ Merge สู่ **`main`**
    - รัน `bun test` เพื่อยืนยันว่า **Unit Test ทั้ง 51 ชุด ต้องผ่าน 100% (Zero Failure)**
-   - หากชุดทดสอบใดเฟล ระบบจะระงับการ Deploy ทันที
-3. **Branching & Promotion Strategy (นโยบายสาขา Git):**
-   - **`uat` Branch (Active Development & Staging):** โค้ดที่ผ่านการทดสอบจะถูกพุชมาที่นี่เพื่อทดสอบระบบ E2E
-   - **`main` Branch (Production Stable):** จะทำการ Fast-forward Merge จาก `uat` เมื่อผ่านการทดสอบภาคสนาม (Field Test) และได้รับการอนุมัติอย่างเป็นทางการเท่านั้น
+   - หากมีข้อผิดพลาดแม้แต่กรณีเดียว ระบบจะปฏิเสธการ Deploy ทันที
+3. **Branching, Promotion & Delivery Strategy (นโยบายสาขา Git):**
+   - **`uat` Branch (Active Development & Staging Testing):** 
+     - นักพัฒนาและ Agent จะทำการ Commit และ Push งานทั้งหมดมาที่ `uat` เท่านั้น
+     - ระบบ CI/CD จะทำการ Deploy สู่สภาพแวดล้อม UAT (`api-uat.*`, `uat.pages.dev`) อัตโนมัติ เพื่อให้ทีมงานและผู้ใช้ทดสอบ E2E ได้ทันที
+   - **`main` Branch (Production Stable & Live Field Operations):**
+     - **ห้าม Push โค้ดตรงสู่ `main` โดยเด็ดขาด**
+     - เมื่อการทดสอบบน `uat` ผ่านการรับรองครบถ้วน 100% และผู้ใช้อนุมัติ จะทำการสร้าง Pull Request / Merge จาก `uat` สู่ `main`
+     - ระบบ CI/CD จะทำการ Deploy สู่ Production Live (`api.*`, `pages.dev`, Official APK Release) อัตโนมัติ
 
 ---
 
 ## 8. ข้อกำหนดการทำงานและการส่งมอบ (Compliance & Delivery Rules)
-- **Git Branch:** เมื่อพัฒนาและทดสอบผ่าน 100% แล้ว จะทำการ Commit และ Push ไปยัง branch `uat` เท่านั้น (ไม่ Push ไป `main` โดยตรง)
+- **Git Branch Policy:** เมื่อพัฒนาและทดสอบผ่าน 100% แล้ว ให้ทำการ Commit และ Push ไปยัง branch `uat` เท่านั้น (ห้าม Push เข้า `main` โดยตรง จนกว่าจะตรวจสอบความเรียบร้อยครบถ้วนบน UAT แล้วจึงทำการ Merge เข้า `main`)
+- **Dual-Environment Support:** โค้ด คอนฟิก (`wrangler.toml`), CI/CD Actions และสคริปต์ ต้องรองรับตัวแปรและโหมดการทำงานของทั้ง `uat` และ `main` แยกจากกันอย่างสมบูรณ์
 - **UI Integrity:** ไม่ลบปุ่มหรือคอมโพเนนต์เดิม คงความสมบูรณ์ 100% สำหรับผู้ใช้ทั้ง Guest และ Authenticated User
 - **Comprehensive Delivery:** พัฒนาระบบให้ครบถ้วนเชื่อมโยงทั้ง End-to-End ตามโครงสร้าง v6.1
 
