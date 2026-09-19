@@ -551,10 +551,11 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 **เป้าหมาย:** วางโครงข่ายพิกัดเชิงพื้นที่ด้วย Uber H3 Hexagonal Grid (Res 9, 7, 5, 4) ระบบย่อขยายพิกัดฉุกเฉิน และอัลกอริทึมเลือกตั้ง Supernode อัตโนมัติ
 
 #### 📋 TaskList Detail:
-- [ ] **Task 5.1: Spatial H3 Grid & Geo-Hashing Engine (4-Tier Architecture)**
+- [ ] **Task 5.1: Spatial H3 Grid & Geo-Hashing Engine (Hybrid Mesh & Precision Triage Architecture ⭐️)**
   - พัฒนา `src/core/spatial/H3GridEngine.ts` แปลง GPS Lat/Long เป็น H3 Index ด้วย `h3-js`
-  - รองรับความละเอียดเชิงพื้นที่ 4 ระดับสมบูรณ์:
-    - **Resolution 9 (~100m / รัศมี ~107m):** สำหรับการส่งข้อความท้องถิ่น / เพื่อนบ้านติดกัน
+  - **Sweet-Spot Hierarchical Resolution Strategy:**
+    - **Resolution 9 (~100m / รัศมี ~107m - Core Radio Mesh Base):** ความละเอียดฐานหลักของโครงข่าย BLE Mesh และตัวตรวจจับ Stationary เพื่อหลีกเลี่ยงผลกระทบจาก GPS Drift ในอาคาร และเข้าคู่กับระยะทำการของคลื่นบลูทูธพอดีเป๊ะ
+    - **Resolution 11 (~25m) & Resolution 12 (~9m - Precision Roof Triage Layer):** ถอดรหัสสดจาก **H3 Local Delta Offset (4B)** เพื่อปักหมุดระบุหลังคาบ้านผู้ประสบภัย (Roof-Level Pinpoint) บนหน้าจอเรดาร์ของทีมกู้ภัยโดยไม่รบกวนชั้นส่งสัญญาณวิทยุ
     - **Resolution 7 (~1.2km / รัศมี ~1.22km):** สำหรับช่องสนทนาระดับตำบล / สถิติ Anonymous Heatmap
     - **Resolution 5 (~8.5km / รัศมี ~8.88km):** สำหรับการกระจายข่าวด่วนระดับตำบลขนาดใหญ่/กึ่งอำเภอ
     - **Resolution 4 (~22km / รัศมี ~22.6km):** สำหรับการขนส่งข้อความข้ามอำเภอและเชื่อมต่อกับ Data Mule
@@ -623,13 +624,13 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - พัฒนา `BleRadioPlugin.kt` ใช้ Hardware BLE ScanFilter ดักจับ Service UUID เฉพาะระดับฮาร์ดแวร์
   - รองรับ BLE Advertising (Peripheral Mode) และ BLE Scanning (Central Mode) พร้อมกัน
 - [ ] **Task 7.3: Adaptive Context-Aware Battery Duty Cycle (BLE-Only Radio Scheduling ⭐️)**
-  - พัฒนา `src/core/battery/DutyCycleManager.ts` จัดตารางเวลาสแกนคลื่นวิทยุ **BLE ล้วน 100%** (ปิด Wi-Fi สนิทเพื่อประหยัดไฟ) และปรับความถี่ตามเซนเซอร์การเคลื่อนไหว (Accelerometer / Mobility Tracker):
-    - **Stationary Mode (เมื่อเครื่องอยู่นิ่ง/วางเฉยๆ 🏠 - ยืดอายุแบตเตอรี่ระดับสัปดาห์):**
+  - พัฒนา `src/core/battery/DutyCycleManager.ts` จัดตารางเวลาสแกนคลื่นวิทยุ **BLE ล้วน 100%** (ปิด Wi-Fi สนิทเพื่อประหยัดไฟ) และปรับความถี่ตามการประสานข้อมูล (Sensor Fusion) ระหว่าง **Hardware Accelerometer (<20µA - ไม่ใช้ Gyroscope เพื่อกันไฟรั่ว)** ร่วมกับ **H3 Res 9 Cell Boundary**:
+    - **Stationary Detection (อยู่นิ่งบนโต๊ะ/ในบ้าน):** Accelerometer ตรวจไม่พบแรงขยับ และพิกัดยังไม่หลุดข้ามเส้นขอบ H3 Res 9 (~100m) ➔ ป้องกัน GPS Drift 100% และสั่งหลับยาว:
       - **Normal (>50%):** สแกน BLE 2.0s / **หลับ 60 วินาที** (อยู่ได้ 3–5 วัน)
       - **Saver (20–50%):** สแกน BLE 1.0s / **หลับ 3 นาที** (อยู่ได้ 5–7 วัน)
       - **Low (10–20%):** สแกน BLE 1.0s / **หลับ 10 นาที** (อยู่ได้ 7–10 วัน)
       - **Deep Hibernation (<10%):** สแกน BLE 0.5s / **หลับ 30 นาที** / ยิง SOS สั้น 30ms (ยืดอายุได้อีก 48–72 ชม.)
-    - **In-Motion Burst Mode (เมื่อกำลังเดิน/วิ่ง/ยานพาหนะเคลื่อนที่ 🚶 - ดักจับเครื่องที่เดินสวนกัน):**
+    - **In-Motion Burst Mode (เมื่อกำลังเดิน/วิ่ง/หลุดข้าม H3 Res 9 ใหม่ 🚶 - ดักจับเครื่องที่เดินสวนกัน):**
       - **Normal (>50%):** สแกน BLE 2.5s / หลับ 5.0s
       - **Saver (20–50%):** สแกน BLE 1.5s / หลับ 10.0s
       - **Low (10–20%):** สแกน BLE 1.0s / หลับ 30.0s
