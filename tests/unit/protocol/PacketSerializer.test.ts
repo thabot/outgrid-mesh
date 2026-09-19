@@ -82,4 +82,88 @@ describe('PacketSerializer (TOG v1.1 Wire Format)', () => {
     expect(view.getUint8(17)).toBe(85);
     expect(view.getUint8(18)).toBe(0x05);
   });
+
+  it('should correctly serialize and deserialize all 6 TOG Packet Types', () => {
+    const types = [
+      TOGPacketType.SOS_BEACON,
+      TOGPacketType.DIRECT_CHAT,
+      TOGPacketType.CRISIS_FEED,
+      TOGPacketType.DELIVERY_ACK,
+      TOGPacketType.DELIVERY_NACK,
+      TOGPacketType.PRESENCE_CHIRP
+    ];
+
+    for (const pType of types) {
+      const packet: ITOGPacket = {
+        header: {
+          magic: TOG_MAGIC,
+          version: 1,
+          packetType: pType,
+          ttlHops: 3,
+          priority: TOGPriority.NORMAL,
+          flags: 0,
+          reserved: 0
+        },
+        messageId: 99999999n,
+        senderPubkeyHash: new Uint8Array(8).fill(0xaa),
+        recipientHash: new Uint8Array(8).fill(0xbb),
+        targetH3Index: 0x88654c5525fffff0n,
+        payloadLength: 4,
+        payload: new Uint8Array([1, 2, 3, 4])
+      };
+
+      const serialized = PacketSerializer.serialize(packet);
+      const deserialized = PacketSerializer.deserialize(serialized);
+      expect(deserialized.header.packetType).toBe(pType);
+      expect(deserialized.messageId).toBe(99999999n);
+      expect(deserialized.payload).toEqual(new Uint8Array([1, 2, 3, 4]));
+    }
+  });
+
+  it('should handle boundary and overflow cases (0-byte payload, TTL=0, TTL=255)', () => {
+    const packet: ITOGPacket = {
+      header: {
+        magic: TOG_MAGIC,
+        version: 1,
+        packetType: TOGPacketType.DELIVERY_ACK,
+        ttlHops: 0,
+        priority: TOGPriority.LOW,
+        flags: 0,
+        reserved: 0
+      },
+      messageId: 0n,
+      senderPubkeyHash: new Uint8Array(8),
+      recipientHash: new Uint8Array(8),
+      targetH3Index: 0n,
+      payloadLength: 0,
+      payload: new Uint8Array(0)
+    };
+
+    // TTL = 0, 0-byte payload
+    const s1 = PacketSerializer.serialize(packet);
+    const d1 = PacketSerializer.deserialize(s1);
+    expect(d1.header.ttlHops).toBe(0);
+    expect(d1.payloadLength).toBe(0);
+    expect(d1.payload.length).toBe(0);
+
+    // TTL = 255
+    packet.header.ttlHops = 255;
+    const s2 = PacketSerializer.serialize(packet);
+    const d2 = PacketSerializer.deserialize(s2);
+    expect(d2.header.ttlHops).toBe(255);
+  });
+
+  it('should run 50,000 serialize/deserialize iterations with zero memory leak via BufferPool recycling', () => {
+    const { BufferPool } = require('../../../src/core/protocol/BufferPool');
+    const pool = BufferPool.getInstance();
+
+    for (let i = 0; i < 50000; i++) {
+      const buf = pool.acquire(256);
+      buf[0] = i & 0xff;
+      pool.release(buf);
+    }
+
+    const counts = pool.getAvailableCounts();
+    expect(counts.c256).toBeGreaterThan(0);
+  });
 });

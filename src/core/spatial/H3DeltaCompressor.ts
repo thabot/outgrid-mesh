@@ -41,6 +41,11 @@ export class H3DeltaCompressor {
     const deltaY = Math.round(dLat * EARTH_RADIUS_METERS);
     const deltaX = Math.round(dLng * EARTH_RADIUS_METERS * Math.cos(meanLat));
 
+    // Boundary check: int16 displacement radius is capped at ±3,200 meters (~3.2km)
+    if (Math.abs(deltaX) > 3200 || Math.abs(deltaY) > 3200) {
+      throw new Error(`GPS coordinate out of H3 hexagon bounds: deltaX=${deltaX}m, deltaY=${deltaY}m (> 3.2km)`);
+    }
+
     // Clamp to int16 range (-32768 to 32767) - hexagon Res 9 radius is only ~100m
     const clampedX = Math.max(-1500, Math.min(1500, deltaX));
     const clampedY = Math.max(-1500, Math.min(1500, deltaY));

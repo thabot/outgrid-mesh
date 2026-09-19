@@ -2,19 +2,41 @@ node_modules/
 .svelte-kit/
 build/
 dist/
+.vite/
+
+# Environment and Secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.mnemonic
+
+# Logs and OS files
 *.log
 .DS_Store
 Thumbs.db
+
+# Android Native Build Artifacts & Keystores
 android/.gradle/
 android/app/build/
 android/build/
+local.properties
+captures/
+*.apk
+*.aab
 *.keystore
 *.jks
+
+# Capacitor & Cloudflare Serverless
+capacitor.settings.json
+.wrangler/
+.mf/
+
+# Temporary and Internal Plan Docs
 scratch/
 implementation_plan.md
 TASK_LIST.md
 ROADMAP.md
 MASTER_PROJECT_PLAN*
+

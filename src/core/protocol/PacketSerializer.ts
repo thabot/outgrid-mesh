@@ -13,6 +13,7 @@ import {
   type ITOGHeader,
   type ITOGPacket
 } from './TOGPacket';
+import { CRC16 } from './CRC16';
 
 export const HEADER_SIZE = 4; // Magic (2B) + Ver/Type/TTL (2B) + Priority/Flags/Reserved
 // Actually according to TOG v1.1 specification:
@@ -209,14 +210,7 @@ export class PacketSerializer {
     view.setUint8(17, Math.min(100, Math.max(0, batteryPct)));
     view.setUint8(18, statusFlags & 0xff);
 
-    // Simple CRC16-CCITT for compact 21B validation
-    let crc = 0xffff;
-    for (let i = 0; i < 19; i++) {
-      crc ^= buf[i] << 8;
-      for (let j = 0; j < 8; j++) {
-        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
-      }
-    }
+    const crc = CRC16.compute(buf, 0, 19);
     view.setUint16(19, crc & 0xffff, false);
 
     return buf;
