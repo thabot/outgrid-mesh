@@ -622,14 +622,22 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 - [ ] **Task 7.2: Hardware ScanFilter & BLE Radio Driver**
   - พัฒนา `BleRadioPlugin.kt` ใช้ Hardware BLE ScanFilter ดักจับ Service UUID เฉพาะระดับฮาร์ดแวร์
   - รองรับ BLE Advertising (Peripheral Mode) และ BLE Scanning (Central Mode) พร้อมกัน
-- [ ] **Task 7.3: Adaptive 4-tier Battery Duty Cycle**
-  - พัฒนา `src/core/battery/DutyCycleManager.ts` สลับโหมดการทำงานตามระดับแบตเตอรี่:
-    - **Normal Mode (>50%):** สแกน 2.5s / หลับ 2.5s
-    - **Saver Mode (20–50%):** สแกน 1.5s / หลับ 4.5s
-    - **Low Mode (10–20%):** สแกน 1.0s / หลับ 9.0s
-    - **Deep Hibernation (<10%):** สลีป 55–60 วินาที / ตื่นมายิง SOS สั้น 20–50ms ยืดอายุแบตเตอรี่ได้ 24–48 ชม.
-- [ ] **Task 7.4: Direct Wi-Fi Direct / Local SoftAP Handshake**
-  - พัฒนาระบบกระตุ้นเปิด Wi-Fi Direct อัตโนมัติเมื่อต้องการส่งรูปภาพ แผนที่ หรือไฟล์ขนาดใหญ่
+- [ ] **Task 7.3: Adaptive Context-Aware Battery Duty Cycle (BLE-Only Radio Scheduling ⭐️)**
+  - พัฒนา `src/core/battery/DutyCycleManager.ts` จัดตารางเวลาสแกนคลื่นวิทยุ **BLE ล้วน 100%** (ปิด Wi-Fi สนิทเพื่อประหยัดไฟ) และปรับความถี่ตามเซนเซอร์การเคลื่อนไหว (Accelerometer / Mobility Tracker):
+    - **Stationary Mode (เมื่อเครื่องอยู่นิ่ง/วางเฉยๆ 🏠 - ยืดอายุแบตเตอรี่ระดับสัปดาห์):**
+      - **Normal (>50%):** สแกน BLE 2.0s / **หลับ 60 วินาที** (อยู่ได้ 3–5 วัน)
+      - **Saver (20–50%):** สแกน BLE 1.0s / **หลับ 3 นาที** (อยู่ได้ 5–7 วัน)
+      - **Low (10–20%):** สแกน BLE 1.0s / **หลับ 10 นาที** (อยู่ได้ 7–10 วัน)
+      - **Deep Hibernation (<10%):** สแกน BLE 0.5s / **หลับ 30 นาที** / ยิง SOS สั้น 30ms (ยืดอายุได้อีก 48–72 ชม.)
+    - **In-Motion Burst Mode (เมื่อกำลังเดิน/วิ่ง/ยานพาหนะเคลื่อนที่ 🚶 - ดักจับเครื่องที่เดินสวนกัน):**
+      - **Normal (>50%):** สแกน BLE 2.5s / หลับ 5.0s
+      - **Saver (20–50%):** สแกน BLE 1.5s / หลับ 10.0s
+      - **Low (10–20%):** สแกน BLE 1.0s / หลับ 30.0s
+      - **Deep (<10%):** สแกน BLE 0.5s / หลับ 5.0 นาที (รับฟังเฉพาะ SOS Beacon)
+    - **Zero-Latency Outbound SOS:** เมื่อผู้ใช้กดปุ่ม SOS เอง เครื่องจะยิงคลื่นทันที 0ms Burst Blast โดยไม่สนใจตารางเวลาหลับ
+- [ ] **Task 7.4: BLE-Triggered On-Demand Wi-Fi Direct / Local SoftAP Handshake**
+  - ชิป Wi-Fi ปิดสนิท 100% ขณะสแตนด์บาย
+  - สะกิดปลุก Wi-Fi ผ่านสัญญาณสั้นของ BLE เฉพาะจังหวะที่ต้องการส่งรูปภาพ แผนที่ หรือไฟล์ขนาดใหญ่ เมื่อส่งเสร็จสั่งปิด Wi-Fi คืนทันทีเพื่อหยุดการสูบแบตเตอรี่
 - [ ] **Task 7.5: Protocol Bridge Adapters Layer (Meshtastic LoRa & Briar BTP Bridges)**
   - **Extensible Protocol Bridge Architecture (`src/core/adapters/`):**
     - ออกแบบ `IProtocolAdapter` Interface แบบเปิดกว้าง (Pluggable Architecture) เพื่อรองรับการเขียน Adapter เชื่อมต่อโพรโทคอลโอเพนซอร์สอื่นเพิ่มเติมได้ไม่จำกัดในอนาคต
