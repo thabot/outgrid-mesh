@@ -849,9 +849,18 @@ OutGridMesh/                               # Root Directory (เดิมคื�
     - หากอยู่นอกเขตระยะไกลเกินกว่ากำหนด ให้ลดการส่งต่อ (Prune Forwarding) ทันที เพื่อไม่ให้เปลือง Airtime ในพื้นที่ไม่เกี่ยวข้อง
   - **Hop Count & Density-Adaptive Forwarding:**
     - หากอยู่ในเขตเป้าหมายที่มีโหนดหนาแน่น ($N > 20$) จะสุ่มส่งต่อเพียง $p = 1/\sqrt{N}$ เพื่อกำจัดปัญหา Broadcast Storm
+    - ประเมินระยะกระจัด (Distance Gradient) โดยโหนดที่อยู่ห่างจากผู้ส่งเดิมมากกว่าจะได้รับสิทธิ์ส่งต่อก่อน (Priority Forwarding via Jitter Delay)
 
-- [ ] **Task 5.5: Comprehensive Spatial & Supernode Unit Test Suite (`tests/unit/spatial/` ⭐️)**
-  - พัฒนาชุดทดสอบหน่วยสำหรับ H3 Spatial Engine, Geocast และการเลือกตั้ง Supernode:
+- [ ] **Task 5.5: Epidemic Anti-Entropy Gossip Protocol & Bloom Digest Synchronization (`src/core/mesh/GossipSyncEngine.ts` ⭐️)**
+  - พัฒนาระบบแลกเปลี่ยนข้อมูลข้อความที่ตกหล่นระหว่างโหนดเมื่อเดินสวนทางกัน (Pairwise Anti-Entropy Session):
+  - **Pairwise Bloom Digest Exchange (ประหยัด Airtime ขีดสุด):**
+    - เมื่อโหนดสองโหนดตรวจพบกันผ่าน BLE Chirp จะส่ง **Compact Bloom Filter Digest (128–256 Bytes)** สรุปรายการข้อความที่ตนเองมี
+    - เปรียบเทียบ Bitwise XOR ระหว่าง Digest เพื่อระบุว่ามีข้อความใดที่อีกฝ่ายยังขาด โดยไม่ต้องส่ง Message ID ทั้งหมดข้ามอากาศ
+  - **Differential Bundle Push & Rate Limiting:**
+    - ส่งมอบเฉพาะแพ็กเก็ตที่อีกฝั่งยังไม่มี โดยจำกัดอัตราส่งไม่เกิน 5 แพ็กเก็ตต่อวินาที เพื่อป้องกันช่องสัญญาณแบนด์วิดท์ BLE อิ่มตัว
+
+- [ ] **Task 5.6: Comprehensive Spatial, Routing & Gossip Unit Test Suite (`tests/unit/spatial/` ⭐️)**
+  - พัฒนาชุดทดสอบหน่วยสำหรับ H3 Spatial Engine, Geocast, Supernode และ Epidemic Gossip:
   - **`H3GridEngine.test.ts`:**
     - ทดสอบแปลงพิกัด Lat/Long เป็น H3 Index ถูกต้องตามมาตรฐาน Uber H3 ทั้ง 5 ระดับ (Res 4, 5, 7, 9, 11/12)
     - ทดสอบคำนวณ `cellToLatLng` และคำนวณระยะทาง `gridDistance` ถูกต้องแม่นยำ
@@ -866,13 +875,19 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - **`GeocastRouter.test.ts`:**
     - ทดสอบการคัดกรองแพ็กเก็ต: โหนดที่อยู่นอกพื้นที่เป้าหมาย H3 ต้อง Drop แพ็กเก็ตทิ้ง
     - ทดสอบ Density-Adaptive Forwarding: ในสภาพแวดล้อมหนาแน่น อัตราการ Forward ต้องลดลงตามสัดส่วน $1/\sqrt{N}$
+    - ทดสอบ Distance Gradient Jitter Delay: โหนดที่อยู่ไกลกว่าส่งต่อก่อน
+  - **`GossipSyncEngine.test.ts`:**
+    - ทดสอบการสร้างและเทียบ Compact Bloom Digest (128B) ระหว่าง 2 โหนด
+    - ทดสอบการดึงและแลกเปลี่ยนเฉพาะข้อความที่ตกหล่น (Missing Packets Detection) สำเร็จ 100%
+    - ทดสอบ Rate Limiting ไม่ส่งเกิน 5 แพ็กเก็ตต่อวินาที
 
 #### 🎯 Acceptance Criteria:
 - แปลงพิกัด GPS เป็น H3 Index ถูกต้องตามมาตรฐาน Uber H3 ครบทั้ง 5 ระดับ (Res 4, 5, 7, 9, 11/12)
 - ระบบ Progressive Spatial Expansion ขยายวงรังผึ้ง Res 9 -> 7 -> 5 -> 4 ตามช่วงเวลาที่กำหนดได้อย่างแม่นยำ 100% และ Instant Collapse เมื่อได้ ACK
 - การเลือกตั้ง Supernode คำนวณคะแนนและสลับบทบาทได้ถูกต้อง ยกสิทธิ์สูงสุดให้โหนดที่ต่อ LoRa Gateway และลดบทบาทเมื่อแบตเตอรี่ต่ำกว่า 30%
 - Geocast Router สกัดกั้นการแพร่กระจายของแพ็กเก็ตออกนอกเขตเป้าหมายได้อย่างแม่นยำ 100%
-- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/spatial/` (ทั้ง 4 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
+- ระบบ Epidemic Anti-Entropy Gossip ซิงก์ข้อมูลที่ตกหล่นระหว่างโหนดผ่าน Bloom Digest ได้สมบูรณ์ 100%
+- **Unit Test Coverage 100%:** ทุกชุดทดสอบใน `tests/unit/spatial/` (ทั้ง 5 ไฟล์ทดสอบ) ทำงานผ่าน 100% ไร้ข้อผิดพลาด
 
 ---
 
