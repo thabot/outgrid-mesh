@@ -1590,7 +1590,22 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 ## 9. แผนงานในอนาคตและฟีเจอร์ระยะถัดไป (Future Roadmap & Post-MVP Backlog v2.0)
 เพื่อรักษาความกระชับ ความเสถียร และความรวดเร็วในการกู้ภัยของระบบ MVP ให้โฟกัสที่ **1-on-1 E2EE Chat (`0x02`), Emergency SOS (`0x01`) และ Crisis Feed (`0x04`)** ระบบจึงได้ถอดฟีเจอร์ด้านล่างนี้ไปพัฒนาในเวอร์ชันถัดไป (Roadmap v2.0):
 
-### 8.1 Group Chat & Topic Multi-Party Privacy Engine (Zero-Knowledge Group)
+### 9.1 การรองรับระบบปฏิบัติการ Apple iOS / iPhone (iOS & Apple Ecosystem Support 🍏)
+ขยายขอบเขตการใช้งานของ OutGrid Mesh สู่ผู้ใช้งาน iPhone และ iPad ทั่วโลก ทั้งในรูปแบบ **Native iOS App** บน Apple App Store และ **Progressive Web App (PWA)**:
+1. **Capacitor iOS Native Shell & Apple App Store Release:**
+   - พัฒนา Wrapper สำหรับ iOS ผ่าน `npx cap add ios` และคอมไพล์ด้วย Xcode / Swift
+   - เผยแพร่ผ่าน **Apple App Store** และ **TestFlight** สำหรับทดสอบ UAT
+2. **CoreBluetooth Native iOS Engine (`CBCentralManager` & `CBPeripheralManager`):**
+   - พัฒนาปลั๊กอิน Swift เชื่อมต่อ Native BLE ของ iOS เพื่อรับ-ส่งแพ็กเก็ต **TOG v1.1**
+   - **Background BLE Optimization (iOS State Restoration):** รองรับ `bluetooth-central` และ `bluetooth-peripheral` background modes เพื่อให้ iPhone สแตนด์บายรับสัญญาณขอความช่วยเหลือ SOS ในโหมดปิดหน้าจอได้อย่างต่อเนื่อง
+3. **Apple MultipeerConnectivity Framework (High-Speed Local Wi-Fi & BLE P2P):**
+   - ประยุกต์ใช้เฟรมเวิร์กเฉพาะของ Apple (`MultipeerConnectivity`) สำหรับค้นหาและจับคู่ระหว่าง iPhone/iPad รอบข้างแบบอัตโนมัติ เพื่อส่งต่อรูปภาพและไฟล์เสียงความเร็วสูงโดยไม่ต้องต่อเราเตอร์
+4. **Passkey & WebAuthn Integration (Apple iCloud Keychain):**
+   - ซิงก์รายชื่อเพื่อนและกุญแจสาธารณะอัตโนมัติผ่าน FaceID / TouchID ร่วมกับ Apple Keychain
+5. **Safari PWA Full Offline Fallback:**
+   - รองรับการเปิดใช้งานผ่าน Safari บน iOS โดยบันทึกหน้าเว็บและแผนที่เวกเตอร์โลกลง Cache Storage / IndexedDB ใช้งานออฟไลน์ได้ทันทีโดยไม่ต้องลงแอป
+
+### 9.2 Group Chat & Topic Multi-Party Privacy Engine (Zero-Knowledge Group)
 - **Symmetric Group Key Distribution & Epoch Rotation Engine:**
   - พัฒนา `src/core/crypto/GroupKeyManager.ts` สำหรับห้องแชตกลุ่มผู้ประสบภัยและกลุ่มทีมกู้ภัยประจำตำบล
   - **Topic Secret Key (32 Bytes):** สร้างด้วย CSPRNG ประจำแต่ละ `Topic_ID` (4 Bytes)
@@ -1600,11 +1615,11 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - **Packet Frame `0x03` (`GROUP_CHAT`):** เปิดใช้งานเมื่อติดตั้งเอนจิน Group Key เต็มรูปแบบ
   - UI Room Management: ระบบสร้างห้องกลุ่ม สแกน QR เข้าร่วมกลุ่มเฉพาะจุด และรายชื่อสมาชิกในห้อง
 
-### 8.2 LoRa ESP32 External Radio Bridge & Satellite Gateway
+### 9.3 LoRa ESP32 External Radio Bridge & Satellite Gateway
 - การเชื่อมต่อฮาร์ดแวร์ภายนอกผ่าน Serial/BLE สู่บอร์ด ESP32 LoRa 433/868/915 MHz สำหรับส่งสัญญาณข้ามเขา 10-30 กิโลเมตร
 - เชื่อมต่อ Iridium Go / Garmin InReach สำหรับทีมกู้ภัยพิเศษ
 
-### 8.3 Offline Voice Stream & Drone Data Mule Auto-Sync
+### 9.4 Offline Voice Stream & Drone Data Mule Auto-Sync
 - ระบบสตรีมมิ่งเสียงแบบกดพูด Push-to-Talk ข้ามวง Mesh แบบกึ่งเรียลไทม์
 - โดรนบินสำรวจตรวจจับจุดขอความช่วยเหลือและดึงข้อมูลกลับฐานอัตโนมัติ (Drone Ferry Integration)
 
