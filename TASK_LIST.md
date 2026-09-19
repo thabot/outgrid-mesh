@@ -418,7 +418,7 @@
 ## ☁️ SPRINT 9: คลาวด์ไร้เซิร์ฟเวอร์และการเชื่อมต่อขอบเขต (Phase 9: Cloud & Zero-Trust)
 > **เป้าหมาย:** Cloudflare Workers, D1 Spatial DB, STUN P2P Signaling และรับ Inbound Alert CAP v1.2
 
-- [ ] **Task 9.1: พัฒนาระบบจับคู่นามบัตร P2P WebRTC Signaling บน Cloudflare Worker**
+- [x] **Task 9.1: พัฒนาระบบจับคู่นามบัตร P2P WebRTC Signaling บน Cloudflare Worker**
   - **ไฟล์เป้าหมาย:** `cloudflare/workers/signaling.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/cloud/WebRtcSignaling.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -426,7 +426,7 @@
     - สองเครื่องเปิดท่อคุยตรงหากันเองแบบ P2P เซิร์ฟเวอร์ไม่เป็นตัวกลางรับส่งข้อมูล (Zero Media Relay)
   - **คำสั่งทดสอบ:** `bun test tests/unit/cloud/WebRtcSignaling.test.ts`
 
-- [ ] **Task 9.2: พัฒนา API Gateway บน Cloudflare Worker พร้อมระบบตรวจลายเซ็นคำขอ**
+- [x] **Task 9.2: พัฒนา API Gateway บน Cloudflare Worker พร้อมระบบตรวจลายเซ็นคำขอ**
   - **ไฟล์เป้าหมาย:** `cloudflare/workers/index.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/cloud/CloudflareWorkerApi.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -434,7 +434,7 @@
     - จำกัดปริมาณคำขอ (Rate Limiting) 1 คำขอต่อ 15 วินาทีต่อเครื่อง
   - **คำสั่งทดสอบ:** `bun test tests/unit/cloud/CloudflareWorkerApi.test.ts`
 
-- [ ] **Task 9.3: ออกแบบและติดตั้งโครงสร้างฐานข้อมูล Cloudflare D1 Spatial Database**
+- [x] **Task 9.3: ออกแบบและติดตั้งโครงสร้างฐานข้อมูล Cloudflare D1 Spatial Database**
   - **ไฟล์เป้าหมาย:** `cloudflare/d1/schema.sql`
   - **ไฟล์ทดสอบ:** `tests/unit/cloud/D1DatabaseSchema.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -442,7 +442,7 @@
     - กำหนดคำสั่งตั้งเวลาลบข้อมูลที่หมดอายุ (TTL 1 ชั่วโมง) อัตโนมัติ
   - **คำสั่งทดสอบ:** `bun test tests/unit/cloud/D1DatabaseSchema.test.ts`
 
-- [ ] **Task 9.4: พัฒนาระบบรวบการเขียนข้อมูลเพื่อประหยัดโควตา (D1 Quota Coalescing Buffer)**
+- [x] **Task 9.4: พัฒนาระบบรวบการเขียนข้อมูลเพื่อประหยัดโควตา (D1 Quota Coalescing Buffer)**
   - **ไฟล์เป้าหมาย:** `cloudflare/workers/d1Buffer.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/cloud/D1QuotaCoalescing.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -450,7 +450,7 @@
     - ลดทอนจำนวนการเขียนข้อมูลลงมากกว่า 85% รักษาการทำงานให้อยู่ใน Free Tier 100%
   - **คำสั่งทดสอบ:** `bun test tests/unit/cloud/D1QuotaCoalescing.test.ts`
 
-- [ ] **Task 9.5: พัฒนาระบบรับแจ้งเตือนภัยจากภายนอกมาตรฐานสากล (CAP Alert Ingestion Gateway)**
+- [x] **Task 9.5: พัฒนาระบบรับแจ้งเตือนภัยจากภายนอกมาตรฐานสากล (CAP Alert Ingestion Gateway)**
   - **ไฟล์เป้าหมาย:** `cloudflare/workers/capAlert.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/cloud/CapAlertIngestion.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -458,7 +458,7 @@
     - เซ็นกำกับด้วย Master Key แล้วส่งกระจายลงฐานข้อมูล D1 ให้แอปดึงเข้าวง Mesh
   - **คำสั่งทดสอบ:** `bun test tests/unit/cloud/CapAlertIngestion.test.ts`
 
-- [ ] **Task 9.6: พัฒนาระบบยืนยันตัวตนกู้ภัยไร้รหัสผ่าน Passkey (FIDO2 WebAuthn)**
+- [x] **Task 9.6: พัฒนาระบบยืนยันตัวตนกู้ภัยไร้รหัสผ่าน Passkey (FIDO2 WebAuthn)**
   - **ไฟล์เป้าหมาย:** `cloudflare/workers/passkeyAuth.ts`, `src/core/auth/PasskeyClient.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/cloud/PasskeyAuthManager.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -466,7 +466,7 @@
     - ซิงก์รายชื่อผู้ติดต่อที่ปลอดภัยผ่านการเข้ารหัส E2EE
   - **คำสั่งทดสอบ:** `bun test tests/unit/cloud/PasskeyAuthManager.test.ts`
 
-- [ ] **Task 9.7: พัฒนาระบบแยกสิทธิ์การดูข้อมูลเชิงพื้นที่สองระดับ (Dual-Tier Spatial Privacy)**
+- [x] **Task 9.7: พัฒนาระบบแยกสิทธิ์การดูข้อมูลเชิงพื้นที่สองระดับ (Dual-Tier Spatial Privacy)**
   - **ไฟล์เป้าหมาย:** `cloudflare/workers/spatialPrivacy.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/cloud/DualTierPrivacy.test.ts`
   - **รายละเอียดการทำงาน:**
