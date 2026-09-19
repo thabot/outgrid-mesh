@@ -1,5 +1,5 @@
 /**
- * End-to-End Encryption Engine (E2EE)
+ * End-to-End Encryption Engine (E2EE) & CipherEngine
  * Creator & Lead Architect: Thabot <thabo47@gmail.com>
  * Protocol: TOG v1.1 E2EE Wire Security
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
@@ -8,17 +8,20 @@
 import { x25519 } from '@noble/curves/ed25519.js';
 import { gcm } from '@noble/ciphers/aes.js';
 import { sha256 } from '@noble/hashes/sha256.js';
+import { hkdf } from '@noble/hashes/hkdf.js';
 
 export const IV_LENGTH = 12;  // 12 Bytes for AES-GCM
 export const TAG_LENGTH = 16; // 16 Bytes Auth Tag
 export const SECURITY_OVERHEAD = IV_LENGTH + TAG_LENGTH; // Strict 28 Bytes
+
+export const E2EE_HKDF_INFO = new TextEncoder().encode('TOG-v1.1-E2EE-Direct');
 
 export interface IKeyPair {
   privateKey: Uint8Array; // 32 Bytes
   publicKey: Uint8Array;  // 32 Bytes
 }
 
-export class CryptoEngine {
+export class CipherEngine {
   /**
    * Generates a new X25519 keypair
    */
@@ -41,6 +44,20 @@ export class CryptoEngine {
   public static computeSharedSecret(myPrivateKey: Uint8Array, theirPublicKey: Uint8Array): Uint8Array {
     const sharedPoint = x25519.getSharedSecret(myPrivateKey, theirPublicKey);
     return sha256(sharedPoint);
+  }
+
+  /**
+   * Derives a 32-byte session key via HKDF-SHA256 (RFC 5869)
+   * Using context info "TOG-v1.1-E2EE-Direct"
+   */
+  public static deriveSessionKey(
+    myPrivateKey: Uint8Array,
+    theirPublicKey: Uint8Array,
+    salt?: Uint8Array,
+    info: Uint8Array = E2EE_HKDF_INFO
+  ): Uint8Array {
+    const rawShared = x25519.getSharedSecret(myPrivateKey, theirPublicKey);
+    return hkdf(sha256, rawShared, salt, info, 32);
   }
 
   /**
@@ -85,3 +102,8 @@ export class CryptoEngine {
     return aes.decrypt(ciphertextWithTag);
   }
 }
+
+/**
+ * Backward compatibility alias for CryptoEngine
+ */
+export const CryptoEngine = CipherEngine;
