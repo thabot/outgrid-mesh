@@ -388,6 +388,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 │   │   │   ├── CancelSosModal.tsx         # ปุ่ม "ฉันปลอดภัยแล้ว" ลบหมุดฉุกเฉิน
 │   │   │   ├── VoiceRecorderModal.tsx     # อัดเสียง 15s + นับถอยหลัง + Preview ฟังซ้ำ + กดยืนยันส่ง
 │   │   │   ├── ImageCompressorModal.tsx   # พรีวิวรูปและบีบอัด Auto-WebP (5-12KB) ก่อนส่ง
+│   │   │   ├── PasskeyModal.tsx           # สแกนลายนิ้วมือ/FaceID ผูกบัญชีและกู้คืนรายชื่อเพื่อนฟรี
 │   │   │   ├── H3OfflineMap.tsx           # เรนเดอร์ Vector Basemap 5MB + หกเหลี่ยม H3
 │   │   │   ├── DeliveryBadge.tsx          # แสดงไอคอนสถานะ 5 ขั้น (ส่ง/ฝาก/ติ๊กถูกคู่)
 │   │   │   └── BatteryIndicator.tsx       # แสดงโหมด Duty Cycle ตามระดับแบต
@@ -507,13 +508,13 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 **เป้าหมาย:** พัฒนาระบบเข้ารหัสลับ End-to-End ไร้ศูนย์กลาง (E2EE) ประสิทธิภาพสูงด้วย Ed25519, X25519 ECDH, HKDF-SHA256, AES-256-GCM พร้อมระบบจับคู่กุญแจ Offline Dynamic QR Code และ Visual Emoji Fingerprint
 
 #### 📋 TaskList Detail:
-- [ ] **Task 3.1: BIP-39 Seed Derivation & Dual-Keypair Identity Engine (Ed25519 + X25519 ⭐️)**
-  - พัฒนา `src/core/crypto/KeyManager.ts` จัดการวงจรชีวิตตัวตนดิจิทัล (Self-Sovereign Identity)
-  - **Deterministic Derivation:** สุ่มสร้าง Entropy 128-bit แปลงเป็น **Mnemonic Seed 12 คำ (BIP-39)** ครั้งเดียว และแตกแขนงกุญแจผ่าน SLIP-0010 / HKDF:
+- [ ] **Task 3.1: Instant Hardware-Backed Dual-Keypair Identity & Zero-Mental-Load Engine (Ed25519 + X25519 ⭐️)**
+  - พัฒนา `src/core/crypto/KeyManager.ts` จัดการวงจรชีวิตตัวตนดิจิทัล (Self-Sovereign Identity):
+  - **Zero-Mental-Load Instant Identity:** สุ่มสร้าง Entropy 256-bit ด้วย CSPRNG ทันทีที่เปิดแอปครั้งแรก โดยผู้ใช้ไม่ต้องจดรหัส 12 คำ และไม่ต้องจำรหัสผ่าน พร้อมส่ง SOS กู้ชีพได้ใน 1 วินาที:
     - **Ed25519 Identity Signing Key (32B Private / 32B Public):** สำหรับเซ็นกำกับตัวตน (Digital Signature) ในแพ็กเก็ต SOS, Heartbeat, ใบเสร็จ ACK, และการรับรองสิทธิ์กู้ภัย
     - **X25519 Diffie-Hellman Key (32B Private / 32B Public):** สำหรับทำ Key Agreement แลกเปลี่ยนกุญแจเข้ารหัสแชต 1-on-1 แบบสองชั้น
   - **Node ID Generation:** สร้าง `node_id_hash` (8 Bytes uint64) จาก Truncated SHA-256 ของ Ed25519 Public Key เพื่อใช้เป็นรหัสประจำตัวความยาวคงที่ใน Header TOG v1.1
-  - รองรับการ Export / Import กู้คืนกระเป๋ากุญแจด้วย Mnemonic Phrase 12 คำ 100%
+  - **Clean Reinstall Strategy:** หากผู้ใช้ถอนการติดตั้งแอป (Uninstall) เครื่องที่ติดตั้งใหม่จะสร้างตัวตนใหม่ทันที (Fresh Identity) และกู้คืนเฉพาะ **"รายชื่อเพื่อนและกุญแจสาธารณะของเพื่อน (Contacts)"** กลับมาผ่านระบบ Passkey Biometrics โดยไม่ต้องกรอกรหัสผ่านใดๆ
 - [ ] **Task 3.2: E2EE Direct Messaging Engine (Static-Ephemeral ECDH + HKDF + AES-256-GCM ⭐️)**
   - พัฒนา `src/core/crypto/CipherEngine.ts` ป้องกันการดักฟังและปลอมแปลงข้อความ:
   - **Session Key Derivation:**
@@ -541,7 +542,7 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - สกัดกั้นข่าวปลอม (Fake News / Panic Hoax) โดยแอปจะปฏิเสธการบรอดแคสต์ประกาศใดๆ ที่ไม่มี Master Authority Signature ที่ถูกต้อง
 
 #### 🎯 Acceptance Criteria:
-- Unit Test สร้าง Mnemonic 12 คำ และแตกแขนง Ed25519/X25519 ได้ค่าเดียวกันสม่ำเสมอ (Deterministic)
+- สร้าง Keypair Ed25519/X25519 ได้ทันทีใน <10ms โดยไม่ต้องบังคับผู้ใช้จดรหัส 12 คำ
 - ฟังก์ชันเข้ารหัส/ถอดรหัส E2EE ทนทานต่อการแก้ไขข้อมูล (Auth Tag Mismatch ถอดรหัสไม่ผ่าน) และกิน Overhead เพียง 28 ไบต์
 - Dynamic QR Code สามารถอ่านค่า Keypair ครบถ้วนในขนาด <110 ไบต์ และ Safety Numbers 8 หลักคำนวณตรงกันทั้งสองฝั่ง 100%
 - ระบบป้องกันการสวมรอยข่าวปลอมด้วย Ed25519 Signature ตรวจสอบผ่าน 100% และ Private Key จัดเก็บใน Hardware Keystore ปลอดภัย
@@ -750,10 +751,21 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - Request Body: `node_pubkey`, `h3_res7`, `battery: {level_pct, is_charging, power_save_mode, est_runtime_min, battery_tier}`, `mesh_role`, `seen_neighbors: [{peer_id_hash, rssi, last_seen_sec_ago, via_transport, battery_tier}]`
       - Response Body: `status: "ok"`, `nearby_active_nodes`, `supernodes_in_zone`, `inbound_emergency_alerts`
     - `GET /v1/spatial/neighbors?h3=...&k_ring=1`: ดึงข้อมูลโหนดใกล้เคียงในรัศมีรังผึ้งรอบตัว สำหรับเชื่อมต่อ WebRTC P2P
-  - **4. Cloudflare D1 Dual-Table Mesh Topology Schema (`cloudflare/schema.sql`):**
+  - **4. Cloudflare D1 Multi-Table Mesh & Passkey Sync Schema (`cloudflare/schema.sql`):**
     - **ตาราง `active_nodes`:** บันทึก `node_id_hash` (PK), `pubkey`, `h3_res7`, `battery_level`, `is_charging`, `power_save_mode`, `est_runtime_min`, `battery_tier`, `mesh_role`, `transport_type`, `last_nonce`, `last_seen_at`, `expires_at` (Index: `(h3_res7, expires_at)`)
     - **ตาราง `node_neighbors`:** บันทึก `reporter_node_hash`, `neighbor_node_hash`, `rssi`, `via_transport`, `neighbor_battery_tier`, `seen_at` (PK: `(reporter, neighbor)`) เพื่อให้แดชบอร์ดสร้างกราฟความสัมพันธ์ของเครือข่ายได้แบบ Live
-    - **Auto-Prune Cron Job:** สั่งล้างข้อมูลหมดอายุอัตโนมัติ (`expires_at < unixepoch()`) ทุก 1 ชั่วโมง รักษาฐานข้อมูลให้สะอาดและฟรีตลอดชีพ
+    - **ตาราง `passkey_credentials` (ระบบยืนยันตัวตน FIDO2 / WebAuthn ฟรี 100% ไร้ค่าบริการส่ง Email):**
+      - เก็บรหัสประจำตัวอุปกรณ์ชีวมิติ: `credential_id` (PK, Base64URL), `user_handle` (UUID), `public_key` (COSE format), `counter` (ป้องกัน Clone), `device_name` (เช่น "Pixel 8 Pro", "iPhone 15"), `created_at`
+    - **ตาราง `user_contacts` (ระบบกู้คืนรายชื่อเพื่อนอัตโนมัติเมื่อลงแอปใหม่):**
+      - เก็บรหัสเพื่อนและกุญแจสาธารณะ: `id` (PK), `user_handle` (FK), `friend_node_id` (uint64 hex), `friend_nickname` (Text), `friend_ed25519_pubkey` (32B Base64), `friend_x25519_pubkey` (32B Base64), `is_verified` (Integer), `safety_numbers` (Text 8 หลัก), `updated_at` (Unique: `user_handle, friend_node_id`)
+    - **5. Passkey & Contacts Sync Endpoints:**
+      - `POST /v1/auth/passkey/register-challenge`: สร้าง Challenge สำหรับลงทะเบียนสแกนนิ้วครั้งแรก
+      - `POST /v1/auth/passkey/register-verify`: ตรวจสอบลายเซ็น FIDO2 และบันทึก Credential ลง D1
+      - `POST /v1/auth/passkey/login-challenge`: สร้าง Challenge สำหรับเครื่องที่เพิ่งลงใหม่ต้องการกู้คืน
+      - `POST /v1/auth/passkey/login-verify`: ยืนยันสแกนนิ้วสำเร็จ แจก Session Token สั้น
+      - `GET /v1/user/contacts`: ดึงรายชื่อเพื่อน + Node ID + Public Key กลับมาลงเครื่องใหม่ทันทีใน 1 วิ
+      - `POST /v1/user/contacts/sync`: อัปเดตรายชื่อเพื่อนใหม่ขึ้น D1 อัตโนมัติเมื่อมีการแอดเพื่อนผ่าน QR
+    - **Auto-Prune Cron Job:** สั่งล้างโหนดหมดอายุอัตโนมัติ (`expires_at < unixepoch()`) ทุก 1 ชั่วโมง รักษาฐานข้อมูลให้สะอาดและฟรีตลอดชีพ
 - [ ] **Task 9.3: Transparent Community Donation Ledger & Dashboard**
   - พัฒนาหน้าแดชบอร์ดระดมทุนเพื่อมนุษยธรรม เชื่อมต่อ Open Collective / GitHub Sponsors / PromptPay
   - แสดงรายงานรายรับ-รายจ่ายของโครงสร้างพื้นฐานแบบ Open Ledger โปร่งใส 100%
@@ -819,6 +831,9 @@ OutGridMesh/                               # Root Directory (เดิมคื�
       - รองรับการอัดเสียงแจ้งเหตุสำหรับผู้ป่วย/ผู้สูงอายุ ทั้งในห้องแชต 1-on-1 และแนบไปกับสัญญาณ SOS
       - **ความยาวสูงสุด 15 วินาที** (ตัดหยุดบันทึกอัตโนมัติเมื่อครบ 15 วิ ขนาด ~8–15 KB บีบอัดด้วย Opus Mono 6–12 kbps)
       - **Review & Confirm Flow (ห้ามส่งทันที):** เมื่ออัดเสร็จจะขึ้นแถบพรีวิวให้ผู้ใช้ **กดฟังเสียงทบทวนความชัดเจนได้ก่อน** พร้อมปุ่ม "อัดใหม่" และ **ผู้ใช้ต้องกดปุ่มยืนยันส่ง (Confirm Send) ด้วยตนเองเสมอ** เพื่อป้องกันการเผลอกดส่งไฟล์เสียงขยะไปแช่คลื่นวิทยุในอากาศ
+    - **4. Zero-Cost Biometric Passkey Sync Flow (`PasskeyModal.tsx` ⭐️):**
+      - เพิ่มปุ่ม One-Tap **"ผูกลายนิ้วมือ/FaceID สำรองรายชื่อเพื่อนฟรี"** ในหน้าตั้งค่า/โปรไฟล์
+      - เมื่อลบแอปแล้วลงใหม่ บนหน้าแรกจะมีปุ่ม **"กู้คืนรายชื่อเพื่อนด้วย Passkey"** แตะนิ้วเดียวดึงรายชื่อเพื่อน (Node ID + Public Keys) กลับมาลงเครื่องทันทีใน 1 วินาที โดยไม่ต้องมีระบบส่ง Email OTP ใดๆ ให้เสียค่าบริการ
 - [ ] **Task 10.3: Hybrid Smart Spatial Pyramid & Dual-Platform Offline Map Engine (Android & Web PWA ⭐️)**
   - **สถาปัตยกรรมแผนที่ออฟไลน์แบบผสมผสาน (Hybrid Pragmatic Spatial Architecture):**
     - **1. Base Offline Vector Bundle (แผนที่ครอบคลุมทั้งโลก 100% ขนาดเพียง 3–5 MB ฝังใน App ตั้งแต่วินาทีแรก):**
