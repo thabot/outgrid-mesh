@@ -1476,9 +1476,10 @@ OutGridMesh/                               # Root Directory (เดิมคื�
 │ • Cloudflare Pages: `uat.outgrid-rescue.pages.dev`                        • Cloudflare Pages: `outgrid-rescue.pages.dev`
 │ • Worker API: `api-uat.outgrid-mesh.workers.dev`                          • Worker API: `api.outgrid-mesh.workers.dev`
 │ • D1 Database: `outgrid-mesh-db-uat` (Test Isolated Data)                 • D1 Database: `outgrid-mesh-db` (Production Live)
-│ • APK Release: `outgrid-rescue-uat.apk` (Pre-release)                      • APK Release: `outgrid-rescue-v1.1.apk` (Stable)
-│ • R2 Bucket: `r2-uat.outgrid.org`                                         • R2 Bucket: `r2.outgrid.org`
-│ • P2P Sideload: Test Hotspot SSID `OutGrid-UAT`                           • P2P Sideload: SSID `OutGrid-Rescue`
+│ • Play Store: Internal Testing Track (`.aab`)                            • Play Store: Production Live Track (`.aab`)
+│ • GitHub Releases: `outgrid-rescue-uat.apk` (Pre-release)                 • GitHub Releases: `outgrid-rescue-v1.1.apk` (Official)
+│ • R2 Bucket: `r2-uat.outgrid.org`                                         • R2 Bucket: `r2.outgrid.org` (Direct APK)
+│ • P2P Sideload: Test Hotspot SSID `OutGrid-UAT`                           • P2P Sideload: SSID `OutGrid-Rescue` (Embedded APK)
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
