@@ -17,11 +17,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy-pages:
-    name: Build PWA & Deploy to GitHub Pages
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # ─── Job 1: Build & Verify (runs on BOTH uat and main) ───────────────────────
+  build:
+    name: Build PWA Bundle
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -40,17 +38,40 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
-      - name: Build Web PWA Bundle for GitHub Pages
+      - name: Inject Build Version from package.json + git commit SHA
         run: |
-          BASE_PATH="/outgrid-mesh" bun run build
+          VERSION=$(node -p "require('./package.json').version")
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%d")
+          echo "VITE_APP_VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "VITE_APP_COMMIT=${COMMIT_SHA}" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+          echo "Building version: v${VERSION} (${COMMIT_SHA}) on ${BUILD_DATE}"
 
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5
+      - name: Build Web PWA Bundle for GitHub Pages
+        run: BASE_PATH="/outgrid-mesh" bun run build
+        env:
+          VITE_APP_VERSION: ${{ env.VITE_APP_VERSION }}
+          VITE_APP_COMMIT: ${{ env.VITE_APP_COMMIT }}
+          VITE_APP_BUILD_DATE: ${{ env.VITE_APP_BUILD_DATE }}
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'build'
+
+  # ─── Job 2: Deploy to GitHub Pages (runs on main branch ONLY) ─────────────────
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
 
       - name: Deploy to GitHub Pages
         id: deployment

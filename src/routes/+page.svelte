@@ -7,6 +7,11 @@
 
   let activeTab: 'sos' | 'feed' | 'map' | 'manual' | 'donation' = 'sos';
 
+  // Dynamic version — injected by Vite from package.json / CI pipeline
+  const appVersion: string = import.meta.env.VITE_APP_VERSION ?? '1.1.0';
+  const commitSha: string = import.meta.env.VITE_APP_COMMIT ?? 'local';
+  const versionLabel = `TOG v${appVersion} (${commitSha})`;
+
   // Demo SOS targets visible on the map
   const demoSosTargets = [
     { id: 'sos-001', lat: 13.7590, lng: 100.5050, category: '🚤 น้ำท่วม ต้องการเรือ', distanceMeters: 340 },
@@ -24,7 +29,7 @@
     <div class="logo">
       <span class="pulse-indicator"></span>
       <h1>OutGrid Mesh</h1>
-      <span class="version-tag">TOG v1.1</span>
+      <span class="version-tag">{versionLabel}</span>
     </div>
     <nav class="nav-tabs">
       <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 SOS Beacon</button>
