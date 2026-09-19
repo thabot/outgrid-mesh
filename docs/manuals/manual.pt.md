@@ -5,18 +5,76 @@
 
 ---
 
-## 1. Guia Rápido de Emergência
-1. **Ativar Bluetooth e Localização:** O OutGrid Mesh cria uma rede em malha autônoma sem necessidade de sinal de celular ou internet.
-2. **Botão de Emergência SOS Vermelho:** Pressione o botão SOS para emitir um alerta imediato através dos aparelhos vizinhos.
-3. **Compartilhamento Offline de APK:** Use o servidor HTTP local para que outras pessoas baixem o app via Wi-Fi direto e QR code.
+## 1. Instalação do Aplicativo
+
+### Com Acesso à Internet:
+1. Baixe o instalador oficial (`outgrid-mesh.apk`) ou de teste (`outgrid-mesh-uat.apk`) via GitHub Releases.
+2. Abra o arquivo no smartphone Android e confirme a permissão "Instalar de fontes desconhecidas".
+3. Conceda as autorizações necessárias:
+   - **Bluetooth e Dispositivos Próximos:** Para comunicação em malha ad-hoc e retransmissão de pacotes.
+   - **Localização:** Para incluir coordenadas precisas em chamados SOS e navegação por radar.
+   - **Isenção de Otimização de Bateria:** Para manter o serviço ativo 24h em segundo plano mesmo com tela apagada.
+
+### Instalação Offline em Cenário de Catástrofe (Wi-Fi Sideload):
+1. Aproxime-se de alguém que já possua o aplicativo instalado.
+2. Solicite que abra a opção **"Emergency APK Sideload"** (o celular criará um ponto de acesso Wi-Fi local sem dados).
+3. Conecte seu aparelho a essa rede Wi-Fi e acesse `http://192.168.49.1:8080` no navegador para baixar o arquivo APK diretamente.
 
 ---
 
-## 2. Rede Tolerante a Atrasos (DTN) e Privacidade
-- **Mulas de Dados:** Seu telefone armazena pacotes de emergência e os encaminha às pessoas encontradas no trajeto.
-- **Proteção de Privacidade:** Na visualização pública, a precisão geográfica é limitada ao nível H3 Res 7 (~1,2 km).
+## 2. Tipos de Operação e Funcionalidades
+
+### 🚨 1. Sinalizador de Emergência SOS de Um Toque
+- Mantenha o **botão vermelho SOS** pressionado por 1 segundo.
+- Indique a categoria do perigo (ferimentos graves, ilhados por inundação, desabamento).
+- O motor comprime GPS submétrico, hexágono H3 Res 9 e nível de bateria em um pacote de apenas **21 bytes**, inundando a vizinhança de imediato.
+
+### 💬 2. Mensagens Privadas com Criptografia de Ponta a Ponta (1-on-1 E2EE)
+- Selecione qualquer sobrevivente ou socorrista na lista da rede em malha.
+- Envie textos, notas de voz de até 15 segundos ou imagens compactadas WebP.
+- Criptografia padrão militar **X25519 ECDH + AES-256-GCM**. Nenhuma estação intermediária tem acesso ao conteúdo.
+
+### 📢 3. Mural Oficial de Alertas de Crise (Crisis Feed)
+- Receba ordens de evacuação oficiais, locais de abrigo e postos de auxílio humanitário.
+- Todas as mensagens possuem **Assinatura Digital Ed25519** emitida pelo comando de socorro contra boatos falsos.
+
+### 🗺️ 4. Mapa Vetorial Offline e Radar de Busca
+- Mapa mundial ultracompacto com menos de 5MB que funciona 100% sem internet.
+- Toque em qualquer chamado de socorro para abrir a **Bússola Radar**, que aponta o azimute e a distância direta em metros até a vítima.
+
+### 🔦 5. Sirene Sonora Morse e Lanterna Estroboscópica
+- Em locais escuros ou escombros, acione o áudio Morse SOS e o pisca-alerta do flash para guiar os socorristas.
 
 ---
 
-## 3. Sirene Morse Acústica e Luz Estroboscópica
-- Em locais escuros ou escombros, ligue o som Morse SOS e a lanterna intermitente para orientar o resgate.
+## 3. Alcance de Sinal e Especificações Técnicas
+
+| Tecnologia de Rádio | Alcance Efetivo por Salto | Ambiente Recomendado | Taxa de Transferência |
+| :--- | :---: | :--- | :---: |
+| **BLE 5 Long Range (Coded PHY S=8)** | **300 – 1.000 metros** | Áreas abertas, descampados, rios, topos de prédios | ~125 kbps |
+| **BLE Padrão (1M PHY)** | **30 – 100 metros** | Ambientes internos, através de alvenaria | ~1 Mbps |
+| **Wi-Fi Direct P2P (SoftAP)** | **100 – 200 metros** | Envio de APK e fotos de alta resolução | ~10 – 50 Mbps |
+| **Ponte LoRa Complementar (ESP32)** | **5 – 15 quilômetros** | Serras, áreas rurais e florestais | ~0.3 – 5 kbps |
+
+- **Roteamento Multi-Salto (Multi-Hop):** As mensagens podem saltar por até **15 aparelhos**, cobrindo dezenas de quilômetros.
+- **Mula de Dados (DTN Store-and-Forward):** Ao caminhar, o celular retém os pacotes e os retransmite ao cruzar com pessoas em outros povoados.
+
+---
+
+## 4. Limites e Recomendações de Envio
+
+1. **Volume de Dados:**
+   - Mensagens de texto e SOS: Máximo recomendado de **200 caracteres** para envio imediato.
+   - Áudio: Limitado a **15 segundos**.
+   - Imagens: Convertidas em WebP econômico.
+2. **Prevenção de Sobrecarga (Storm Guard):**
+   - Filtro de Bloom impede a retransmissão desnecessária de pacotes já conhecidos.
+3. **Limite de Armazenamento Local:**
+   - Limite de **50MB** em FIFO. Mensagens críticas de SOS nunca são apagadas.
+
+---
+
+## 5. Estratégia de Economia de Bateria
+
+- Abaixo de 20%, o aplicativo ativa o modo **Deep Hibernation**, espaçando as varreduras para manter o aparelho ativo por mais de **100 horas**.
+- Desative aplicativos desnecessários para resguardar a carga de resgate.

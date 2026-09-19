@@ -2,7 +2,7 @@
 
 # 🚨 OutGrid Mesh (TOG v1.1)
 
-### Autonomous, Decentralized, Zero-Cost Spatial Mesh Communication Grid for Disaster Response & Remote Operations
+### Autonomous, Decentralized Spatial Mesh Communication Grid for Disaster Response & Remote Operations
 
 [![GitHub Release](https://img.shields.io/github/v/release/thabot/outgrid-mesh?color=blue&include_prereleases&style=for-the-badge&logo=github)](https://github.com/thabot/outgrid-mesh/releases)
 [![Build & Release APK](https://img.shields.io/github/actions/workflow/status/thabot/outgrid-mesh/android-release.yml?branch=main&style=for-the-badge&logo=githubactions)](https://github.com/thabot/outgrid-mesh/actions)
@@ -18,7 +18,8 @@
 [📥 Download APK](#-download--install-for-users) •
 [📖 GitHub Releases](https://github.com/thabot/outgrid-mesh/releases) •
 [📱 How to Use](#-how-to-use-3-simple-steps) •
-[🗺️ System Architecture](#-system-architecture) •
+[🗺️ System Architecture](#-system-architecture-overview) •
+[💻 Developer Guide](docs/DEVELOPER_GUIDE.md) •
 [🌐 10-Language Manuals](docs/manuals/) •
 [📄 License & Author](#-license--author)
 
@@ -64,76 +65,96 @@ You don't need an account, phone number verification, or internet access to use 
 
 ---
 
-## ✨ Key Capabilities & Features
+## 🗺️ System Architecture Overview
 
+OutGrid Mesh is built on a 5-layer modular client architecture coupled with a high-efficiency spatial edge coordinator, engineered for extreme disaster resilience, zero personal data retention, and ultra-low bandwidth consumption:
+
+### 1. Client Layered Architecture
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        OutGrid Mesh Client Architecture                │
+│                                                                        │
+│   ┌────────────────────────────────────────────────────────────────┐   │
+│   │                     UI / Presentation Layer                    │   │
+│   │  [One-Tap SOS]  [Offline Crisis Feed]  [Diagnostics Dashboard] │   │
+│   │  [1-on-1 Chat]  [Community Fund UI]    [Offline Map & H3 Tile] │   │
+│   │  [One-Tap QR Offline APK Share Modal]  [10-Language Manuals]   │   │
+│   └────────────────────────────────┬───────────────────────────────┘   │
+│                                    │                                   │
+│   ┌────────────────────────────────▼───────────────────────────────┐   │
+│   │                     Application State Engine                   │   │
+│   │  - Mode State Machine (Cloud Online / Local Mesh / Disaster)   │   │
+│   │  - Heartbeat & Auto-Fallback Monitor (5s Timeout)             │   │
+│   │  - Battery-Aware Duty Cycle Policy Manager (4 Power Tiers)     │   │
+│   └────────────────────────────────┬───────────────────────────────┘   │
+│                                    │                                   │
+│   ┌────────────────────────────────▼───────────────────────────────┐   │
+│   │                  Security & Compression Layer                  │   │
+│   │  - E2EE Engine (X25519 ECDH Key Exchange + AES-256-GCM)        │   │
+│   │  - Ed25519 Digital Signature (SOS Authenticity & Anti-Spoof)   │   │
+│   │  - Compact Binary Serializer (TOG v1.1 Bitfield ≤ 28B Header)  │   │
+│   └────────────────────────────────┬───────────────────────────────┘   │
+│                                    │                                   │
+│   ┌────────────────────────────────▼───────────────────────────────┐   │
+│   │                     Data & Forwarding Layer                    │   │
+│   │  - Epidemic Gossip & Dynamic Hop Decay Router (1 - 15 Hops)    │   │
+│   │  - Counting Bloom Filter & LRU Cache (Duplicate Storm Guard)   │   │
+│   │  - SQLite DTN Store-and-Forward (Data Mule Custody Engine)     │   │
+│   └────────────────────────────────┬───────────────────────────────┘   │
+│                                    │                                   │
+│   ┌────────────────────────────────▼───────────────────────────────┐   │
+│   │                      Hybrid Transport Layer                    │   │
+│   │     ┌───────────────────────┬────────────────────────────┐     │   │
+│   │     │ BLE 5 Coded PHY (S=8) │   Wi-Fi Direct / SoftAP    │     │   │
+│   │     │ (Text, SOS, GPS, Ping)│   (Voice, Images, APK S/L) │     │   │
+│   │     ├───────────────────────┴────────────────────────────┤     │   │
+│   │     │ Pluggable Radio Bridges (LoRa ESP32 & Briar BTP)   │     │   │
+│   │     └────────────────────────────────────────────────────┘     │   │
+│   └────────────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────┘
 ```
-                     ┌────────────────────────────────────────────────────────┐
-                     │                   OUTGRID MESH ENGINE                  │
-                     └───────────────────────────┬────────────────────────────┘
-                                                 │
-       ┌─────────────────────────┬────────────────┼─────────────────────────┬────────────────────────┐
-       ▼                         ▼                ▼                         ▼                        ▼
-🚨 One-Tap SOS Beacon     💬 1-on-1 E2EE Chat    🗺️ Offline Vector Map    📢 Ed25519 Crisis Feed   🔋 Adaptive Power Engine
-(Compact 21 Bytes)        (X25519 + AES-GCM)     (<5MB World Basemap)      (Anti-Spoofing Verified) (100h+ Survival Profile)
-```
-
-1. **🚨 One-Tap SOS Emergency Beacon (`0x01`):**
-   - High-density compression packing sub-meter GPS coordinates, Uber H3 Resolution 9 Hexagon index, battery percentage, and triage status into a compact **21-byte** broadcast.
-   - Designed for high penetration through concrete and foliage over low-bandwidth physical radio links.
-
-2. **💬 1-on-1 Direct Chat & Voice Memos (`0x02`):**
-   - Text messaging, 15-second Opus/AAC voice notes, and compressed WebP situational photos.
-   - End-to-End Encrypted via **X25519 ECDH + AES-256-GCM** with HKDF-SHA256 key derivation. Intermediate relay nodes cannot decrypt or tamper with message contents.
-
-3. **📢 Verified Crisis Broadcast Feed (`0x04`):**
-   - Official alerts, evacuation directives, safe zone locations, and water/medical supply distribution points.
-   - Authenticated with **Ed25519 Digital Signatures** from incident command authorities, eliminating rumors and misinformation.
-
-4. **🗺️ 100% Offline Worldwide Vector Basemap:**
-   - Lightweight global basemap compressed under **5MB**, permanently cached in local SQLite / IndexedDB.
-   - Integrated **Compass Radar Navigation** computing real-time relative bearings and distances to distressed survivors.
-
-5. **🚚 DTN Bundle Store & Velocity Tracker (Data Mule):**
-   - Store-and-Forward routing for mobile nodes traversing dead zones, carrying bundles between cut-off villages and relaying upon physical proximity encounters.
-   - Velocity-aware mobility tracking and Hop Freeze governance to prevent premature packet drops.
-
-6. **🔋 4-Tier Adaptive Battery Duty Cycle:**
-   - Dynamic power scaling (`FULL_POWER` $\rightarrow$ `BALANCED` $\rightarrow$ `DEEP_HIBERNATION`) ensuring over 100+ hours of continuous background mesh operations.
-   - Runs as an Android Foreground Service with Partial WakeLock.
-
-7. **👥 100% Guest & Logged-in Accessibility Parity:**
-   - Zero barrier to entry: Disaster victims have immediate access to all life-saving SOS and communication tools as a Guest without needing phone number verification or user registration.
-
-8. **🌐 Universal 10-Language Support & Offline Field Guide:**
-   - Built-in emergency survival manuals in 10 languages: Thai, English, Chinese, Spanish, Hindi, Arabic (with native RTL support), French, Russian, Portuguese, and Japanese.
 
 ---
 
-## 📡 System Architecture
+### 2. Thabot OutGrid Protocol (TOG v1.1 Wire Specification)
 
-### 1. Thabot OutGrid Protocol (TOG v1.1 Wire Format)
+The TOG v1.1 wire protocol packs complete routing and cryptographic metadata into an ultra-dense **28-byte fixed header**:
 
 ```text
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|       Magic Word (0x544F)     | Ver | Type  | TTL/Hop | Pri |F|
+| Magic (0x544F)|Ver| Type  |TTL/Hop| Priority |Flags| Reserved | (4 Bytes)
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                       Source Node ID (8B)                     |
+|                     Message ID (uint64, 8 Bytes)              | (8 Bytes)
 |                                                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Destination Node ID (8B)                   |
-|                                                               |
+|                  Sender Public Key Hash (8 Bytes)             | (8 Bytes)
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|    Sequence No (4B)           |   Timestamp Unix Seconds (4B) |
+|               Recipient / Topic Hash (8 Bytes)                | (8 Bytes)
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                  Target Spatial H3 Index (8B)                 |
+|               Target H3 Index Res 9 (uint64, 8 Bytes)         | (8 Bytes)
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|     Payload Length (2B)       |   Payload Bytes (Variable)... |
+| Payload Length (uint16, 2B)   |           Payload Data ...    | (Variable)
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-### 2. Multi-Hop Epidemic Mesh Relay with Storm Guard
+#### Protocol Bitfield Definitions:
+1. **Magic Word (16 bits):** Constant `0x544F` (ASCII `'TO'` for *Thabot OutGrid*), instantly dropping malformed packets.
+2. **Version (3 bits):** `0b001` (TOG v1.1).
+3. **Packet Types (5 bits):**
+   - `0x01` (`SOS_BEACON`): Life-saving distress alert with Ed25519 signature (21B payload).
+   - `0x02` (`DIRECT_CHAT`): 1-on-1 end-to-end encrypted messaging (X25519 + AES-256-GCM).
+   - `0x03` (`GROUP_CHAT`): Spatial community room messages decrypted via epoch group keys.
+   - `0x04` (`CRISIS_FEED`): Authority civil protection broadcasts with Master Ed25519 signature.
+   - `0x05` (`DELIVERY_ACK`): Reverse signed acknowledgment clearing hop caches.
+   - `0x06` (`DELIVERY_NACK`): Selective retransmission request with bitmask chunks.
+   - `0x07` (`PRESENCE_CHIRP`): Lightweight heartbeat for peer table and supernode election.
+4. **Target Spatial H3 Index (64 bits):** Resolution 9 hexagon index (~100m) allowing intermediate nodes to compute hierarchical parent routes (`Res 7` sub-district, `Res 5` district, `Res 4` province) without GPS lookup tables.
+
+---
+
+### 3. Multi-Hop Epidemic Mesh Relay with Storm Guard
 
 ```mermaid
 graph LR
@@ -158,57 +179,57 @@ graph LR
 
 ---
 
-## 💻 Developer & Contributor Guide
+### 4. Cloudflare Spatial Edge Architecture
 
-*(This section is strictly for open-source developers contributing to the codebase. End-users only need the APK above.)*
+When an internet gateway or cellular connection is available, nodes coordinate through a lightweight, serverless edge layer:
 
-### 1. Project Directory Structure
 ```text
-OutGridMesh/
-├── .github/workflows/          # CI/CD Pipelines (Android APK build & GitHub Releases)
-├── android/                    # Native Android Runtime (Kotlin + Gradle 8.5)
-│   ├── app/src/main/java/io/outgrid/mesh/
-│   │   ├── MainActivity.kt               # Entrypoint UI & Hardware Permission Bridge
-│   │   ├── OutGridMeshService.kt         # 24/7 Foreground Service & WakeLock
-│   │   ├── BleRadioNativeDriver.kt       # BLE 5 Coded PHY S=8 Hardware Radio Driver
-│   │   └── LocalHotspotSideloadService.kt# Offline APK HTTP Server & Hotspot
-│   └── build.gradle                      # Android Build Configuration (AGP 8.2.2)
-├── docs/
-│   └── manuals/                # 10-Language Emergency Field Survival Manuals
-├── src/
-│   ├── core/                   # Platform-Independent Core Engine (Clean Architecture)
-│   │   ├── crypto/             # E2EE (X25519 + AES-256-GCM), Ed25519 Signatures, HKDF
-│   │   ├── dtn/                # Bundle Custody Store, Velocity Tracker, Hop Freeze
-│   │   ├── i18n/               # 10-Language Universal Translation Engine
-│   │   ├── network/            # Dynamic API Configuration & Zero-Cost Cloudflare Resolver
-│   │   ├── protocol/           # TOG v1.1 Bitfield Serializer, Reed-Solomon 8+4 FEC, Sliding Window
-│   │   ├── radio/              # BLE Coded PHY, Collision Shield, Wi-Fi P2P Driver
-│   │   ├── routing/            # Epidemic Gossip Router, Dynamic Hop Decay, Bloom Filter
-│   │   ├── spatial/            # 4-Tier H3 Geo-Hashing, Vector Basemap Parser, Radar Nav
-│   │   └── storage/            # 50MB FIFO Quota Clamping Engine, SQLite/IndexedDB
-│   ├── routes/                 # SvelteKit Root Pages & Layouts
-│   └── ui/                     # Svelte 5 High-Contrast Dark Mode UI Components
-├── scripts/
-│   ├── checkSyntax.js          # AST Syntax Verification Guard (Scans 160+ files)
-│   └── generateTestVectorMap.js# 5MB Offline Basemap Generator
-├── tests/                      # Automated Unit & Integration Tests (245 Tests / 76 Suites)
-└── package.json                # SvelteKit, Bun, Noble Cryptography, H3 Spatial
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        Cloudflare Edge Coordinator Architecture                        │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│  [ Public STUN Servers ] (Google & Cloudflare STUN)                                    │
+│         ▲                                                                              │
+│         │ 1. NAT Discovery (Resolve client public IP/Port)                             │
+│         │                                                                              │
+│  [ Client Device A ] ──── 2. Exchange SDP Card (1 KB) ───► [ Cloudflare Worker ]       │
+│                                                              │  (Spatial Coordinator)  │
+│                                                              ▼                         │
+│  [ Client Device B ] ◄─── 3. Match via H3 Hexagon Room ◄─────┴─ [ Cloudflare D1 ]       │
+│         │                                                        - Ephemeral Presence  │
+│         │                                                        - Anonymous Heatmap   │
+│         ▼                                                                              │
+│  [ Direct P2P WebRTC DataChannel ] ═════════════════════════════════════════════════   │
+│  (Direct E2EE P2P communication - Server never touches chat payloads)                  │
+│                                                                                        │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  [ Inbound Emergency Alert Gateway ] (Civil Protection / Meteorological Agency)        │
+│         │ POST /v1/alerts/broadcast (CAP Protocol + HMAC Token + Ed25519)              │
+│         ▼                                                                              │
+│  [ Cloudflare Worker ] ───► Ingest to D1 Spatial Cache ──► Edge nodes relay to Mesh    │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  [ Cloudflare R2 Object Storage ] ─────────────────────► Global APK distribution       │
+│  [ Cloudflare Pages ] ─────────────────────────────────► Public Heatmap & Web PWA      │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Local Setup & Testing
-```bash
-# Install dependencies
-bun install
+#### Core Edge Responsibilities:
+- **Spatial H3 Signaling:** Matches WebRTC SDP handshakes inside shared H3 Resolution 7 hexagonal rooms (~5 km²). Once matched, traffic flows strictly peer-to-peer over WebRTC DataChannels.
+- **Cloudflare D1 Ephemeral Table:** Stores ephemeral peer presence (`h3_index`, `peer_id_hash`, `battery_tier`, `is_supernode`) auto-expiring in 1 hour. Personal names, phone numbers, and raw GPS coordinates are strictly forbidden.
+- **CAP Inbound Gateway:** Ingests official Common Alerting Protocol (CAP) alerts verified with Ed25519 authority signatures and distributes them directly to local mesh relays.
 
-# Verify codebase syntax
-bun run check:syntax
+---
 
-# Run 245 automated unit & integration tests
-bun test
+## 💻 Developer & Engineering Documentation
 
-# Build Web PWA bundle
-bun run build
-```
+Looking to contribute, audit cryptography, or build from source? Read our full technical guide:
+
+👉 [**Open Developer & Contributor Guide (`docs/DEVELOPER_GUIDE.md`)**](docs/DEVELOPER_GUIDE.md)
+
+- Project Directory Structure & Clean Architecture boundaries
+- Local setup, Bun test suite (`bun test`), and syntax verification
+- Compiling Android Native APK locally (`./gradlew assembleDebug`)
+- PR & Dual-Release contribution rules
 
 ---
 
@@ -222,14 +243,14 @@ bun run build
 - [x] **Phase 6:** DTN Delay-Tolerant Bundle Custody, Velocity Tracker & Hop Freeze.
 - [x] **Phase 7:** Android Foreground Service (24/7 Relay), 4-Tier Battery Duty Cycle & Radio Bridges.
 - [x] **Phase 8:** Offline Wi-Fi APK Sideload HTTP Server, Acoustic Morse Siren & Optical Torch.
-- [x] **Phase 9:** Zero-Cost Cloudflare Pages/Workers, D1 Spatial DB & Transparent Donation Ledger.
+- [x] **Phase 9:** Cloudflare Pages/Workers, D1 Spatial DB & Transparent Donation Ledger.
 - [x] **Phase 10:** Universal 10-Language i18n, Offline In-App Field Survival Guides & 15-Hop Simulation.
 
 ---
 
 ## 🤝 Community Sustainability & Transparent Donation
 
-OutGrid Mesh is built as a **humanitarian public good**. Infrastructure costs are minimal due to true P2P mesh routing and free public STUN/Cloudflare tiers.
+OutGrid Mesh is built as a **humanitarian public good**. Infrastructure costs are minimal due to true P2P mesh routing and public STUN/Cloudflare edge tiers.
 - **Open Ledger:** Real-time expense auditing showing actual cloud runtime vs community funds.
 - **Hardware Fund:** Surplus donations are converted into solar-powered **ESP32 LoRa Repeater Nodes** gifted to flood/earthquake prone remote communities.
 - **Support Channels:** Open Collective, GitHub Sponsors, and PromptPay via `DonationDashboard.svelte`.
