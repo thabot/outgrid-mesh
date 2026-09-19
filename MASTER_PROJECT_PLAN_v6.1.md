@@ -1669,9 +1669,20 @@ OutGridMesh/                               # Root Directory (เดิมคื�
   - **Packet Frame `0x03` (`GROUP_CHAT`):** เปิดใช้งานเมื่อติดตั้งเอนจิน Group Key เต็มรูปแบบ
   - UI Room Management: ระบบสร้างห้องกลุ่ม สแกน QR เข้าร่วมกลุ่มเฉพาะจุด และรายชื่อสมาชิกในห้อง
 
-### 9.3 LoRa ESP32 External Radio Bridge & Satellite Gateway
-- การเชื่อมต่อฮาร์ดแวร์ภายนอกผ่าน Serial/BLE สู่บอร์ด ESP32 LoRa 433/868/915 MHz สำหรับส่งสัญญาณข้ามเขา 10-30 กิโลเมตร
-- เชื่อมต่อ Iridium Go / Garmin InReach สำหรับทีมกู้ภัยพิเศษ
+### 9.3 ฮาร์ดแวร์ขยายสัญญาณภาคสนาม: ESP32 Solar Repeater & LoRa/Satellite Gateway (⭐️)
+พัฒนาเฟิร์มแวร์และวงจรฮาร์ดแวร์คู่หูต้นทุนต่ำ (Low-Cost Autonomous Hardware Node) สำหรับติดตั้งกระจายสัญญาณถาวร 24/7 บนที่สูง ยอดเขา หรือพื้นที่สีแดงที่ถูกตัดขาด:
+1. **ESP32 Autonomous Solar Repeater Firmware (Open Source C++/ESP-IDF):**
+   - **Zero-App Barrier for Citizens:** ประชาชนทั่วไปไม่ต้องมีฮาร์ดแวร์พิเศษ ใช้เพียงสมาร์ตโฟนที่มีบลูทูธธรรมดา
+   - **High-Elevation Line-of-Sight Relay:** บอร์ด ESP32 ติดตั้งแผงโซลาร์เซลล์ขนาดเล็ก (5V 2W–5W) + แบตเตอรี่ 18650 ทำงานต่อเนื่อง 365 วัน แขวนบนยอดไม้ ยอดเขา หลังคาวัด หรือเสาไฟส่องสว่าง
+   - **TOG v1.1 Pure BLE Sniffer & Re-broadcaster:**
+     - ดักจับแพ็กเก็ต **TOG v1.1 (`0x544F`)** จากมือถือชาวบ้านในระยะ 200–400 เมตร
+     - กรองข้อความซ้ำด้วย **Counting Bloom Filter** บนหน่วยความจำ ESP32 RAM (512 KB)
+     - กระจายสัญญาณซ้ำ (Re-broadcast) ด้วยกำลังส่งสูงสุด (+9dBm ถึง +20dBm ด้วยเสา External Antenna) ขยายรัศมีการช่วยชีวิตสู่ **500 – 1,000+ เมตร** ข้ามหุบเขา
+2. **Dual-Mode LoRa Long-Range Transceiver (บอร์ด ESP32 + Semtech SX1262 LoRa 433/868/915 MHz):**
+   - **Cross-District Backbone Bridge:** แปลงแพ็กเก็ตบลูทูธ TOG v1.1 จากโทรศัพท์มือถือ ยิงข้ามภูเขาและป่าทึบด้วยคลื่นวิทยุ LoRa ระยะไกล **15–30+ กิโลเมตร** ไปยังศูนย์บัญชาการกู้ภัยประจำอำเภอ/จังหวัด
+   - **Multi-Hop LoRa Mesh Relay:** เชื่อมโยงระหว่างจุดเสี่ยงภัยหลายตำบลเป็นเครือข่ายใยแมงมุมออฟไลน์ขนาดใหญ่
+3. **Emergency Satellite Gateway Integration:**
+   - เชื่อมต่อ Iridium Go / Garmin InReach สำหรับทีมกู้ภัยพิเศษ ส่งพิกัด SOS ออกนอกประเทศผ่านดาวเทียมวงโคจรต่ำ (LEO) เมื่อโครงข่ายภาคพื้นดินล่มทั้งหมด
 
 ### 9.4 Offline Voice Stream & Drone Data Mule Auto-Sync
 - ระบบสตรีมมิ่งเสียงแบบกดพูด Push-to-Talk ข้ามวง Mesh แบบกึ่งเรียลไทม์
