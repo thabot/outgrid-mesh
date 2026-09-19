@@ -276,7 +276,7 @@
 ## 📲 SPRINT 6: การแจกแอปออฟไลน์และสัญญาณเสียง/แสง (Phase 8: Emergency Sideload)
 > **เป้าหมาย:** Hotspot Web Server แจก APK ผ่าน Wi-Fi QR, สัญญาณเสียง Acoustic Morse และไฟกระพริบฉุกเฉิน
 
-- [ ] **Task 6.1: พัฒนาระบบเว็บเซิร์ฟเวอร์จิ๋วแจกไฟล์ติดตั้งในเครื่อง (Local Embedded HTTP Server)**
+- [x] **Task 6.1: พัฒนาระบบเว็บเซิร์ฟเวอร์จิ๋วแจกไฟล์ติดตั้งในเครื่อง (Local Embedded HTTP Server)**
   - **ไฟล์เป้าหมาย:** `src/core/emergency/LocalHttpServer.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/emergency/LocalHttpServer.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -284,7 +284,7 @@
     - บริการส่งไฟล์ `outgrid-rescue.apk` ตรงให้เบราว์เซอร์ของเครื่องรอบข้างที่เชื่อมต่อเข้ามา
   - **คำสั่งทดสอบ:** `bun test tests/unit/emergency/LocalHttpServer.test.ts`
 
-- [ ] **Task 6.2: พัฒนาระบบ Micro DNS Server และ Captive Portal จำลอง**
+- [x] **Task 6.2: พัฒนาระบบ Micro DNS Server และ Captive Portal จำลอง**
   - **ไฟล์เป้าหมาย:** `src/core/emergency/MicroDnsServer.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/emergency/MicroDnsServer.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -292,7 +292,7 @@
     - ตอบสนองต่อ Captive Portal URL (`/generate_204`) เด้งหน้าดาวน์โหลด APK อัตโนมัติ
   - **คำสั่งทดสอบ:** `bun test tests/unit/emergency/MicroDnsServer.test.ts`
 
-- [ ] **Task 6.3: พัฒนาระบบส่งพิกัดฉุกเฉินด้วยคลื่นเสียงไซเรน (Acoustic Morse Sound Engine)**
+- [x] **Task 6.3: พัฒนาระบบส่งพิกัดฉุกเฉินด้วยคลื่นเสียงไซเรน (Acoustic Morse Sound Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/emergency/AcousticMorseEngine.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/emergency/AcousticMorseEngine.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -300,7 +300,7 @@
     - ส่งรหัส Morse Code พิกัด GPS สำหรับใช้ดักฟังในระยะ 30–50 เมตร
   - **คำสั่งทดสอบ:** `bun test tests/unit/emergency/AcousticMorseEngine.test.ts`
 
-- [ ] **Task 6.4: พัฒนาระบบดักฟังสัญญาณเสียงพิกัดฉุกเฉิน (Ultrasonic / FSK Demodulator)**
+- [x] **Task 6.4: พัฒนาระบบดักฟังสัญญาณเสียงพิกัดฉุกเฉิน (Ultrasonic / FSK Demodulator)**
   - **ไฟล์เป้าหมาย:** `src/core/emergency/FskDemodulator.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/emergency/FskDemodulator.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -308,7 +308,7 @@
     - ถอดรหัสคลื่นเสียงกลับมาเป็นพิกัดละติจูด/ลองจิจูดของผู้ประสบภัยใต้ซากตึก
   - **คำสั่งทดสอบ:** `bun test tests/unit/emergency/FskDemodulator.test.ts`
 
-- [ ] **Task 6.5: พัฒนาระบบส่งรหัสไฟฉายกะพริบฉุกเฉิน SOS (Flashlight Strobe Controller)**
+- [x] **Task 6.5: พัฒนาระบบส่งรหัสไฟฉายกะพริบฉุกเฉิน SOS (Flashlight Strobe Controller)**
   - **ไฟล์เป้าหมาย:** `src/core/emergency/FlashlightStrobe.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/emergency/FlashlightStrobe.test.ts`
   - **รายละเอียดการทำงาน:**
