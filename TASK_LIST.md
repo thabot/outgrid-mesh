@@ -479,27 +479,27 @@
 ## 🌐 SPRINT 10: ความสมบูรณ์ 10 ภาษาและการซ้อมรบเสมือนจริง (Phase 10: i18n & E2E Drills)
 > **เป้าหมาย:** ตรวจสอบคีย์แปล 10 ภาษาครบ 100%, จำลองเครือข่าย 15-Hop Relay และการซ้อมตัดเน็ตภาคสนาม
 
-- [ ] **Task 10.1: ตรวจสอบความสมบูรณ์ของชุดแปลภาษาทั้ง 10 ภาษา (i18n Bundle Completeness)**
+- [x] **Task 10.1: ตรวจสอบความสมบูรณ์ของชุดแปลภาษาทั้ง 10 ภาษา (i18n Bundle Completeness)**
   - **ไฟล์เป้าหมาย:** `src/locales/th.json`, `en.json`, `my.json`, `lo.json`, `km.json`, `vi.json`, `ms.json`, `zh.json`, `ja.json`, `es.json`
   - **ไฟล์ทดสอบ:** `tests/unit/i18n/I18nBundleCompleteness.test.ts`
   - **รายละเอียดการทำงาน:**
     - ตรวจสอบว่าคีย์ข้อความ UI ฉุกเฉินครบถ้วน 100% เท่ากันทุกภาษา ไร้คีย์ตกหล่น
   - **คำสั่งทดสอบ:** `bun test tests/unit/i18n/I18nBundleCompleteness.test.ts`
 
-- [ ] **Task 10.2: พัฒนาการจำลองเครือข่ายกระโดดข้ามตึก 15 ทอด (Multi-Hop Mesh 15-Hop Simulation)**
+- [x] **Task 10.2: พัฒนาการจำลองเครือข่ายกระโดดข้ามตึก 15 ทอด (Multi-Hop Mesh 15-Hop Simulation)**
   - **ไฟล์เป้าหมาย:** `tests/integration/MultiHopSimulation.test.ts`
   - **รายละเอียดการทำงาน:**
     - จำลองโหนดเสมือนจริง 15 เครื่อง รันในหน่วยความจำ
     - ยิงสัญญาณ SOS และ Chat ทดสอบการกระจายตัวข้าม 15 ทอด ตรวจสอบว่าไม่มี Packet Loop และได้รับ ACK ครบถ้วน
   - **คำสั่งทดสอบ:** `bun test tests/integration/MultiHopSimulation.test.ts`
 
-- [ ] **Task 10.3: พัฒนาชุดทดสอบการสลับเข้าสู่โหมดออฟไลน์อัตโนมัติภายใน 5 วินาที (E2E Fallback Test)**
+- [x] **Task 10.3: พัฒนาชุดทดสอบการสลับเข้าสู่โหมดออฟไลน์อัตโนมัติภายใน 5 วินาที (E2E Fallback Test)**
   - **ไฟล์เป้าหมาย:** `tests/integration/OfflineFallback.test.ts`
   - **รายละเอียดการทำงาน:**
     - จำลองการตัดสายเคเบิลหรือเสาสัญญาณหลักล่ม ตรวจสอบว่าแอปตรวจพบและสลับโหมดออฟไลน์อัตโนมัติใน 5 วินาที
   - **คำสั่งทดสอบ:** `bun test tests/integration/OfflineFallback.test.ts`
 
-- [ ] **Task 10.4: จัดทำคู่มือและบันทึกผลการซ้อมรับมือภัยพิบัติภาคสนาม (Disaster Drill Checklist)**
+- [x] **Task 10.4: จัดทำคู่มือและบันทึกผลการซ้อมรับมือภัยพิบัติภาคสนาม (Disaster Drill Checklist)**
   - **ไฟล์เป้าหมาย:** `docs/DISASTER_DRILL_CHECKLIST.md`
   - **รายละเอียดการทำงาน:**
     - ตรวจสอบระยะรับส่ง BLE S=8 จริง 200–400 เมตร บนเครื่องจริง

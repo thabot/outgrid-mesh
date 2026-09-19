@@ -1,0 +1,8 @@
+{
+  "app_name": "OutGrid 緊急救助",
+  "one_tap_sos": "ワンタップSOS",
+  "disaster_mesh_mode": "オフラインメッシュモード",
+  "radar_compass": "レーダーコンパスナビ",
+  "battery_critical": "バッテリー低下 (<20%) 休眠モード",
+  "evacuate_immediate": "直ちに避難してください"
+}
