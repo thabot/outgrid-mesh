@@ -77,7 +77,7 @@
 ## 🗄️ SPRINT 2: การจัดเก็บข้อมูลและการจัดเส้นทาง (Phase 2: Storage & Router Engine)
 > **เป้าหมาย:** จัดการฐานข้อมูล SQLite/IndexedDB ในเครื่อง, การส่งต่อ Epidemic Gossip, ปรับ Hop ตามความหนาแน่น และระบบใบเสร็จ Signed ACK/NACK
 
-- [ ] **Task 2.1: พัฒนาระบบฐานข้อมูล SQLite/IndexedDB ในเครื่องพร้อมเพดาน 50MB FIFO**
+- [x] **Task 2.1: พัฒนาระบบฐานข้อมูล SQLite/IndexedDB ในเครื่องพร้อมเพดาน 50MB FIFO**
   - **ไฟล์เป้าหมาย:** `src/core/storage/SqliteStorageEngine.ts`, `src/core/storage/schema.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/storage/SqliteStorageEngine.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -85,7 +85,7 @@
     - ควบคุมขนาดฐานข้อมูลไม่เกิน 50MB หากเต็มให้ลบข้อความเก่าสุดแบบ FIFO (ยกเว้น SOS ห้ามลบ)
   - **คำสั่งทดสอบ:** `bun test tests/unit/storage/SqliteStorageEngine.test.ts`
 
-- [ ] **Task 2.2: พัฒนาเอนจินจัดเส้นทาง Epidemic Gossip & Targeted Flood Router**
+- [x] **Task 2.2: พัฒนาเอนจินจัดเส้นทาง Epidemic Gossip & Targeted Flood Router**
   - **ไฟล์เป้าหมาย:** `src/core/routing/EpidemicRouter.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/storage/EpidemicRouter.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -93,7 +93,7 @@
     - ตรวจสอบ Message ID ใน Bloom Filter ก่อนส่งต่อ ป้องกัน Broadcast Storm
   - **คำสั่งทดสอบ:** `bun test tests/unit/storage/EpidemicRouter.test.ts`
 
-- [ ] **Task 2.3: พัฒนาระบบปรับทอดการส่งอัตโนมัติตามความหนาแน่น (Dynamic Hop Decay Engine)**
+- [x] **Task 2.3: พัฒนาระบบปรับทอดการส่งอัตโนมัติตามความหนาแน่น (Dynamic Hop Decay Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/routing/DynamicHopDecay.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/storage/DynamicHopDecay.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -101,7 +101,7 @@
     - ลดทอนค่า TTL ตามค่าความแรงสัญญาณ RSSI เพื่อรักษาอายุแบตเตอรี่
   - **คำสั่งทดสอบ:** `bun test tests/unit/storage/DynamicHopDecay.test.ts`
 
-- [ ] **Task 2.4: พัฒนาระบบใบเสร็จยืนยันข้อความตีกลับ (Reverse Signed ACK & NACK Engine)**
+- [x] **Task 2.4: พัฒนาระบบใบเสร็จยืนยันข้อความตีกลับ (Reverse Signed ACK & NACK Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/routing/DeliveryReceipt.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/storage/DeliveryReceipt.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -109,7 +109,7 @@
     - เมื่อโหนดต้นทางได้รับ ACK จะเปลี่ยนสถานะเป็น 🟢 ส่งถึงแล้ว และสั่งล้างข้อความออกจากคิวรีเลย์ (Auto-Prune)
   - **คำสั่งทดสอบ:** `bun test tests/unit/storage/DeliveryReceipt.test.ts`
 
-- [ ] **Task 2.5: พัฒนาระบบกำหนดอายุข้อความแบบแบ่งระดับ (Tiered TTL & Expiry Manager)**
+- [x] **Task 2.5: พัฒนาระบบกำหนดอายุข้อความแบบแบ่งระดับ (Tiered TTL & Expiry Manager)**
   - **ไฟล์เป้าหมาย:** `src/core/storage/TieredTtlManager.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/storage/TieredTtlManager.test.ts`
   - **รายละเอียดการทำงาน:**
