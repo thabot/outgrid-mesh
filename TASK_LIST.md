@@ -373,7 +373,7 @@
 ## 📱 SPRINT 8: หน้าจอผู้ใช้และเอนจินสลับโหมดอัตโนมัติ (Phase 3: State Machine & UI)
 > **เป้าหมาย:** One-Tap SOS, 1-on-1 Chat, Crisis Feed, จับคู่ QR Code และสลับโหมดตามเน็ตล่มใน 5 วินาที
 
-- [ ] **Task 8.1: พัฒนาเอนจินสลับสถานะอัตโนมัติเมื่อเน็ตตัด (Mode State Machine & 5s Fallback)**
+- [x] **Task 8.1: พัฒนาเอนจินสลับสถานะอัตโนมัติเมื่อเน็ตตัด (Mode State Machine & 5s Fallback)**
   - **ไฟล์เป้าหมาย:** `src/core/state/ModeStateMachine.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ui/ModeStateMachine.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -381,7 +381,7 @@
     - มีระบบ Transition แจ้งเตือนบนแถบสถานะของแอปแบบไร้รอยต่อ
   - **คำสั่งทดสอบ:** `bun test tests/unit/ui/ModeStateMachine.test.ts`
 
-- [ ] **Task 8.2: รักษาความเท่าเทียมของผู้ใช้แบบไม่ล็อกอินและล็อกอิน (Guest Parity Engine)**
+- [x] **Task 8.2: รักษาความเท่าเทียมของผู้ใช้แบบไม่ล็อกอินและล็อกอิน (Guest Parity Engine)**
   - **ไฟล์เป้าหมาย:** `src/core/auth/AuthManager.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ui/ParityGuestUser.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -389,7 +389,7 @@
     - เจ้าหน้าที่กู้ภัย (Authenticated) แสดงตราสัญลักษณ์ Verified Responder และฟังก์ชันการจัดการเหตุ
   - **คำสั่งทดสอบ:** `bun test tests/unit/ui/ParityGuestUser.test.ts`
 
-- [ ] **Task 8.3: พัฒนาระบบจัดการระดับแบตเตอรี่ (Battery Policy Manager)**
+- [x] **Task 8.3: พัฒนาระบบจัดการระดับแบตเตอรี่ (Battery Policy Manager)**
   - **ไฟล์เป้าหมาย:** `src/core/state/BatteryPolicyManager.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ui/BatteryPolicyManager.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -397,7 +397,7 @@
     - แสดงคำแนะนำการประหยัดแบตเตอรี่ฉุกเฉินแก่ผู้ประสบภัย
   - **คำสั่งทดสอบ:** `bun test tests/unit/ui/BatteryPolicyManager.test.ts`
 
-- [ ] **Task 8.4: พัฒนาหน้าจอและตัวกรองประกาศเตือนภัยทางการ (Offline Crisis Feed UI)**
+- [x] **Task 8.4: พัฒนาหน้าจอและตัวกรองประกาศเตือนภัยทางการ (Offline Crisis Feed UI)**
   - **ไฟล์เป้าหมาย:** `src/ui/components/CrisisFeed.svelte`, `src/core/feed/CrisisFeedManager.ts`
   - **ไฟล์ทดสอบ:** `tests/unit/ui/OfflineCrisisFeed.test.ts`
   - **รายละเอียดการทำงาน:**
@@ -405,7 +405,7 @@
     - ตรวจสอบลายเซ็นดิจิทัล Ed25519 หากไม่ผ่านจะแสดงคำเตือนว่าอาจเป็นข่าวปลอม
   - **คำสั่งทดสอบ:** `bun test tests/unit/ui/OfflineCrisisFeed.test.ts`
 
-- [ ] **Task 8.5: พัฒนาหน้าจอกดขอความช่วยเหลือฉุกเฉินในคลิกเดียว (One-Tap SOS UI)**
+- [x] **Task 8.5: พัฒนาหน้าจอกดขอความช่วยเหลือฉุกเฉินในคลิกเดียว (One-Tap SOS UI)**
   - **ไฟล์เป้าหมาย:** `src/ui/components/OneTapSos.svelte`
   - **ไฟล์ทดสอบ:** `tests/unit/ui/OneTapSos.test.ts`
   - **รายละเอียดการทำงาน:**
