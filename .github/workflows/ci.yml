@@ -10,7 +10,7 @@ on:
 
 jobs:
   quality-gate:
-    name: Phase 1 Quality Gate & Test Suite
+    name: "Phase 1 Quality Gate & Test Suite"
     runs-on: ubuntu-latest
 
     steps:
@@ -30,11 +30,11 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: Step 1: Pre-Commit AST Syntax Check
+      - name: "Step 1: Pre-Commit AST Syntax Check"
         run: node scripts/checkSyntax.js
 
-      - name: Step 2: Pure Domain Core Boundary Isolation Check
+      - name: "Step 2: Pure Domain Core Boundary Isolation Check"
         run: bun test tests/unit/foundation/ArchitectureBoundary.test.ts
 
-      - name: Step 3: Run Full Core Automated Unit Test Suite
+      - name: "Step 3: Run Full Core Automated Unit Test Suite"
         run: bun test tests/unit/
