@@ -18,8 +18,10 @@
     "@noble/curves": "^2.4.0",
     "@noble/ed25519": "^2.2.3",
     "@noble/hashes": "^1.7.1",
+    "@types/leaflet": "^1.9.22",
     "h3-js": "^4.1.0",
-    "idb": "^8.0.2"
+    "idb": "^8.0.2",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.8",
