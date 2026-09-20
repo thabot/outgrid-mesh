@@ -2,6 +2,7 @@ package io.outgrid.mesh
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.webkit.WebResourceRequest
@@ -10,7 +11,6 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
-import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 
 /**
@@ -63,9 +63,16 @@ class MainActivity : AppCompatActivity() {
         settings.allowContentAccess = false
         settings.cacheMode = WebSettings.LOAD_DEFAULT
 
+        // ── Fix: prevent white flash — set dark background immediately ──
+        webView.setBackgroundColor(Color.parseColor("#090d16"))
+
+        // ── Fix: enable ES module support required by SvelteKit ──
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            WebView.setWebContentsDebuggingEnabled(false)
+        }
+
         // Direct Local Asset Interceptor
-        // Seamlessly handles root-relative imports (/_app/...) and entry /index.html
-        // without path prefix constraints of AssetsPathHandler
+        // Handles root-relative imports (/_app/...) and vendor assets (/_vendor/...)
         webView.webViewClient = object : WebViewClientCompat() {
             override fun shouldInterceptRequest(
                 view: WebView?,
@@ -80,21 +87,7 @@ class MainActivity : AppCompatActivity() {
                     val assetPath = path.removePrefix("/")
                     try {
                         val stream = assets.open(assetPath)
-                        val mimeType = when {
-                            assetPath.endsWith(".html") -> "text/html"
-                            assetPath.endsWith(".js") || assetPath.endsWith(".mjs") -> "text/javascript"
-                            assetPath.endsWith(".css") -> "text/css"
-                            assetPath.endsWith(".json") -> "application/json"
-                            assetPath.endsWith(".svg") -> "image/svg+xml"
-                            assetPath.endsWith(".png") -> "image/png"
-                            assetPath.endsWith(".jpg") || assetPath.endsWith(".jpeg") -> "image/jpeg"
-                            assetPath.endsWith(".webp") -> "image/webp"
-                            assetPath.endsWith(".wasm") -> "application/wasm"
-                            assetPath.endsWith(".woff2") -> "font/woff2"
-                            assetPath.endsWith(".woff") -> "font/woff"
-                            assetPath.endsWith(".ttf") -> "font/ttf"
-                            else -> "application/octet-stream"
-                        }
+                        val mimeType = guessMimeType(assetPath)
                         val headers = mapOf(
                             "Access-Control-Allow-Origin" to "*",
                             "Cache-Control" to "no-cache"
@@ -106,9 +99,18 @@ class MainActivity : AppCompatActivity() {
                 }
                 return super.shouldInterceptRequest(view, request)
             }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: androidx.webkit.WebResourceErrorCompat
+            ) {
+                android.util.Log.e("OutGridWebView", "WebView error: ${error.description} for ${request?.url}")
+                super.onReceivedError(view, request, error)
+            }
         }
 
-        // WebChromeClient to capture and pipe JavaScript console messages to Logcat
+        // WebChromeClient to capture JS console messages to Logcat for debugging
         webView.webChromeClient = object : android.webkit.WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
                 consoleMessage?.let {
@@ -121,8 +123,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Load entry index page from local assets
+        // Load entry index page from local assets via appassets virtual host
         webView.loadUrl("https://appassets.androidplatform.net/index.html")
+    }
+
+    private fun guessMimeType(path: String): String = when {
+        path.endsWith(".html") -> "text/html; charset=utf-8"
+        path.endsWith(".js") || path.endsWith(".mjs") -> "text/javascript"
+        path.endsWith(".css") -> "text/css"
+        path.endsWith(".json") -> "application/json"
+        path.endsWith(".svg") -> "image/svg+xml"
+        path.endsWith(".png") -> "image/png"
+        path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
+        path.endsWith(".webp") -> "image/webp"
+        path.endsWith(".wasm") -> "application/wasm"
+        path.endsWith(".pbf") -> "application/x-protobuf"
+        path.endsWith(".woff2") -> "font/woff2"
+        path.endsWith(".woff") -> "font/woff"
+        path.endsWith(".ttf") -> "font/ttf"
+        else -> "application/octet-stream"
     }
 
     override fun onDestroy() {
