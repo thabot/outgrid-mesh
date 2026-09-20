@@ -71,33 +71,18 @@ class MainActivity : AppCompatActivity() {
             WebView.setWebContentsDebuggingEnabled(false)
         }
 
-        // Direct Local Asset Interceptor
-        // Handles root-relative imports (/_app/...) and vendor assets (/_vendor/...)
+        // Standard AndroidX AssetLoader handles MIME types, encoding & SPA routing
+        val assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
         webView.webViewClient = object : WebViewClientCompat() {
             override fun shouldInterceptRequest(
                 view: WebView?,
                 request: WebResourceRequest?
             ): WebResourceResponse? {
                 val url = request?.url ?: return null
-                if (url.host == "appassets.androidplatform.net") {
-                    var path = url.path ?: ""
-                    if (path.isEmpty() || path == "/") {
-                        path = "/index.html"
-                    }
-                    val assetPath = path.removePrefix("/")
-                    try {
-                        val stream = assets.open(assetPath)
-                        val mimeType = guessMimeType(assetPath)
-                        val headers = mapOf(
-                            "Access-Control-Allow-Origin" to "*",
-                            "Cache-Control" to "no-cache"
-                        )
-                        return WebResourceResponse(mimeType, "UTF-8", 200, "OK", headers, stream)
-                    } catch (e: Exception) {
-                        android.util.Log.e("OutGridWebView", "Local asset not found: $assetPath", e)
-                    }
-                }
-                return super.shouldInterceptRequest(view, request)
+                return assetLoader.shouldInterceptRequest(url)
             }
         }
 
@@ -114,25 +99,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Load entry index page from local assets via appassets virtual host
-        webView.loadUrl("https://appassets.androidplatform.net/index.html")
-    }
-
-    private fun guessMimeType(path: String): String = when {
-        path.endsWith(".html") -> "text/html; charset=utf-8"
-        path.endsWith(".js") || path.endsWith(".mjs") -> "text/javascript"
-        path.endsWith(".css") -> "text/css"
-        path.endsWith(".json") -> "application/json"
-        path.endsWith(".svg") -> "image/svg+xml"
-        path.endsWith(".png") -> "image/png"
-        path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
-        path.endsWith(".webp") -> "image/webp"
-        path.endsWith(".wasm") -> "application/wasm"
-        path.endsWith(".pbf") -> "application/x-protobuf"
-        path.endsWith(".woff2") -> "font/woff2"
-        path.endsWith(".woff") -> "font/woff"
-        path.endsWith(".ttf") -> "font/ttf"
-        else -> "application/octet-stream"
+        // Load entry index page via standard assets path
+        webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
     }
 
     override fun onDestroy() {
