@@ -78,15 +78,12 @@ jobs:
           VITE_APP_BUILD_DATE: ${{ env.VITE_APP_BUILD_DATE }}
           VITE_ANDROID_BUILD: "true"
 
-      - name: Bundle Leaflet CSS into assets (offline — no CDN dependency)
+      - name: Bundle Leaflet Marker Icons into assets (offline)
         run: |
           mkdir -p build/_vendor
-          curl -sL "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" -o build/_vendor/leaflet.css
           curl -sL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png" -o build/_vendor/marker-icon.png
           curl -sL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png" -o build/_vendor/marker-icon-2x.png
           curl -sL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png" -o build/_vendor/marker-shadow.png
-          # Patch index.html to use local vendor leaflet CSS instead of CDN
-          sed -i 's|https://unpkg.com/leaflet@1.9.4/dist/leaflet.css|/_vendor/leaflet.css|g' build/index.html
 
       - name: Copy Web Bundle into Android Assets
         run: |

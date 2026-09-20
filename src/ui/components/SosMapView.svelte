@@ -62,13 +62,18 @@
   async function initMap() {
     // Dynamic import to avoid SSR issues
     L = (await import('leaflet')) as typeof import('leaflet');
+    try {
+      await import('leaflet/dist/leaflet.css');
+    } catch {
+      // Fallback if bundler handles css separately
+    }
     // Fix default marker icon paths — use locally bundled assets (no CDN required)
     // @ts-ignore
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
-      iconRetinaUrl: '/_vendor/marker-icon-2x.png',
-      iconUrl: '/_vendor/marker-icon.png',
-      shadowUrl: '/_vendor/marker-shadow.png',
+      iconRetinaUrl: '/assets/_vendor/marker-icon-2x.png',
+      iconUrl: '/assets/_vendor/marker-icon.png',
+      shadowUrl: '/assets/_vendor/marker-shadow.png',
     });
 
     map = L.map(mapEl, {
