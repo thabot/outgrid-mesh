@@ -101,6 +101,17 @@ class MainActivity : AppCompatActivity() {
                 // Delegate asset loading to AndroidX WebViewAssetLoader
                 var response = assetLoader.shouldInterceptRequest(url)
 
+                // Direct AssetManager fallback if AssetLoader did not resolve the asset
+                if (response == null && url.host == "appassets.androidplatform.net") {
+                    val cleanPath = path.removePrefix("/")
+                    response = try {
+                        val inputStream = assets.open(cleanPath)
+                        WebResourceResponse(null, null, inputStream)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
                 // Client SPA fallback: if not found and route does not have file extension, serve index.html
                 if (response == null && url.host == "appassets.androidplatform.net" && !path.substringAfterLast("/").contains(".")) {
                     return try {

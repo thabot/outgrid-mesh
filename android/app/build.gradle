@@ -27,7 +27,7 @@ android {
     }
 
     aaptOptions {
-        ignoreAssetsPattern "!app:!_*:!.*"
+        ignoreAssetsPattern "!.svn:!.git:!.ds_store"
     }
 
     compileOptions {
