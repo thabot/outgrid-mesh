@@ -154,8 +154,15 @@
     }
   }
 
-  function locateMe() {
+  let watchId: number | null = null;
+
+  function locateMe(isAutoTrigger = false) {
     if (!map || !L || isLocating) return;
+    if (!navigator.geolocation) {
+      locationError = 'อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับการระบุพิกัด GPS';
+      return;
+    }
+
     isLocating = true;
     locationError = '';
 
@@ -173,7 +180,7 @@
         });
         myMarker = L!.marker([myPos.lat, myPos.lng], { icon: meIcon })
           .addTo(map!)
-          .bindPopup('<b>📍 ตำแหน่งของคุณ</b>')
+          .bindPopup('<b>📍 ตำแหน่งของคุณ</b><br><small>GPS แม่นยำ: ±' + Math.round(pos.coords.accuracy) + ' เมตร</small>')
           .openPopup();
 
         // Register self in heatmap
@@ -181,20 +188,47 @@
         heatmap.registerPresence('self', h3Idx);
         renderHexHeatmap();
 
-        map!.flyTo([myPos.lat, myPos.lng], 14, { animate: true, duration: 1.5 });
+        map!.flyTo([myPos.lat, myPos.lng], 15, { animate: true, duration: 1.5 });
+
+        // Start continuous live tracking if not already active
+        startLiveTracking();
       },
       (err) => {
         isLocating = false;
-        locationError = 'ไม่สามารถระบุตำแหน่ง: ' + err.message;
+        if (err.code === err.PERMISSION_DENIED) {
+          locationError = 'เบราว์เซอร์ถูกปฏิเสธการเข้าถึงตำแหน่ง กรุณาแตะที่ไอคอนแม่กุญแจ/การตั้งค่าของเบราว์เซอร์ แล้วเลือก "อนุญาตการเข้าถึงตำแหน่ง" (Allow Location)';
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          locationError = 'สัญญาณ GPS ไม่พร้อมใช้งานในขณะนี้';
+        } else if (err.code === err.TIMEOUT) {
+          locationError = 'หมดเวลาการค้นหาสัญญาณ GPS กรุณากดลองใหม่อีกครั้ง';
+        } else {
+          locationError = 'ไม่สามารถระบุตำแหน่ง: ' + err.message;
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
     );
+  }
+
+  function startLiveTracking() {
+    if (watchId !== null || !navigator.geolocation) return;
+    try {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          myPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          if (myMarker && map) {
+            myMarker.setLatLng([myPos.lat, myPos.lng]);
+          }
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 5000 }
+      );
+    } catch {
+      // Ignore watchPosition errors
+    }
   }
 
   // Lazy-load h3-js cellToBoundary
   function getH3Functions() {
-    // Access h3-js globally via import (already imported at module level in H3GridEngine)
-    // We call the function from h3-js directly
     const h3 = (globalThis as any).__h3__ ?? {};
     return h3;
   }
@@ -204,9 +238,16 @@
     const h3module = await import('h3-js');
     (globalThis as any).__h3__ = h3module;
     await initMap();
+
+    // Auto-request location immediately upon opening map view
+    locateMe(true);
   });
 
   onDestroy(() => {
+    if (watchId !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
     if (map) {
       map.remove();
       map = null;
