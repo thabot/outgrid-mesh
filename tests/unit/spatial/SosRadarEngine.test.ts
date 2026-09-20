@@ -51,4 +51,33 @@ describe('SosRadarEngine (Compass Bearing & Radar Navigation)', () => {
     expect(radar.isCritical).toBe(true);
     expect(Math.abs(radar.relativeHeadingDeg)).toBeLessThan(90); // Ahead of rescuer
   });
+
+  it('should apply Exponential Moving Average Low-Pass Filter to eliminate compass jitter', () => {
+    const smoothedInitial = 90.0; // East
+    const noisyJump = 120.0;      // Jump +30° due to magnetic interference
+
+    // After filter (alpha = 0.15), the result should gently step towards 120° (90 + 0.15 * 30 = 94.5°)
+    const filtered = SosRadarEngine.applyCompassLowPassFilter(smoothedInitial, noisyJump, 0.15);
+    expect(filtered).toBeCloseTo(94.5, 1);
+
+    // Handle 360/0 degree wrap-around (e.g. from 358° to 4°)
+    const wrapFiltered = SosRadarEngine.applyCompassLowPassFilter(358.0, 4.0, 0.5);
+    expect(wrapFiltered).toBeCloseTo(1.0, 1);
+  });
+
+  it('should estimate relative floor level from barometric altitude difference', () => {
+    const ground = SosRadarEngine.estimateFloorLevel(0.2);
+    expect(ground.floorDifference).toBe(0);
+    expect(ground.description.includes('เท่ากัน')).toBe(true);
+
+    const floor3 = SosRadarEngine.estimateFloorLevel(9.0);
+    expect(floor3.floorDifference).toBe(3);
+    expect(floor3.description.includes('+9 ม.')).toBe(true);
+    expect(floor3.description.includes('ชั้น')).toBe(true);
+
+    const basement = SosRadarEngine.estimateFloorLevel(-6.0);
+    expect(basement.floorDifference).toBe(-2);
+    expect(basement.description.includes('ต่ำกว่าคุณ')).toBe(true);
+  });
 });
+
