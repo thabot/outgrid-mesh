@@ -897,7 +897,7 @@
 ### 📦 SPRINT H: โครงสร้างคอมไพล์ Android Native และการออกไฟล์ APK ตัวจริง (Native Build & Hardware Plugins)
 > **เป้าหมาย:** ประกอบโครงสร้าง Android Capacitor โฟลเดอร์ `android/` ตัวจริง, เขียนปลั๊กอินฮาร์ดแวร์วิทยุ `OutGridBlePlugin.kt`, ตั้งค่า Background Service 24 ชม., และคอมไพล์ไฟล์ `OutGridMesh.apk` พร้อมใช้งานจริง
 
-- [ ] **Task H.1: ติดตั้งและสร้างโครงสร้างโปรเจกต์ Android Native ผ่าน Capacitor (`android/` directory)**
+- [x] **Task H.1: ติดตั้งและสร้างโครงสร้างโปรเจกต์ Android Native ผ่าน Capacitor (`android/` directory)**
   - **ไฟล์เป้าหมาย:** `capacitor.config.ts`, ไดเรกทอรี `android/`, `android/app/build.gradle`
   - **รายละเอียดการทำงาน:**
     - กำหนดค่า `capacitor.config.ts`: App ID `io.outgrid.mesh`, App Name `OutGrid Mesh`, WebDir `build`
@@ -906,7 +906,7 @@
     - ตั้งค่า ProGuard / R8 rules เพื่อป้องกันการ Obfuscate คลาสของ Wire Protocol และ Data Models
   - **เกณฑ์การผ่าน (DoD):** โฟลเดอร์ `android/` ถูกสร้างขึ้นอย่างสมบูรณ์ และสามารถเปิดรันโปรเจกต์ใน Android Studio ได้โดยไม่มีข้อผิดพลาด
 
-- [ ] **Task H.2: พัฒนาปลั๊กอินฮาร์ดแวร์บลูทูธวิทยุระดับ Native (`OutGridBlePlugin.kt`) (ครอบคลุม เสาหลัก 2, 17, 18)**
+- [x] **Task H.2: พัฒนาปลั๊กอินฮาร์ดแวร์บลูทูธวิทยุระดับ Native (`OutGridBlePlugin.kt`) (ครอบคลุม เสาหลัก 2, 17, 18)**
   - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/OutGridBlePlugin.kt`
   - **รายละเอียดการทำงาน:**
     - เชื่อมโยงบลูทูธระดับฮาร์ดแวร์ผ่าน Android BLE API:
@@ -916,7 +916,7 @@
     - ส่งมอบข้อมูลดิบ (Raw Byte Stream) ข้าม JavaScript Interface สู่ TypeScript Layer
   - **เกณฑ์การผ่าน (DoD):** มือถือ 2 เครื่องสามารถค้นพบและแลกเปลี่ยนแพ็กเก็ต 27 ไบต์ผ่านบลูทูธระดับ Native ได้สำเร็จ
 
-- [ ] **Task H.3: ระบบบริการเบื้องหลัง 24 ชั่วโมงและการทะลวง Doze Mode (`OutGridMeshService.kt`) (ครอบคลุม เสาหลัก 1)**
+- [x] **Task H.3: ระบบบริการเบื้องหลัง 24 ชั่วโมงและการทะลวง Doze Mode (`OutGridMeshService.kt`) (ครอบคลุม เสาหลัก 1)**
   - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/OutGridMeshService.kt`, `android/app/src/main/java/io/outgrid/mesh/BootReceiver.kt`
   - **รายละเอียดการทำงาน:**
     - สร้าง Android Foreground Service ชนิด `connectedDevice` พร้อม Silent Ongoing Notification บนแถบสถานะ
@@ -925,7 +925,7 @@
     - สร้างไดอะล็อกขอข้อยกเว้นการประหยัดพลังงาน (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`)
   - **เกณฑ์การผ่าน (DoD):** ปิดหน้าจอมือถือทิ้งไว้ 30 นาที แอปยังคงสแกนและรับสัญญาณ SOS ในพื้นหลังได้ 100%
 
-- [ ] **Task H.4: ไพป์ไลน์คอมไพล์และสร้างไฟล์ Release APK ตัวจริง (`scripts/buildAndroidApk.js`)**
+- [x] **Task H.4: ไพป์ไลน์คอมไพล์และสร้างไฟล์ Release APK ตัวจริง (`scripts/buildAndroidApk.js`)**
   - **ไฟล์เป้าหมาย:** `scripts/buildAndroidApk.js`, `android/app/build/outputs/apk/release/app-release-unsigned.apk`
   - **รายละเอียดการทำงาน:**
     - สร้างสคริปต์คอมไพล์อัตโนมัติ: `bun run build` ➔ `npx cap sync android` ➔ `./gradlew assembleRelease`
