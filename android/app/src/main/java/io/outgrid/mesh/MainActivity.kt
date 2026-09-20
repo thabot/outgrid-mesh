@@ -99,16 +99,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 return super.shouldInterceptRequest(view, request)
             }
-
-            override fun onReceivedError(
-                view: WebView?,
-                request: WebResourceRequest?,
-                error: androidx.webkit.WebResourceErrorCompat?
-            ) {
-                error?.let {
-                    android.util.Log.e("OutGridWebView", "WebView error: ${it.description} for ${request?.url}")
-                }
-            }
         }
 
         // WebChromeClient to capture JS console messages to Logcat for debugging
