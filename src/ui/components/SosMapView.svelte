@@ -20,12 +20,33 @@
     distanceMeters?: number;
   }> = [];
 
+  export let peerNodes: Array<{
+    shortNodeId: string;
+    lat: number;
+    lng: number;
+    batteryBars: number; // 1 to 5 bars
+    rssiTier: number;    // 0 to 3
+    distanceMeters: number;
+  }> = [
+    { shortNodeId: '#4C55', lat: 13.7570, lng: 100.5025, batteryBars: 5, rssiTier: 3, distanceMeters: 45 },
+    { shortNodeId: '#9B1C', lat: 13.7555, lng: 100.5005, batteryBars: 4, rssiTier: 2, distanceMeters: 110 },
+    { shortNodeId: '#2E8A', lat: 13.7585, lng: 100.5040, batteryBars: 3, rssiTier: 2, distanceMeters: 230 },
+    { shortNodeId: '#7F3D', lat: 13.7540, lng: 100.4990, batteryBars: 2, rssiTier: 1, distanceMeters: 380 },
+    { shortNodeId: '#E104', lat: 13.7610, lng: 100.5080, batteryBars: 1, rssiTier: 0, distanceMeters: 520 },
+  ];
+
+  export let showPeerDistance: boolean = true;
+  export let showAllNodes: boolean = true;
+
+  import { getBatteryBarsVisual } from '../../core/battery/BatteryRuntimeEstimator';
+
   // --------------- State ---------------
   let mapEl: HTMLDivElement;
   let map: LeafletMap | null = null;
   let L: typeof import('leaflet') | null = null;
   let hexLayers: any[] = [];
   let sosMarkers: any[] = [];
+  let peerMarkers: any[] = [];
   let myMarker: any = null;
   let myPos: { lat: number; lng: number } | null = null;
   let isLocating = false;
@@ -159,6 +180,47 @@
     }
   }
 
+  function renderPeerNodes() {
+    if (!L || !map) return;
+
+    for (const m of peerMarkers) m.remove();
+    peerMarkers = [];
+
+    if (!showAllNodes) return;
+
+    for (const peer of peerNodes) {
+      const batVisual = getBatteryBarsVisual(peer.batteryBars);
+      const distStr = showPeerDistance ? `~${peer.distanceMeters} ม.` : '';
+      const peerHtml = `
+        <div class="peer-pin" style="border-color: ${batVisual.color};">
+          <span class="peer-dot" style="background: ${batVisual.color};"></span>
+          <span class="peer-label">${peer.shortNodeId}</span>
+          ${distStr ? `<span class="peer-dist">${distStr}</span>` : ''}
+        </div>
+      `;
+
+      const peerIcon = L!.divIcon({
+        html: peerHtml,
+        className: 'peer-icon-wrapper',
+        iconSize: [80, 36],
+        iconAnchor: [40, 18],
+      });
+
+      const popupHtml = `
+        <b>📡 โหนดในรัศมีวิทยุ: ${peer.shortNodeId}</b><br>
+        <span>🔋 แบตเตอรี่: ${batVisual.text} (${batVisual.percentStr})</span><br>
+        <span>📶 สัญญาณ: ${peer.rssiTier === 3 ? '🟢 แรงมาก' : peer.rssiTier === 2 ? '🟡 ดี' : peer.rssiTier === 1 ? '🟠 ปานกลาง' : '🔴 อ่อน'}</span><br>
+        ${showPeerDistance ? `<span>📏 ระยะห่างโดยประมาณ: ~${peer.distanceMeters} เมตร</span>` : ''}
+      `;
+
+      const marker = L!.marker([peer.lat, peer.lng], { icon: peerIcon })
+        .addTo(map!)
+        .bindPopup(popupHtml);
+
+      peerMarkers.push(marker);
+    }
+  }
+
   let watchId: number | null = null;
 
   function locateMe(isAutoTrigger = false) {
@@ -259,8 +321,11 @@
     }
   });
 
-  // Reactively re-render SOS targets when prop changes
-  $: if (map && L) renderSosTargets();
+  // Reactively re-render SOS targets and Peer nodes when props or toggle states change
+  $: if (map && L) {
+    renderSosTargets();
+    renderPeerNodes();
+  }
 </script>
 
 <div class="mapview-root">
@@ -271,6 +336,24 @@
       <span class="badge-osm">© OpenStreetMap</span>
     </div>
     <div class="toolbar-right">
+      <button
+        class="btn-control"
+        class:active={showAllNodes}
+        on:click={() => showAllNodes = !showAllNodes}
+        title="สลับแสดงเฉพาะจุด SOS หรือโหนดทั้งหมดในรัศมีวิทยุ"
+      >
+        {showAllNodes ? '🌐 โหนดทั้งหมด' : '🚨 เฉพาะ SOS'}
+      </button>
+
+      <button
+        class="btn-control"
+        class:active={showPeerDistance}
+        on:click={() => showPeerDistance = !showPeerDistance}
+        title="เปิด/ปิดการแสดงระยะทางบนหมุดโหนด"
+      >
+        {showPeerDistance ? '📏 ซ่อนระยะ' : '📏 แสดงระยะ'}
+      </button>
+
       <button class="btn-locate" class:locating={isLocating} on:click={locateMe} disabled={isLocating}>
         {isLocating ? '📡 กำลังหาตำแหน่ง...' : '📍 หาตำแหน่งของฉัน'}
       </button>
@@ -287,6 +370,7 @@
     <span class="legend-item"><span class="dot" style="background:#f59e0b"></span> โหนดปานกลาง</span>
     <span class="legend-item"><span class="dot" style="background:#ef4444"></span> โหนดหนาแน่น</span>
     <span class="legend-item">🚨 จุด SOS</span>
+    <span class="legend-item">🔋 แบตเตอรี่เพื่อน 5 ขีด</span>
     <span class="legend-item">📍 ตำแหน่งคุณ</span>
   </div>
 
@@ -337,6 +421,27 @@
     color: #64748b;
     padding: 2px 8px;
     border-radius: 9999px;
+  }
+
+  .btn-control {
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #334155;
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .btn-control:hover {
+    background: #334155;
+    color: #f1f5f9;
+  }
+  .btn-control.active {
+    background: #0369a1;
+    color: #ffffff;
+    border-color: #38bdf8;
   }
 
   .btn-locate {
@@ -414,6 +519,43 @@
   :global(.me-pin) {
     font-size: 24px;
     line-height: 1;
+  }
+
+  :global(.peer-icon-wrapper) {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  :global(.peer-pin) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.9);
+    color: #f8fafc;
+    border: 1.5px solid #22c55e;
+    border-radius: 9999px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+  }
+
+  :global(.peer-dot) {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  :global(.peer-label) {
+    color: #38bdf8;
+  }
+
+  :global(.peer-dist) {
+    color: #94a3b8;
+    font-size: 9px;
+    font-weight: 500;
   }
 
   @keyframes sos-pulse {

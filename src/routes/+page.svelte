@@ -4,8 +4,10 @@
   import DonationDashboard from '../ui/components/DonationDashboard.svelte';
   import HelpManualScreen from '../ui/components/HelpManualScreen.svelte';
   import SosMapView from '../ui/components/SosMapView.svelte';
+  import BatteryStatusBanner from '../ui/components/BatteryStatusBanner.svelte';
 
   let activeTab: 'sos' | 'feed' | 'map' | 'manual' | 'donation' = 'sos';
+  let isUltraSurvival = false;
 
   // Dynamic version — injected by Vite from package.json / CI pipeline
   const appVersion: string = import.meta.env.VITE_APP_VERSION ?? '1.1.0';
@@ -17,6 +19,10 @@
     { id: 'sos-001', lat: 13.7590, lng: 100.5050, category: '🚤 น้ำท่วม ต้องการเรือ', distanceMeters: 340 },
     { id: 'sos-002', lat: 18.7870, lng: 98.9830, category: '👶 มีเด็ก/ผู้สูงอายุ', distanceMeters: 1200 },
   ];
+
+  function handleTriggerLastGasp() {
+    alert('🚨 Last-Gasp Beacon ถูกส่งผ่านคลื่นวิทยุแล้ว! พิกัดสุดท้ายและเวลาได้ถูกฝากไว้กับเพื่อนบ้านรอบตัวก่อนเครื่องดับ');
+  }
 </script>
 
 <svelte:head>
@@ -24,7 +30,7 @@
   <meta name="description" content="Autonomous, Decentralized Spatial Mesh Communication Grid" />
 </svelte:head>
 
-<main class="app-root">
+<main class="app-root" class:ultra-survival={isUltraSurvival}>
   <header class="app-header">
     <div class="logo">
       <span class="pulse-indicator"></span>
@@ -39,6 +45,11 @@
       <button class:active={activeTab === 'donation'} on:click={() => activeTab = 'donation'}>🤝 Community Fund</button>
     </nav>
   </header>
+
+  <BatteryStatusBanner
+    bind:isUltraSurvival
+    onTriggerLastGasp={handleTriggerLastGasp}
+  />
 
   <section class="content-area">
     {#if activeTab === 'sos'}
@@ -145,5 +156,18 @@
     min-height: 580px;
     display: flex;
     flex-direction: column;
+  }
+
+  /* True AMOLED Black for Ultra Survival Mode */
+  .app-root.ultra-survival {
+    background: #000000;
+  }
+  .app-root.ultra-survival .card {
+    background: #050505;
+    border: 1px solid #1e293b;
+  }
+  .app-root.ultra-survival .pulse-indicator {
+    box-shadow: none;
+    animation: none;
   }
 </style>

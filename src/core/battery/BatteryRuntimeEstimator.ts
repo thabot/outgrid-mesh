@@ -69,4 +69,21 @@ export class BatteryRuntimeEstimator {
       isCriticalLastGasp,
     };
   }
+
+  /**
+   * Converts 1-5 bar battery tier into color and visual emoji indicator
+   */
+  public static getBatteryBarsVisual(bars: number): { text: string; color: string; percentStr: string } {
+    switch (bars) {
+      case 5: return { text: '🟩🟩🟩🟩🟩', color: '#22c55e', percentStr: '81-100%' };
+      case 4: return { text: '🟩🟩🟩🟩⬜', color: '#4ade80', percentStr: '61-80%' };
+      case 3: return { text: '🟨🟨🟨⬜⬜', color: '#facc15', percentStr: '41-60%' };
+      case 2: return { text: '🟧🟧⬜⬜⬜', color: '#fb923c', percentStr: '21-40%' };
+      case 1:
+      default: return { text: '🟥⬜⬜⬜⬜', color: '#ef4444', percentStr: '1-20%' };
+    }
+  }
 }
+
+export const getBatteryBarsVisual = BatteryRuntimeEstimator.getBatteryBarsVisual;
+
