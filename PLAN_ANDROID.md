@@ -851,6 +851,88 @@
 
 ---
 
+### 🚚 SPRINT G: ระบบขับเคลื่อนกู้ภัยขั้นสูงและการสื่อสารด้วยเสียง (Autonomous Mobility, DTN Custody & Acoustic Engine)
+> **เป้าหมาย:** พัฒนาระบบส่งต่อข้อมูลแบบ Store-and-Forward ข้ามตำบลผ่านรถกู้ภัย (Data Mule), การโอนย้ายสิทธิ์ Bundle ที่ปลอดภัย, วัคซีนลบข้อมูลที่ช่วยเหลือเสร็จแล้ว, และการส่งพิกัดผ่านเสียงความถี่สูง Ultrasonic FSK ทะลุซากตึก
+
+- [ ] **Task G.1: ระบบตรวจจับความเคลื่อนไหวอัตโนมัติและโหมดรถกู้ภัย (Autonomous Data Mule Mode) (ครอบคลุม เสาหลัก 10, 13)**
+  - **ไฟล์เป้าหมาย:** `src/core/dtn/MobilityTracker.ts`, `src/core/dtn/DataMuleEngine.ts`
+  - **รายละเอียดการทำงาน:**
+    - อ่านค่า Accelerometer ผสานกับตำแหน่งพิกัด GPS: หากตรวจพบความเร็วเคลื่อนที่ $\ge 15\text{ km/h}$ ต่อเนื่องเกิน 30 วินาที ให้สลับบทบาทเป็น **`DATA_MULE_ACTIVE`** อัตโนมัติ
+    - ปรับ Duty Cycle เป็นโหมดดักฟังพิเศษ: เร่งรอบการสแกน BLE เพื่อควานหาและดูด Bundle ฉุกเฉินจากมือถือชาวบ้านข้างทาง (Opportunistic Zero-Click Exchange) ในระยะ 50–100 เมตร
+    - เมื่อความเร็วลดลงเหลือ $0\text{ km/h}$ ในเขตที่มีสัญญาณเน็ตหรือศูนย์อพยพ ให้ระบายข้อมูล (Unload Bundles) ขึ้น Cloudflare Gateway ทันที
+  - **เกณฑ์การผ่าน (DoD):** จำลองความเร็ว $25\text{ km/h}$ โหมด Data Mule ถูกกระตุ้นและแลกเปลี่ยน Bundle อัตโนมัติโดยไม่ต้องมีการคลิกหน้าจอ
+
+- [ ] **Task G.2: โพรโทคอลโอนย้ายสิทธิ์การถือครองข้อมูลฉุกเฉิน (DTN Bundle Custody Transfer Protocol) (ครอบคลุม เสาหลัก 10)**
+  - **ไฟล์เป้าหมาย:** `src/core/dtn/HopGovernance.ts`, `src/core/dtn/BundleStore.ts`
+  - **รายละเอียดการทำงาน:**
+    - กำหนดโครงสร้าง Bundle ตามมาตรฐาน DTN: `Bundle_ID (16B)`, `Created_At (8B)`, `Expires_At (8B)`, `Priority (1B)`, `Hop_Count (1B)`, `Custodian_Node (8B)`, `Payload`
+    - กลไก **Custody Transfer Handshake**:
+      1. โหนดส่งเสนอส่ง Bundle พร้อมสถานะ `CUSTODY_OFFERED`
+      2. โหนดรับตรวจสอบความจุและตอบกลับแพ็กเก็ต `0x08: CUSTODY_ACCEPT` พร้อมลายเซ็นดิจิทัล
+      3. โหนดส่งจึงเปลี่ยนสถานะเป็น `CUSTODY_TRANSFERRED` และลบสำเนาออกจากเครื่องตนเอง ป้องกันข้อมูลตกหล่นหากสัญญาณหลุดกลางทาง
+    - นโยบายคุ้มครองชีวิต: **ห้ามทิ้ง Red SOS (`0x01`) เด็ดขาด 100%** แม้หน่วยความจำจะเต็ม
+  - **เกณฑ์การผ่าน (DoD):** ทดสอบการส่งต่อ Bundle ข้าม 3 โหนด สิทธิ์การถือครองถูกส่งมอบอย่างถูกต้องและไม่มีข้อความสูญหาย
+
+- [ ] **Task G.3: ระบบกระจายวัคซีนลบข้อมูลที่ช่วยเหลือเสร็จแล้ว (Epidemic Vaccine Kill Pill Engine) (ครอบคลุม เสาหลัก 11)**
+  - **ไฟล์เป้าหมาย:** `src/core/dtn/NetworkHealingEngine.ts`
+  - **รายละเอียดการทำงาน:**
+    - เมื่อผู้ประสบภัยได้รับการช่วยเหลือแล้ว หรือข้อมูลถูกซิงก์ขึ้นสู่ระบบแม่ข่ายสำเร็จ ระบบจะสร้างแพ็กเก็ต **`0x09: VACCINE_KILL_PILL`** แนบ `Bundle_ID` + ลายเซ็น Authority Signature
+    - กระจายวัคซีนผ่านโครงข่าย Mesh และฝากไปกับ Data Mule:
+      - ทุกโหนดที่ได้รับวัคซีนจะตรวจสอบลายเซ็น และลบสำเนา Bundle นั้นออกจากหน่วยความจำถาวรทันที
+      - ยุติการส่งต่อข้อมูลที่หมดความจำเป็น ช่วยคืนพื้นที่ RAM และ Bandwidth ให้กับผู้ประสบภัยรายอื่น
+  - **เกณฑ์การผ่าน (DoD):** ปล่อยแพ็กเก็ตวัคซีน โหนดในวง Mesh ทั้งหมดลบ Bundle เป้าหมายทิ้งภายใน 100ms
+
+- [ ] **Task G.4: แผงควบคุมเสียงความถี่สูงและการสังเคราะห์รหัสมอส (Ultrasonic FSK & Acoustic Morse HUD) (ครอบคลุม เสาหลัก 14)**
+  - **ไฟล์เป้าหมาย:** `src/core/emergency/AcousticMorseEngine.ts`, `src/core/emergency/FskDemodulator.ts`, `src/ui/components/AcousticBeaconPanel.svelte`
+  - **รายละเอียดการทำงาน:**
+    - **Acoustic Morse Tone (960Hz / 1440Hz)**: สังเคราะห์เสียงไซเรนฉุกเฉินระดับ 85+ dB เพื่อให้ทีมค้นหากู้ภัยได้ยินเสียงจากใต้ซากอาคาร
+    - **Ultrasonic FSK (18.5 kHz / 19.5 kHz)**: แปลงพิกัด GPS เป็นความถี่เสียงความถี่สูงที่มนุษย์ไม่ได้ยิน ส่งผ่านลำโพง และดักฟังถอดรหัสผ่านไมโครโฟนด้วย Goertzel Algorithm
+    - พัฒนา UI ควบคุม: ปุ่มเปิด/ปิดเสียงไซเรน และโหมดสแกนหาผู้รอดชีวิตใต้ซากตึก
+  - **เกณฑ์การผ่าน (DoD):** สังเคราะห์สัญญาณ FSK ข้ามเครื่อง และไมโครโฟนสามารถถอดรหัสพิกัด GPS ได้ถูกต้องโดยไม่ต้องใช้คลื่นวิทยุ
+
+---
+
+### 📦 SPRINT H: โครงสร้างคอมไพล์ Android Native และการออกไฟล์ APK ตัวจริง (Native Build & Hardware Plugins)
+> **เป้าหมาย:** ประกอบโครงสร้าง Android Capacitor โฟลเดอร์ `android/` ตัวจริง, เขียนปลั๊กอินฮาร์ดแวร์วิทยุ `OutGridBlePlugin.kt`, ตั้งค่า Background Service 24 ชม., และคอมไพล์ไฟล์ `OutGridMesh.apk` พร้อมใช้งานจริง
+
+- [ ] **Task H.1: ติดตั้งและสร้างโครงสร้างโปรเจกต์ Android Native ผ่าน Capacitor (`android/` directory)**
+  - **ไฟล์เป้าหมาย:** `capacitor.config.ts`, ไดเรกทอรี `android/`, `android/app/build.gradle`
+  - **รายละเอียดการทำงาน:**
+    - กำหนดค่า `capacitor.config.ts`: App ID `io.outgrid.mesh`, App Name `OutGrid Mesh`, WebDir `build`
+    - รันคำสั่งสแกลฟโฟลด์ `npx cap add android` และซิงก์ Assets
+    - ตั้งค่า `build.gradle`: `compileSdkVersion 34`, `targetSdkVersion 34`, `minSdkVersion 26` (Android 8.0 Oreo ขึ้นไป)
+    - ตั้งค่า ProGuard / R8 rules เพื่อป้องกันการ Obfuscate คลาสของ Wire Protocol และ Data Models
+  - **เกณฑ์การผ่าน (DoD):** โฟลเดอร์ `android/` ถูกสร้างขึ้นอย่างสมบูรณ์ และสามารถเปิดรันโปรเจกต์ใน Android Studio ได้โดยไม่มีข้อผิดพลาด
+
+- [ ] **Task H.2: พัฒนาปลั๊กอินฮาร์ดแวร์บลูทูธวิทยุระดับ Native (`OutGridBlePlugin.kt`) (ครอบคลุม เสาหลัก 2, 17, 18)**
+  - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/OutGridBlePlugin.kt`
+  - **รายละเอียดการทำงาน:**
+    - เชื่อมโยงบลูทูธระดับฮาร์ดแวร์ผ่าน Android BLE API:
+      - `BluetoothLeAdvertiser`: ส่งแพ็กเก็ต `PRESENCE_CHIRP` 27 Bytes และ `SOS_BEACON` 21 Bytes บน Service UUID `0x544F`
+      - `BluetoothLeScanner`: กรองแพ็กเก็ตในระดับฮาร์ดแวร์ชิป SoC ด้วย `ScanFilter.Builder().setServiceData(...)` โดยไม่ปลุก CPU (Zero-Wake 40% Power Reduction)
+    - รองรับการสลับโหมดกำลังส่งวิทยุ (`TX_POWER_LOW`, `TX_POWER_HIGH`) ตามสถานะแบตเตอรี่
+    - ส่งมอบข้อมูลดิบ (Raw Byte Stream) ข้าม JavaScript Interface สู่ TypeScript Layer
+  - **เกณฑ์การผ่าน (DoD):** มือถือ 2 เครื่องสามารถค้นพบและแลกเปลี่ยนแพ็กเก็ต 27 ไบต์ผ่านบลูทูธระดับ Native ได้สำเร็จ
+
+- [ ] **Task H.3: ระบบบริการเบื้องหลัง 24 ชั่วโมงและการทะลวง Doze Mode (`OutGridMeshService.kt`) (ครอบคลุม เสาหลัก 1)**
+  - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/OutGridMeshService.kt`, `android/app/src/main/java/io/outgrid/mesh/BootReceiver.kt`
+  - **รายละเอียดการทำงาน:**
+    - สร้าง Android Foreground Service ชนิด `connectedDevice` พร้อม Silent Ongoing Notification บนแถบสถานะ
+    - จัดการระบบปลุก CPU ด้วย `AlarmManager.setExactAndAllowWhileIdle()` ทุกรอบสแกน 60 วินาที เพื่อให้ทำงานได้ต่อเนื่องแม้ระบบเข้าสู่ Deep Doze Mode
+    - สร้าง `BootReceiver` เพื่อฟื้นคืนชีพโครงข่าย Mesh อัตโนมัติทันทีที่มือถือเปิดเครื่อง (`RECEIVE_BOOT_COMPLETED`)
+    - สร้างไดอะล็อกขอข้อยกเว้นการประหยัดพลังงาน (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`)
+  - **เกณฑ์การผ่าน (DoD):** ปิดหน้าจอมือถือทิ้งไว้ 30 นาที แอปยังคงสแกนและรับสัญญาณ SOS ในพื้นหลังได้ 100%
+
+- [ ] **Task H.4: ไพป์ไลน์คอมไพล์และสร้างไฟล์ Release APK ตัวจริง (`scripts/buildAndroidApk.js`)**
+  - **ไฟล์เป้าหมาย:** `scripts/buildAndroidApk.js`, `android/app/build/outputs/apk/release/app-release-unsigned.apk`
+  - **รายละเอียดการทำงาน:**
+    - สร้างสคริปต์คอมไพล์อัตโนมัติ: `bun run build` ➔ `npx cap sync android` ➔ `./gradlew assembleRelease`
+    - ตรวจสอบความถูกต้องของ Relative Asset Path `./app/` ใน WebView
+    - จัดเตรียมไฟล์ผลลัพธ์ APK สำหรับทดสอบแจกจ่ายแบบ Sideload ออฟไลน์ตามสเปก Sprint B
+  - **เกณฑ์การผ่าน (DoD):** รันสคริปต์แล้วได้ไฟล์ APK ที่สามารถติดตั้งบนมือถือ Android จริงและเปิดใช้งานโหมดกู้ภัยได้สมบูรณ์แบบ
+
+---
+
 ## สเปกทางวิศวกรรมเชิงลึกและสัญญาการเชื่อมต่อโค้ด (Technical Specifications & Code Contracts for Devs)
 
 เพื่อให้ Developer สามารถเริ่มเขียนโค้ดได้ทันทีแบบ 100% ไร้ข้อสงสัย กำหนดสัญญาการเชื่อมต่อระดับโค้ด (Code Contracts) ดังต่อไปนี้:
@@ -1048,22 +1130,24 @@ interface IncomingSosProps {
   - แสดง Persistent Silent Notification: *"OutGrid Mesh กำลังปกป้องชุมชน (โหนดทำงานในพื้นหลัง)"*
   - ควบคุมรอบการสแกนผ่าน `AlarmManager.setExactAndAllowWhileIdle()` เพื่อให้ทำงานได้ต่อเนื่องแม้ระบบเข้าสู่ Deep Doze Mode
 
-#### 4.3 ตารางสรุปสถานะความคืบหน้าของโครงการ (Implementation Progress Status)
+#### 4.3 ตารางสรุปสถานะความคืบหน้า 8 Sprints (The 8-Sprint Android Delivery Matrix)
 
-| ชั้นสถาปัตยกรรม (Architecture Layer) | หัวข้องานหลัก | สถานะความพร้อม | ผลการทดสอบ (DoD) |
-| :--- | :--- | :---: | :--- |
-| **1. Protocol & Wire Spec (TOG v1.1)** | 27B Presence Chirp, 21B SOS, Fused Neighbor Byte, LoRa Relay | **✅ เสร็จสมบูรณ์ 100%** | Unit test ผ่านครบทุกบิต |
-| **2. Cryptography & Security Layer** | E2EE Curve25519 ECDH, AES-256-GCM (28B), Ed25519 Signatures | **✅ เสร็จสมบูรณ์ 100%** | ป้องกัน Tampering & MITM |
-| **3. Offline Storage & Spatial Data** | SQLite Schema, 50MB Clamping, SOS FIFO Guard, H3 Spatial Cache | **✅ เสร็จสมบูรณ์ 100%** | ข้อมูลฉุกเฉินไม่หายเด็ดขาด |
-| **4. UI Components & Svelte Engines** | OneTapSOS, Radar Compass, Offline Maps, Feed, AMOLED Black | **✅ เสร็จสมบูรณ์ 100%** | รองรับ Guest & User 100% |
-| **5. Cross-Radio Bridge (LoRa)** | Zero-Payload Mutation, LRU 64-slot Dedup, CAD Backoff, Prioritization | **✅ เสร็จสมบูรณ์ 100%** | สเปกและ Relay Engine พร้อม |
-| **6. Android Native Capacitor Bridge** | Plugin Mapping, Service UUID `0x544F`, Manifest Permissions | **📋 Blueprint พร้อม** | พร้อมสร้างไดเรกทอรี `android/` |
+| Sprint | ชื่อสปรินต์และขอบเขตงาน | สถานะความพร้อม | ผลการทดสอบ (DoD) |
+| :---: | :--- | :---: | :--- |
+| **Sprint A** | **Survival Battery & Peer Distance HUD** | **✅ เสร็จสมบูรณ์ (100%)** | `BatteryStatusBanner`, 5-Bar HUD, Last-Gasp Beacon, AMOLED Black |
+| **Sprint B** | **Offline APK Sideload & Hardware Bridge** | **📋 พร้อมเริ่มพัฒนา** | ดูด APK ในเครื่อง, Wi-Fi Hotspot Sideloading, ไฟฉายกล้องหลัง |
+| **Sprint C** | **High-Resilience QR Code Generator** | **📋 สเปกและ Core พร้อม** | Pure TS Canvas/SVG QR, Reed-Solomon Level H กู้คืน 30% |
+| **Sprint D** | **Incoming SOS Alert & 5s Mode Fallback** | **📋 สเปกและ Core พร้อม** | ปลุกจอ WakeLock, เสียงหวูด 85+ dB, สลับโหมด 5s Fallback |
+| **Sprint E** | **Full Emergency Chat Hub & WebP Media** | **📋 สเปกและ Core พร้อม** | Broadcast, แชท 1:1 E2EE (28B), WebPบีบอัด, เสียง Opus |
+| **Sprint F** | **Zero-Knowledge Backup & Storage Parity** | **📋 สเปกและ Core พร้อม** | ZK Encrypted Backup, เพดาน SQLite 50MB, Guest Parity 100% |
+| **Sprint G** | **Autonomous Mobility, DTN Custody & Acoustic** | **📋 สเปกและ Core พร้อม** | Data Mule $\ge 15\text{km/h}$, Vaccine Kill Pill, Ultrasonic FSK |
+| **Sprint H** | **Android Native Production Build & Hardware Plugin** | **📋 สเปกและ Blueprint พร้อม** | โครงสร้าง `android/`, `OutGridBlePlugin.kt`, Build Release APK |
 
 ---
 
 ## การตรวจสอบคุณภาพขั้นสุดท้าย (Final Verification & Delivery Gates)
 1. **Syntax Check**: รัน `node scripts/checkSyntax.js` ต้องผ่าน 100% ครบทุกไฟล์
-2. **Automated Tests**: รัน `bun test` ผ่านครบ 293 รายการ (86 test files)
+2. **Automated Tests**: รัน `bun test` ผ่านครบ 299 รายการ (87 test files)
 3. **Build Bundle**: รัน `bun run build` สร้าง Production Bundle สำเร็จ พร้อมตรวจสอบ Path `./app/` ใน WebView
 4. **Git Branch Compliance**: ทำการ Commit และ Push ไปยัง branch **`uat`** เท่านั้น (ห้ามแตะต้อง branch `main` เด็ดขาด)
 
