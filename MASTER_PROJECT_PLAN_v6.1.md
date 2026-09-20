@@ -1755,6 +1755,11 @@ OutGridMesh/                               # Root Directory (เดิมคื�
    - มือถือใช้งานย่าน **2.4 GHz (BLE)** ขณะที่บอร์ดทวนสัญญาณข้ามเมืองใช้งานย่าน **920–925 MHz (LoRa AS923)** สัญญาณทั้งสองทำงานคู่ขนานกันได้อย่างสมบูรณ์ 100% ปราศจากสัญญาณรบกวนข้ามคลื่น (Cross-talk Immunity)
 4. **อุปกรณ์ทวนสัญญาณทางเลือกในเมือง (In-City ESP32 Solar BLE Repeater):**
    - สำหรับจุดอับสัญญาณในเมืองที่ไม่มี LoRa สามารถใช้บอร์ด ESP32 ธรรมดา (ต้นทุน 300–450 บาท) ทำหน้าที่เป็น **Pure BLE Solar Sniffer & Booster** แขวนตามเสาไฟเพื่อดูดและกระจายแพ็กเก็ต TOG v1.1 ของชาวบ้านด้วยเสาอากาศ 5dBi ขยายระยะได้ 500–1,000+ เมตร
+5. **กฎเหล็กการทวนสัญญาณข้ามวิทยุ (Cross-Radio Bridge Invariants ⭐️):**
+   - **Zero-Payload Mutation**: บอร์ด LoRa Bridge ทำหน้าที่เป็น Transparent Forwarder คงค่า CRC-16, พิกัด H3, Delta GPS Offset, และลายเซ็น Ed25519 ของมือถือต้นทางไว้สมบูรณ์ 100% ห้ามแก้ไข เพื่อให้ศูนย์กู้ภัยปลายทางพิสูจน์ความถูกต้องได้
+   - **LRU Deduplication Cache**: เก็บ 64 รายการล่าสุด `SHA-256(Type + ShortNodeID + Payload[0..4])[0..7]` หากตรวจพบแพ็กเก็ตซ้ำใน 60 วินาที ให้ Drop ทิ้งทันที ป้องกันคลื่น LoRa ชนกัน
+   - **LoRa CAD (Channel Activity Detection)**: ตรวจสอบความเงียบของคลื่น $\le 5\text{ms}$ ก่อนส่ง (Listen Before Talk) หากมีคลื่นอื่นให้ Random Backoff 50–200ms
+   - **RF Specification**: AS923 (923.2 MHz, BW 125kHz, SF9/SF11, CR 4/5, TX +14..+20dBm) อ้างอิงตาม [docs/TOG_v1.1_WIRE_SPECIFICATION.md](file:///d:/thabot/git/gitlab/thabot/Mesh/OutGridMesh/docs/TOG_v1.1_WIRE_SPECIFICATION.md)
 
 ### 9.4 Offline Voice Stream & Drone Data Mule Auto-Sync
 - ระบบสตรีมมิ่งเสียงแบบกดพูด Push-to-Talk ข้ามวง Mesh แบบกึ่งเรียลไทม์

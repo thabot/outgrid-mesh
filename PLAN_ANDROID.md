@@ -95,6 +95,11 @@
         - **5 Best Neighbors (15B, โหนดละ 3B พอดีเป๊ะ)**: Short NodeID (2B) + Fused Packed Byte (1B: H3 6 ทิศรอบตัว 3-bit + แบตเตอรี่ 5 ขีด 3-bit + RSSI 4 ระดับ 2-bit)
         - **Check Digit (2B)**: CRC-16-CCITT (Polynomial `0x1021`) ป้องกันบิตเพี้ยนในอากาศ 99.998%
       - *เอกสารอ้างอิงทางการ*: แยกจัดเก็บรายละเอียดทั้งหมดไว้ใน [docs/TOG_v1.1_WIRE_SPECIFICATION.md](file:///d:/thabot/git/gitlab/thabot/Mesh/OutGridMesh/docs/TOG_v1.1_WIRE_SPECIFICATION.md)
+  18. **Cross-Radio Bridge Protocol & LoRa Forwarding Rules (BLE ↔ LoRa ⭐️)**:
+      - *Zero-Payload Mutation*: บอร์ด LoRa Bridge (ESP32 + SX1262) ทำหน้าที่เป็น Transparent Forwarder คงค่า CRC-16, พิกัด H3, Delta GPS, และลายเซ็น Ed25519 ดั้งเดิมของมือถือต้นทางไว้ 100% ห้ามแก้ไข
+      - *LRU Deduplication*: แคชตรวจสอบ 64 รายการล่าสุด `SHA-256(Type + ShortNodeID + Payload[0..4])[0..7]` ป้องกันการทวนสัญญาณซ้ำซ้อนภายใน 60 วินาที ตัดปัญหาพายุคลื่นวิทยุชนกัน
+      - *Traffic Prioritization*: อนุญาต `0x01 SOS_BEACON` ข้ามทันที (Preemption 0ms), โควต้า `0x07 PRESENCE_CHIRP` 1 ครั้ง/60s ต่อเซลล์ H3, และ **ห้ามส่ง `MEDIA_CHUNK` (ภาพ/เสียง) ขึ้น LoRa เด็ดขาด**
+      - *RF Profile*: คลื่น LoRa ย่าน AS923 (923.2 MHz, BW 125kHz, SF9/SF11, CR 4/5, TX +14..+20dBm) พร้อมกลไก Listen-Before-Talk ผ่าน LoRa CAD $\le 5\text{ms}$ ก่อนส่ง
 
 ---
 
