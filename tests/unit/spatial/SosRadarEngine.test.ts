@@ -1,83 +1,66 @@
-/**
- * Unit tests for SosRadarEngine (Compass bearing, distance in meters, live ping)
- * Creator & Lead Architect: Thabot <thabo47@gmail.com>
- * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
- */
-
-import { describe, expect, it } from 'bun:test';
+import { describe, it, expect } from 'bun:test';
 import { SosRadarEngine } from '../../../src/core/spatial/SosRadarEngine';
-import { H3DeltaCompressor } from '../../../src/core/spatial/H3DeltaCompressor';
 
-describe('SosRadarEngine (Compass Bearing & Radar Navigation)', () => {
-  it('should accurately calculate cardinal compass bearings (North, East, South, West)', () => {
-    const origin = { lat: 13.0, lng: 100.0 };
-
-    // Point due North
-    const north = { lat: 14.0, lng: 100.0 };
-    expect(Math.round(SosRadarEngine.calculateBearing(origin, north))).toBe(0);
-
-    // Point due East
-    const east = { lat: 13.0, lng: 101.0 };
-    expect(Math.round(SosRadarEngine.calculateBearing(origin, east))).toBe(90);
-
-    // Point due South
-    const south = { lat: 12.0, lng: 100.0 };
-    expect(Math.round(SosRadarEngine.calculateBearing(origin, south))).toBe(180);
-
-    // Point due West
-    const west = { lat: 13.0, lng: 99.0 };
-    expect(Math.round(SosRadarEngine.calculateBearing(origin, west))).toBe(270);
+describe('SosRadarEngine (Sprint E Task E.4 Spatial Calculations & Filter)', () => {
+  it('should accurately calculate Haversine distance between Bangkok and Chiang Mai (~580km)', () => {
+    // Bangkok (13.7563, 100.5018) -> Chiang Mai (18.7883, 98.9853)
+    const dist = SosRadarEngine.calculateDistanceMeters(13.7563, 100.5018, 18.7883, 98.9853);
+    // Expected distance is ~583,000 meters
+    expect(dist).toBeGreaterThan(570000);
+    expect(dist).toBeLessThan(600000);
   });
 
-  it('should compute radar target metrics with relative heading for rescuer navigation', () => {
-    const rescuerPos = { lat: 13.7500, lng: 100.4900 };
-    const phoneHeading = 45; // Rescuer facing Northeast (45°)
+  it('should accurately calculate short-range proximity distance (< 500m)', () => {
+    const lat1 = 13.75000;
+    const lon1 = 100.50000;
+    // ~111m north
+    const lat2 = 13.75100;
+    const lon2 = 100.50000;
 
-    // Victim is located at slightly further North-East
-    const victimPos = { lat: 13.7550, lng: 100.4950 };
-    const compressed = H3DeltaCompressor.compress(victimPos.lat, victimPos.lng);
-
-    const radar = SosRadarEngine.computeTarget(
-      'victim-1',
-      rescuerPos,
-      phoneHeading,
-      compressed.h3Index,
-      compressed.deltaOffset,
-      true
-    );
-
-    expect(radar.distanceMeters).toBeGreaterThan(600);
-    expect(radar.distanceMeters).toBeLessThan(1000);
-    expect(radar.isCritical).toBe(true);
-    expect(Math.abs(radar.relativeHeadingDeg)).toBeLessThan(90); // Ahead of rescuer
+    const dist = SosRadarEngine.calculateDistanceMeters(lat1, lon1, lat2, lon2);
+    expect(dist).toBeGreaterThan(105);
+    expect(dist).toBeLessThan(115);
   });
 
-  it('should apply Exponential Moving Average Low-Pass Filter to eliminate compass jitter', () => {
-    const smoothedInitial = 90.0; // East
-    const noisyJump = 120.0;      // Jump +30° due to magnetic interference
+  it('should calculate correct forward bearing for cardinal directions', () => {
+    // North: lat increases, lon constant
+    const bearingNorth = SosRadarEngine.calculateBearingDegrees(13.0, 100.0, 14.0, 100.0);
+    expect(Math.round(bearingNorth)).toBe(0);
 
-    // After filter (alpha = 0.15), the result should gently step towards 120° (90 + 0.15 * 30 = 94.5°)
-    const filtered = SosRadarEngine.applyCompassLowPassFilter(smoothedInitial, noisyJump, 0.15);
-    expect(filtered).toBeCloseTo(94.5, 1);
-
-    // Handle 360/0 degree wrap-around (e.g. from 358° to 4°)
-    const wrapFiltered = SosRadarEngine.applyCompassLowPassFilter(358.0, 4.0, 0.5);
-    expect(wrapFiltered).toBeCloseTo(1.0, 1);
+    // East: lat constant, lon increases
+    const bearingEast = SosRadarEngine.calculateBearingDegrees(13.0, 100.0, 13.0, 101.0);
+    expect(Math.round(bearingEast)).toBe(90);
   });
 
-  it('should estimate relative floor level from barometric altitude difference', () => {
-    const ground = SosRadarEngine.estimateFloorLevel(0.2);
-    expect(ground.floorDifference).toBe(0);
-    expect(ground.description.includes('เท่ากัน')).toBe(true);
+  it('should normalize relative bearing correctly (-180 to +180)', () => {
+    // Target is due East (90 deg), Device facing North (0 deg) -> +90 deg (Turn right)
+    expect(SosRadarEngine.calculateRelativeBearing(0, 90)).toBe(90);
 
-    const floor3 = SosRadarEngine.estimateFloorLevel(9.0);
-    expect(floor3.floorDifference).toBe(3);
-    expect(floor3.description.includes('+9 ม.')).toBe(true);
-    expect(floor3.description.includes('ชั้น')).toBe(true);
+    // Target is due West (270 deg), Device facing North (0 deg) -> -90 deg (Turn left)
+    expect(SosRadarEngine.calculateRelativeBearing(0, 270)).toBe(-90);
 
-    const basement = SosRadarEngine.estimateFloorLevel(-6.0);
-    expect(basement.floorDifference).toBe(-2);
-    expect(basement.description.includes('ต่ำกว่าคุณ')).toBe(true);
+    // Target is behind (180 deg), Device facing North (0 deg) -> 180 deg
+    expect(Math.abs(SosRadarEngine.calculateRelativeBearing(0, 180))).toBe(180);
+  });
+
+  it('should smooth compass jitter using Low-Pass Filter across 0/360 boundary', () => {
+    const prevHeading = 358;
+    const newReading = 2; // Crosses 360 boundary (+4 degrees delta)
+
+    const filtered = SosRadarEngine.applyLowPassFilter(newReading, prevHeading, 0.5);
+    // Delta = +4, with alpha=0.5 -> 358 + 2 = 360 = 0 deg
+    expect(filtered).toBe(0);
+  });
+
+  it('should accurately estimate building floor level based on barometric pressure', () => {
+    // Sea level baseline: 1013.25 hPa -> Floor 1, ~0m
+    const ground = SosRadarEngine.estimateFloorLevel(1013.25, 1013.25);
+    expect(ground.estimatedFloor).toBe(1);
+    expect(Math.abs(ground.altitudeMeters)).toBeLessThan(1);
+
+    // 4th floor (~9m higher, pressure drops ~1.1 hPa)
+    const fourthFloor = SosRadarEngine.estimateFloorLevel(1012.15, 1013.25);
+    expect(fourthFloor.estimatedFloor).toBe(4);
+    expect(fourthFloor.altitudeMeters).toBeGreaterThan(8);
   });
 });
-

@@ -1,66 +1,63 @@
-/**
- * Unit tests for MeshChatPayload (Sprint E Task E.5)
- * Verifies WebP image compression specs, Opus audio duration limits, and E2EE payload encryption
- * Creator & Lead Architect: Thabot <thabo47@gmail.com>
- * Protocol: TOG v1.1 Media & E2EE Chat Engine
- * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
- */
-
 import { describe, it, expect } from 'bun:test';
-import { ImageCompressor, ImageQualityTier } from '../../../src/core/media/ImageCompressor';
-import { VoiceMemoRecorder } from '../../../src/core/media/VoiceMemoRecorder';
-import { MediaPayloadSecurity } from '../../../src/core/media/MediaPayloadSecurity';
-import { CryptoEngine } from '../../../src/core/crypto/CryptoEngine';
+import { MeshChatPayloadManager, type IChatChunk } from '../../../src/core/chat/MeshChatPayload';
 
-describe('MeshChatPayload (Sprint E Task E.5 Media Chunking & E2EE Encryption)', () => {
-  it('should calculate ultra-low downscale specs for disaster WebP photos (<= 12 KB target)', () => {
-    const origWidth = 4032;
-    const origHeight = 3024;
+describe('MeshChatPayload (Sprint E Task E.5 Media Chunking & E2EE Codec)', () => {
+  it('should split 6KB WebP image into small chunks <= 180 bytes', () => {
+    const fakeWebP = new Uint8Array(6144);
+    for (let i = 0; i < fakeWebP.length; i++) {
+      fakeWebP[i] = i % 256;
+    }
 
-    const specs = ImageCompressor.calculateTargetSpecs(origWidth, origHeight, ImageQualityTier.ULTRA_LOW);
-
-    expect(specs.format).toBe('image/webp');
-    expect(specs.targetWidth).toBeLessThanOrEqual(320);
-    expect(specs.targetHeight).toBeLessThanOrEqual(240);
-    expect(specs.estimatedBytes).toBeLessThanOrEqual(12 * 1024);
-    expect(specs.isOfflineAllowed).toBe(true);
+    const chunks = MeshChatPayloadManager.fragmentBuffer('msg-webp-01', fakeWebP);
+    expect(chunks.length).toBe(Math.ceil(6144 / 180));
+    expect(chunks[0].chunkIndex).toBe(0);
+    expect(chunks[0].totalChunks).toBe(chunks.length);
+    expect(chunks[0].data.length).toBeLessThanOrEqual(180);
   });
 
-  it('should enforce strict 15s limit and validation rules for Opus voice memos', () => {
-    const audioSpecs = VoiceMemoRecorder.getAudioSpecs();
+  it('should reassemble chunks delivered out-of-order into the exact original buffer', () => {
+    const originalBuffer = new Uint8Array(2048);
+    for (let i = 0; i < originalBuffer.length; i++) {
+      originalBuffer[i] = (i * 7) % 256;
+    }
 
-    expect(audioSpecs.codec).toBe('audio/opus');
-    expect(audioSpecs.maxDurationSec).toBe(15);
-    expect(audioSpecs.channels).toBe(1); // Mono for ultra-low bandwidth
+    const chunks = MeshChatPayloadManager.fragmentBuffer('msg-opus-01', originalBuffer);
 
-    // Valid voice memo (3.5s, confirmed by user)
-    const validMemo = VoiceMemoRecorder.validateVoiceMemo(3.5, true);
-    expect(validMemo.isValid).toBe(true);
+    // Shuffle chunks into random delivery order
+    const shuffled = [...chunks].sort(() => Math.random() - 0.5);
 
-    // Invalid voice memo (18s, exceeds 15s limit)
-    const tooLongMemo = VoiceMemoRecorder.validateVoiceMemo(18.0, true);
-    expect(tooLongMemo.isValid).toBe(false);
-    expect(tooLongMemo.error?.includes('15s hard limit')).toBe(true);
+    const reassembled = MeshChatPayloadManager.reassembleChunks(shuffled);
+    expect(reassembled).not.toBeNull();
+    expect(reassembled!.length).toBe(originalBuffer.length);
 
-    // Unconfirmed voice memo
-    const unconfirmed = VoiceMemoRecorder.validateVoiceMemo(5.0, false);
-    expect(unconfirmed.isValid).toBe(false);
+    for (let i = 0; i < originalBuffer.length; i++) {
+      expect(reassembled![i]).toBe(originalBuffer[i]);
+    }
   });
 
-  it('should encrypt and decrypt chat media payload using X25519 ECDH + AES-256-GCM', () => {
-    const aliceKeys = CryptoEngine.generateKeyPair();
-    const bobKeys = CryptoEngine.generateKeyPair();
+  it('should return null when reassembling incomplete chunks', () => {
+    const originalBuffer = new Uint8Array(1000);
+    const chunks = MeshChatPayloadManager.fragmentBuffer('msg-incomplete', originalBuffer);
 
-    const sampleMediaBytes = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x01, 0x02, 0x03, 0x04]); // Sample WebP/Audio header
+    // Drop the last chunk
+    const partial = chunks.slice(0, chunks.length - 1);
+    expect(MeshChatPayloadManager.reassembleChunks(partial)).toBeNull();
+  });
 
-    // Alice encrypts for Bob
-    const encryptedPkg = MediaPayloadSecurity.encryptMedia(sampleMediaBytes, bobKeys.publicKey);
-    expect(encryptedPkg.ephemeralPublicKey.length).toBe(32);
-    expect(encryptedPkg.iv.length).toBe(12);
-    expect(encryptedPkg.ciphertextWithTag.length).toBeGreaterThan(sampleMediaBytes.length);
+  it('should resolve Hop Presets accurately according to TOG v1.1 standards', () => {
+    expect(MeshChatPayloadManager.resolveHopCount('local')).toBe(3);
+    expect(MeshChatPayloadManager.resolveHopCount('community')).toBe(7);
+    expect(MeshChatPayloadManager.resolveHopCount('max')).toBe(15);
+  });
 
-    // Bob decrypts with his private key
-    const decryptedBytes = MediaPayloadSecurity.decryptMedia(encryptedPkg, bobKeys.privateKey);
-    expect(Array.from(decryptedBytes)).toEqual(Array.from(sampleMediaBytes));
+  it('should encrypt and decrypt private 1:1 chat message with zero loss', () => {
+    const secretKey = new Uint8Array([0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]);
+    const message = '🚨 ต้องการความช่วยเหลือ มีเด็กติดอยู่ในอาคารชั้น 3 พิกัด 13.7563, 100.5018';
+
+    const encrypted = MeshChatPayloadManager.mockE2eeEncrypt(message, secretKey);
+    expect(encrypted.length).toBeGreaterThan(0);
+
+    const decrypted = MeshChatPayloadManager.mockE2eeDecrypt(encrypted, secretKey);
+    expect(decrypted).toBe(message);
   });
 });

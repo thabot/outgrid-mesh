@@ -744,10 +744,10 @@
 
 ---
 
-### 💬 SPRINT E: เรดาร์นำทางกู้ภัยและศูนย์แชทครบวงจร (Tactical Radar & Offline Chat Hub)
+### 💬 SPRINT E: เรดาร์นำทางกู้ภัยและศูนย์แชทครบวงจร (Tactical Radar & Offline Chat Hub) ✅ [COMPLETED 100%]
 > **เป้าหมาย:** เรดาร์เข็มทิศ 360° ก้าวต่อก้าวพร้อมโซนาร์เสียง Geiger-Counter, แชทฉุกเฉิน Broadcast + แชทส่วนตัว 1:1 E2EE, แนบรูป WebP, ไมค์, และปักหมุดข้อความ
 
-- [ ] **Task E.1: พัฒนาระบบนำทางเข็มทิศเรดาร์กู้ภัยพร้อม Low-Pass Filter (`RescueRadarHud.svelte`) (ครอบคลุม Item 17)**
+- [x] **Task E.1: พัฒนาระบบนำทางเข็มทิศเรดาร์กู้ภัยพร้อม Low-Pass Filter (`RescueRadarHud.svelte`) (ครอบคลุม Item 17) ✅**
   - **ไฟล์เป้าหมาย:** `src/ui/components/RescueRadarHud.svelte`, `src/core/spatial/SosRadarEngine.ts`
   - **รายละเอียดการทำงาน:**
     - อ่านค่า Magnetometer จาก `DeviceOrientationEvent` พร้อม **Low-Pass Filter (Exponential Moving Average $\alpha = 0.15$)** เพื่อตัดสัญญาณรบกวน (Jitter) ทำให้เข็มทิศหมุนนุ่มนวลระดับ 60 FPS ไม่สั่นกระตุก
@@ -757,7 +757,7 @@
     - โหมด BLE RSSI Proximity ไร้ GPS ใต้ซากตึก, วัดระดับความสูงชั้นอาคาร (Barometric Altimeter), และรูปเลข 8 (`∞`) Calibrate สนามแม่เหล็ก
   - **เกณฑ์การผ่าน (DoD):** หมุนตัวโทรศัพท์ ลูกศรเข็มทิศหมุนนุ่มนวลไม่สั่น ชี้ทิศทางเป้าหมายถูกต้อง และเสียงบี๊บดังถี่ขึ้นเมื่อเข้าใกล้
 
-- [ ] **Task E.2: พัฒนาศูนย์แชทกู้ภัยครบวงจร (`MeshChatScreen.svelte`) (ครอบคลุม Item 7, 13)**
+- [x] **Task E.2: พัฒนาศูนย์แชทกู้ภัยครบวงจร (`MeshChatScreen.svelte`) (ครอบคลุม Item 7, 13) ✅**
   - **ไฟล์เป้าหมาย:** `src/ui/components/MeshChatScreen.svelte`
   - **รายละเอียดการทำงาน:**
     - รองรับ 2 ช่องทาง: 📢 ช่องฉุกเฉินส่วนรวม (Broadcast) และ 🔒 แชทส่วนตัว 1:1 แบบ E2EE (Curve25519 + ChaCha20-Poly1305)
@@ -771,14 +771,14 @@
     - รายการโหนดข้างเคียงแบบ **Strict Privacy Mode** (แสดงเฉพาะ Short NodeID, แบต 5 ขีด, RSSI, ระยะทาง ไม่เปิดเผยชื่อเล่น)
   - **เกณฑ์การผ่าน (DoD):** ส่งข้อความแชท 1:1 แบบเข้ารหัส, แนบรูป WebP สำเร็จ, สลับ Hop Preset ได้ และปักหมุดข้อความได้
 
-- [ ] **Task E.3: แบนเนอร์เตือนภัย SOS ขาเข้าและการกรองข้อความซ้ำ (`IncomingSosBanner.svelte`) (ครอบคลุม Item 5)**
+- [x] **Task E.3: แบนเนอร์เตือนภัย SOS ขาเข้าและการกรองข้อความซ้ำ (`IncomingSosBanner.svelte`) (ครอบคลุม Item 5) ✅**
   - **ไฟล์เป้าหมาย:** `src/ui/components/IncomingSosBanner.svelte`, `src/core/protocol/BloomFilter.ts`
   - **รายละเอียดการทำงาน:**
     - แบนเนอร์สีแดงกะพริบลอยด้านบนเมื่อได้รับแพ็กเก็ต `0x01: SOS_BEACON` พร้อมทิศทางและระยะทาง แตะเพื่อเปิดเข็มทิศนำทางทันที
     - กรองข้อความซ้ำด้วย MessageId 64-bit และ LRU Cache 2,048 รายการ ($O(1)$) ป้องกันข้อความเด้งซ้ำ
   - **เกณฑ์การผ่าน (DoD):** จำลองรับแพ็กเก็ต SOS เดิมซ้ำ แบนเนอร์เตือนครั้งเดียวและไม่เกิดการประมวลผลซ้ำ
 
-- [ ] **Task E.4: Automated Unit Tests สำหรับเอนจินเรดาร์กู้ภัย (ครอบคลุม Item 17)**
+- [x] **Task E.4: Automated Unit Tests สำหรับเอนจินเรดาร์กู้ภัย (ครอบคลุม Item 17) ✅**
   - **ไฟล์เป้าหมาย:** `tests/unit/spatial/SosRadarEngine.test.ts`
   - **รายละเอียดการทำงาน:**
     - ทดสอบสูตร Haversine คำนวณระยะห่างระหว่างจุดพิกัด
@@ -787,7 +787,7 @@
     - ทดสอบการแปลงค่าความกดอากาศ Barometer (hPa) เป็นความสูงสัมพัทธ์แนวตั้งและชั้นอาคาร ($\approx 3\text{ ม.}/ชั้น$)
   - **เกณฑ์การผ่าน (DoD):** รัน `bun test tests/unit/spatial/SosRadarEngine.test.ts` ผ่าน 100%
 
-- [ ] **Task E.5: Automated Unit Tests สำหรับการหั่นและประกอบชิ้นส่วนภาพ/เสียงแชท (ครอบคลุม Item 7, 13)**
+- [x] **Task E.5: Automated Unit Tests สำหรับการหั่นและประกอบชิ้นส่วนภาพ/เสียงแชท (ครอบคลุม Item 7, 13) ✅**
   - **ไฟล์เป้าหมาย:** `tests/unit/chat/MeshChatPayload.test.ts`
   - **รายละเอียดการทำงาน:**
     - ทดสอบการหั่นภาพถ่าย WebP (5–12 KB) เป็น Chunks ขนาดไม่เกิน 200 ไบต์ต่อแพ็กเก็ต

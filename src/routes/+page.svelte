@@ -9,10 +9,15 @@
   import NetworkStatusBar from '../ui/components/NetworkStatusBar.svelte';
   import BottomNavigationBar from '../ui/components/BottomNavigationBar.svelte';
   import HamburgerDrawer from '../ui/components/HamburgerDrawer.svelte';
+  import RescueRadarHud from '../ui/components/RescueRadarHud.svelte';
+  import MeshChatScreen from '../ui/components/MeshChatScreen.svelte';
+  import IncomingSosBanner, { type IIncomingSosAlert } from '../ui/components/IncomingSosBanner.svelte';
 
-  let activeTab: 'sos' | 'feed' | 'map' | 'manual' | 'donation' | 'friends' | 'profile' = 'sos';
+  let activeTab: 'sos' | 'feed' | 'map' | 'manual' | 'donation' | 'friends' | 'profile' | 'chat' = 'sos';
   let isUltraSurvival = false;
   let isDrawerOpen = false;
+  let activeRadarTarget: any = null;
+  let incomingSosBannerRef: IncomingSosBanner;
 
   // Dynamic version — injected by Vite from package.json / CI pipeline
   const appVersion: string = import.meta.env.VITE_APP_VERSION ?? '1.1.0';
@@ -21,8 +26,8 @@
 
   // Demo SOS targets visible on the map
   const demoSosTargets = [
-    { id: 'sos-001', lat: 13.7590, lng: 100.5050, category: '🚤 น้ำท่วม ต้องการเรือ', distanceMeters: 340 },
-    { id: 'sos-002', lat: 18.7870, lng: 98.9830, category: '👶 มีเด็ก/ผู้สูงอายุ', distanceMeters: 1200 },
+    { id: 'sos-001', lat: 13.7590, lng: 100.5050, category: '🚤 น้ำท่วม ต้องการเรือ', distanceMeters: 340, floor: 2 },
+    { id: 'sos-002', lat: 18.7870, lng: 98.9830, category: '👶 มีเด็ก/ผู้สูงอายุ', distanceMeters: 1200, floor: 1 },
   ];
 
   function handleTriggerLastGasp() {
@@ -31,11 +36,11 @@
 
   function handleBottomTabChange(e: CustomEvent<{ tab: 'map' | 'chat' | 'sos' | 'friends' | 'profile' }>) {
     const tab = e.detail.tab;
-    if (tab === 'chat') {
-      activeTab = 'feed';
-    } else {
-      activeTab = tab;
-    }
+    activeTab = tab;
+  }
+
+  function openRadarForTarget(target: any) {
+    activeRadarTarget = target;
   }
 </script>
 
@@ -74,6 +79,12 @@
     </nav>
   </header>
 
+  <!-- Incoming SOS Floating Banner (Sprint E Task E.3) -->
+  <IncomingSosBanner
+    bind:this={incomingSosBannerRef}
+    on:openRadar={(e) => openRadarForTarget(e.detail.target)}
+  />
+
   <!-- Network Status Bar (Sprint D Task D.1) -->
   <NetworkStatusBar />
 
@@ -89,8 +100,15 @@
       <div class="card"><OneTapSos /></div>
     {:else if activeTab === 'feed'}
       <div class="card"><CrisisFeed /></div>
+    {:else if activeTab === 'chat'}
+      <div class="card"><MeshChatScreen /></div>
     {:else if activeTab === 'map'}
-      <div class="card card-map"><SosMapView sosTargets={demoSosTargets} /></div>
+      <div class="card card-map">
+        <SosMapView
+          sosTargets={demoSosTargets}
+          on:openRadar={(e) => openRadarForTarget(e.detail.target)}
+        />
+      </div>
     {:else if activeTab === 'manual'}
       <div class="card"><HelpManualScreen /></div>
     {:else if activeTab === 'donation'}
@@ -119,6 +137,14 @@
       </div>
     {/if}
   </section>
+
+  <!-- Tactical Rescue Radar HUD Overlay (Sprint E Task E.1) -->
+  {#if activeRadarTarget}
+    <RescueRadarHud
+      target={activeRadarTarget}
+      on:close={() => activeRadarTarget = null}
+    />
+  {/if}
 
   <!-- Bottom Navigation Bar for Mobile Thumb-Zone (Sprint D Task D.2) -->
   <BottomNavigationBar
