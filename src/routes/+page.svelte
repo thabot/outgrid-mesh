@@ -12,6 +12,7 @@
   import RescueRadarHud from '../ui/components/RescueRadarHud.svelte';
   import MeshChatScreen from '../ui/components/MeshChatScreen.svelte';
   import IncomingSosBanner, { type IIncomingSosAlert } from '../ui/components/IncomingSosBanner.svelte';
+  import AuthProfileScreen from '../ui/components/AuthProfileScreen.svelte';
 
   let activeTab: 'sos' | 'feed' | 'map' | 'manual' | 'donation' | 'friends' | 'profile' | 'chat' = 'sos';
   let isUltraSurvival = false;
@@ -126,14 +127,7 @@
       </div>
     {:else if activeTab === 'profile'}
       <div class="card profile-card">
-        <div class="tab-inner-header">
-          <h3>👤 โปรไฟล์และตัวตนในเครือข่าย</h3>
-          <p class="tab-subtitle">การจัดการความปลอดภัยและคู่กุญแจ Ed25519 / X25519</p>
-        </div>
-        <div class="profile-info-box">
-          <p><strong>Identity:</strong> Self-Sovereign Cryptographic Keypair</p>
-          <p><strong>Privacy Mode:</strong> ไร้ชื่อจริง ไม่ติดตามตัวตน ข้อมูลไม่ผูกมัดบัตรประชาชน</p>
-        </div>
+        <AuthProfileScreen />
       </div>
     {/if}
   </section>

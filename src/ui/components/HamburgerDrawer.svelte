@@ -10,6 +10,7 @@
   import HelpManualScreen from './HelpManualScreen.svelte';
   import DonationDashboard from './DonationDashboard.svelte';
   import BeaconControlsBar from './BeaconControlsBar.svelte';
+  import ApkShareScreen from './ApkShareScreen.svelte';
 
   export let isOpen = false;
   export let appVersion = '1.1.0';
@@ -122,20 +123,8 @@
             <HelpManualScreen />
           </div>
         {:else if currentSection === 'share_apk'}
-          <div class="sub-content share-apk-view">
-            <h4>📲 แชร์แอปพลิเคชันแบบออฟไลน์ 100%</h4>
-            <p class="desc">
-              ส่งไฟล์ติดตั้ง OutGrid Mesh (.apk) ให้เพื่อนข้างๆ โดยไม่ต้องใช้อินเทอร์เน็ตหรือ Google Play Store
-            </p>
-            <div class="share-actions">
-              <button class="btn-primary" on:click={handleShareApk}>
-                📤 ส่งผ่าน Quick Share / Bluetooth
-              </button>
-            </div>
-            <div class="apk-info-box">
-              <p>✓ ดึงไฟล์ APK ตรงจากเครื่อง (Zero Storage Waste)</p>
-              <p>✓ รองรับการส่งต่อแบบ Peer-to-Peer กระจายทั่วพื้นที่ภัยพิบัติ</p>
-            </div>
+          <div class="sub-content">
+            <ApkShareScreen />
           </div>
         {:else if currentSection === 'beacon'}
           <div class="sub-content">

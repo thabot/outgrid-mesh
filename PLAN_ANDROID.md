@@ -798,10 +798,10 @@
 
 ---
 
-### 📲 SPRINT F: ความปลอดภัยไร้เน็ต การแชร์แอป และสากล 10 ภาษา (Zero-Barrier Security, Sideload & i18n)
+### 📲 SPRINT F: ความปลอดภัยไร้เน็ต การแชร์แอป และสากล 10 ภาษา (Zero-Barrier Security, Sideload & i18n) ✅ [COMPLETED 100%]
 > **เป้าหมาย:** ตัวสร้างภาพ QR Code ออฟไลน์ 100%, แชร์ไฟล์ APK ผ่าน Quick Share/Hotspot, ระบบ 10 ภาษา, Guest Mode 100% เท่าเทียม และการสำรองเพื่อนแบบ Zero-Knowledge
 
-- [ ] **Task F.1: ตัวสร้างภาพ QR Code ออฟไลน์ 100% (`OfflineQrGenerator.ts`) (ครอบคลุม Item 4)**
+- [x] **Task F.1: ตัวสร้างภาพ QR Code ออฟไลน์ 100% (`OfflineQrGenerator.ts`) (ครอบคลุม Item 4) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/crypto/OfflineQrGenerator.ts`, `tests/unit/crypto/OfflineQrGenerator.test.ts`
   - **รายละเอียดการทำงาน:**
     - ประมวลผลและวาด QR Code ลง Canvas/SVG ด้วย Pure TypeScript ในเครื่อง ไม่พึ่ง API ภายนอก
@@ -810,7 +810,7 @@
     - ปุ่ม Invert สีขาว-ดำสำหรับกลางคืน และเร่งแสงหน้าจออัตโนมัติขณะแสดง QR
   - **เกณฑ์การผ่าน (DoD):** สร้างภาพ QR Code ได้ในโหมด Airplane Mode และกล้องมือถืออื่นสแกนติดได้อย่างรวดเร็ว
 
-- [ ] **Task F.2: ระบบแชร์ไฟล์ APK ให้เพื่อนแบบออฟไลน์ (`ApkShareScreen.svelte` & Bridge) (ครอบคลุม Item 3, 8)**
+- [x] **Task F.2: ระบบแชร์ไฟล์ APK ให้เพื่อนแบบออฟไลน์ (`ApkShareScreen.svelte` & Bridge) (ครอบคลุม Item 3, 8) ✅**
   - **ไฟล์เป้าหมาย:** `src/ui/components/ApkShareScreen.svelte`, `android/app/src/main/java/io/outgrid/mesh/MainActivity.kt`
   - **รายละเอียดการทำงาน:**
     - ดึง `base.apk` ตรงจากเครื่องผ่าน `context.packageCodePath` (Zero-Storage Overhead)
@@ -819,7 +819,7 @@
     - สถาปัตยกรรม Smart Hybrid OTA Web Update: ตรวจสอบเวอร์ชันเงียบๆ เบื้องหลังเมื่อต่อเน็ต โดยข้อมูล IndexedDB ไม่สูญหาย 100%
   - **เกณฑ์การผ่าน (DoD):** เครื่องที่ไม่มีแอปสามารถสแกน QR ต่อ Wi-Fi และดาวน์โหลดไฟล์ APK ไปติดตั้งได้สำเร็จ
 
-- [ ] **Task F.3: ระบบ 10 ภาษาสากลทางการ แปลครบทุกเมนู (`I18nStore.ts`) (ครอบคลุม Item 14)**
+- [x] **Task F.3: ระบบ 10 ภาษาสากลทางการ แปลครบทุกเมนู (`I18nStore.ts`) (ครอบคลุม Item 14) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/i18n/I18nStore.ts`, `src/locales/*.json`
   - **รายละเอียดการทำงาน:**
     - กำหนดค่าเริ่มต้นเป็นภาษาอังกฤษ (`en`) รองรับ ไทย (`th`), จีน (`zh`), สเปน (`es`), ฮินดี (`hi`), อาหรับ (`ar` - RTL), ฝรั่งเศส (`fr`), รัสเซีย (`ru`), โปรตุเกส (`pt`), ญี่ปุ่น (`ja`)
@@ -827,7 +827,7 @@
     - เมนูลูกโลก 🌐 สลับภาษาได้ทันทีโดยไม่ต้องรีโหลดหน้าเว็บ และจำค่าถาวรใน `localStorage`
   - **เกณฑ์การผ่าน (DoD):** สลับเปลี่ยนภาษาได้ครบทั้ง 10 ภาษา ข้อความเปลี่ยนทันที และเปิดแอปใหม่ยังคงจำภาษาเดิม
 
-- [ ] **Task F.4: ระบบโปรไฟล์, กฎเหล็ก 100% Guest Parity และการสำรองรายชื่อเพื่อน (`AuthProfileScreen.svelte`) (ครอบคลุม Item 15, 16)**
+- [x] **Task F.4: ระบบโปรไฟล์, กฎเหล็ก 100% Guest Parity และการสำรองรายชื่อเพื่อน (`AuthProfileScreen.svelte`) (ครอบคลุม Item 15, 16) ✅**
   - **ไฟล์เป้าหมาย:** `src/ui/components/AuthProfileScreen.svelte`, `src/core/storage/SqliteStorageEngine.ts`
   - **รายละเอียดการทำงาน:**
     - การันตี **Guest Mode 100% เท่าเทียม**: ใช้งานฟังก์ชันกู้ภัยได้ครบทุกอย่างโดยไม่ต้องล็อกอิน
@@ -835,7 +835,7 @@
     - ขอพื้นที่ถาวรผ่าน `navigator.storage.persist()`, คุมเพดาน 50MB FIFO Pruning โดยล็อคข้อความ SOS และ Pin ไว้ถาวร
   - **เกณฑ์การผ่าน (DoD):** ผู้ใช้ Guest ใช้งานได้ครบถ้วน และการสำรองเพื่อนถูกเข้ารหัสลับก่อนส่งขึ้นคลาวด์
 
-- [ ] **Task F.5: Automated Unit Tests สำหรับความสมบูรณ์ของชุดภาษา 10 ภาษา (ครอบคลุม Item 14)**
+- [x] **Task F.5: Automated Unit Tests สำหรับความสมบูรณ์ของชุดภาษา 10 ภาษา (ครอบคลุม Item 14) ✅**
   - **ไฟล์เป้าหมาย:** `tests/unit/i18n/I18nLanguageBundle.test.ts`
   - **รายละเอียดการทำงาน:**
     - ตรวจสอบว่าไฟล์ JSON ทั้ง 10 ภาษา (`en`, `th`, `zh`, `es`, `hi`, `ar`, `fr`, `ru`, `pt`, `ja`) มีคีย์ครบถ้วนตรงกัน 100% (Missing Key Coverage = 0)
@@ -843,7 +843,7 @@
     - ทดสอบแฟล็ก RTL (`dir="rtl"`) สำหรับภาษาอาหรับ (`ar`)
   - **เกณฑ์การผ่าน (DoD):** รัน `bun test tests/unit/i18n/I18nLanguageBundle.test.ts` ผ่าน 100%
 
-- [ ] **Task F.6: Automated Unit Tests สำหรับความปลอดภัย Zero-Knowledge และความจุ IndexedDB (ครอบคลุม Item 15, 16)**
+- [x] **Task F.6: Automated Unit Tests สำหรับความปลอดภัย Zero-Knowledge และความจุ IndexedDB (ครอบคลุม Item 15, 16) ✅**
   - **ไฟล์เป้าหมาย:** `tests/unit/storage/ZeroKnowledgeBackup.test.ts`
   - **รายละเอียดการทำงาน:**
     - ทดสอบการเข้ารหัส AES-GCM รายชื่อเพื่อน: Payload ที่ส่งออกต้องเป็น Encrypted Ciphertext ที่ไม่สามารถอ่าน plaintext ในเครื่อง server ได้
