@@ -70,8 +70,8 @@ jobs:
           echo "VITE_APP_BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
           echo "Prepared version v${VERSION} (${COMMIT_SHA})"
 
-      - name: Build Web PWA Bundle (Android mode — BASE_PATH=/assets)
-        run: BASE_PATH="/assets" bun run build
+      - name: Build Web PWA Bundle (Android mode — root base path)
+        run: BASE_PATH="" bun run build
         env:
           VITE_APP_VERSION: ${{ env.VITE_APP_VERSION }}
           VITE_APP_COMMIT: ${{ env.VITE_APP_COMMIT }}
