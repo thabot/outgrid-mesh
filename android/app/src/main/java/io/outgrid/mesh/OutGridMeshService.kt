@@ -27,6 +27,7 @@ class OutGridMeshService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         createNotificationChannel()
         acquireWakeLock()
     }
@@ -44,6 +45,7 @@ class OutGridMeshService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         BleRadioNativeDriver.stopScanning()
         releaseWakeLock()
     }
@@ -81,7 +83,7 @@ class OutGridMeshService : Service() {
         }
     }
 
-    private fun buildOngoingNotification(): Notification {
+    private fun buildOngoingNotification(peerCount: Int = 0): Notification {
         val pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -89,13 +91,29 @@ class OutGridMeshService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val statusText = if (peerCount > 0) {
+            "🛡️ OutGrid Mesh Active • เฝ้าระวังคลื่นวิทยุกู้ภัย (เชื่อมต่อ $peerCount โหนด)"
+        } else {
+            "🛡️ OutGrid Mesh Active • เฝ้าระวังคลื่นวิทยุกู้ภัย 24 ชม."
+        }
+
         return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("🚨 OutGrid Mesh ทำงานอยู่เบื้องหลัง")
-            .setContentText("เชื่อมต่อวงข่ายวิทยุกู้ภัยออฟไลน์ 24 ชม.")
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("🚨 OutGrid Rescue Grid")
+            .setContentText(statusText)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
+    }
+
+    fun updatePeerCount(count: Int) {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        notificationManager?.notify(notificationId, buildOngoingNotification(count))
+    }
+
+    companion object {
+        var instance: OutGridMeshService? = null
+            private set
     }
 }

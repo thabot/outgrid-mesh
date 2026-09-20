@@ -23,6 +23,7 @@ import androidx.webkit.WebViewClientCompat
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private var androidBridge: OutGridAndroidBridge? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +33,11 @@ class MainActivity : AppCompatActivity() {
         // Initialize WebView for OutGrid Rescue UI
         webView = findViewById(R.id.webView)
         configureWebView()
+
+        // Wire BLE Radio incoming packets directly into JavaScript bridge
+        BleRadioNativeDriver.setPacketListener { bytes, rssi ->
+            androidBridge?.dispatchIncomingPacket(bytes, rssi)
+        }
 
         // Handle hardware Back button to navigate back in WebView history
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -58,6 +64,10 @@ class MainActivity : AppCompatActivity() {
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
+        
+        // Expose Native Android Bridge to window.AndroidBridge
+        androidBridge = OutGridAndroidBridge(this, webView)
+        webView.addJavascriptInterface(androidBridge!!, "AndroidBridge")
         settings.databaseEnabled = true
         settings.allowFileAccess = true
         settings.allowContentAccess = true

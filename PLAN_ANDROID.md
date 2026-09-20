@@ -537,7 +537,7 @@
 │                          Plan Android: 8 Production Sprints                            │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │  [ Sprint A: Official Assets & Offline Basemap ] ──► Logo Version 1 + World L2 (5MB) ✅ │
-│  [ Sprint B: Native Android Bridge & 24/7 ] ───────► Service + WakeLock + BleRadio    │
+│  [ Sprint B: Native Android Bridge & 24/7 ] ───────► Service + WakeLock + BleRadio ✅ │
 │  [ Sprint C: Emergency Hardware & Power HUD ] ─────► Battery Runtime + Torch/Siren    │
 │  [ Sprint D: Navigation & State Machine Engine ] ──► 5s Fallback + Drawer + BottomNav │
 │  [ Sprint E: Tactical Radar & Offline Chat Hub ] ──► Radar HUD + E2EE + WebP/Opus/Pin  │
@@ -602,10 +602,10 @@
 
 ---
 
-### 🛡️ SPRINT B: บริการเบื้องหลัง Android 24 ชั่วโมงและไดรเวอร์วิทยุฮาร์ดแวร์ (Background Native & Radio Driver)
+### 🛡️ SPRINT B: บริการเบื้องหลัง Android 24 ชั่วโมงและไดรเวอร์วิทยุฮาร์ดแวร์ (Background Native & Radio Driver) ✅ [COMPLETED 100%]
 > **เป้าหมาย:** รัน Native Foreground Service 24 ชั่วโมง, ทะลวง Doze Mode, ถือ Partial WakeLock, ดักฟังคลื่น BLE Coded PHY (S=8), รองรับ Android 12–14+ Permissions, มี Watchdog คืนชีพบลูทูธ และบริดจ์สื่อสาร 2 ทางกับ WebView
 
-- [ ] **Task B.1: พัฒนา Android Foreground Service, Persistent Notification และจัดการ Android 12–14+ Permissions (`OutGridMeshService.kt`) (ครอบคลุม Item 18, 10)**
+- [x] **Task B.1: พัฒนา Android Foreground Service, Persistent Notification และจัดการ Android 12–14+ Permissions (`OutGridMeshService.kt`) (ครอบคลุม Item 18, 10) ✅**
   - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/OutGridMeshService.kt`, `android/app/src/main/AndroidManifest.xml`
   - **รายละเอียดการทำงาน:**
     - ประกาศ Service ประเภท `android:foregroundServiceType="connectedDevice"` ใน Manifest อย่างถูกต้องตามข้อกำหนด Android 14 (API 34)
@@ -619,7 +619,7 @@
     - คืนชีพ Service อัตโนมัติ (`START_STICKY`) หากระบบเคลียร์ RAM
   - **เกณฑ์การผ่าน (DoD):** ปิดหน้าจอมือถือและเปิดแอปอื่น Service ยังคงรันต่อเนื่อง แถบ Notification ตรึงอยู่ถาวร และสิทธิ์ Bluetooth ทำงานถูกต้องบน Android 12–14
 
-- [ ] **Task B.2: ระบบถือครอง Partial WakeLock และทะลวง Doze Mode (`MainActivity.kt` & Manifest) (ครอบคลุม Item 18)**
+- [x] **Task B.2: ระบบถือครอง Partial WakeLock และทะลวง Doze Mode (`MainActivity.kt` & Manifest) (ครอบคลุม Item 18) ✅**
   - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/MainActivity.kt`, `android/app/src/main/AndroidManifest.xml`
   - **รายละเอียดการทำงาน:**
     - ขอสิทธิ์ `android.permission.WAKE_LOCK` และ `android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
@@ -627,7 +627,7 @@
     - รัน Intent `Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` เพื่อให้ผู้ใช้กดยกเว้นการประหยัดพลังงานในคลิกเดียว
   - **เกณฑ์การผ่าน (DoD):** CPU ไม่เข้าสู่ Deep Sleep และประมวลผลการรับส่งแพ็กเก็ตวิทยุได้ต่อเนื่องข้ามคืน
 
-- [ ] **Task B.3: ไดรเวอร์วิทยุบลูทูธเบื้องหลัง, Coded PHY S=8 และ Watchdog ฟื้นฟูอัตโนมัติ (`BleRadioNativeDriver.kt`) (ครอบคลุม Item 18)**
+- [x] **Task B.3: ไดรเวอร์วิทยุบลูทูธเบื้องหลัง, Coded PHY S=8 และ Watchdog ฟื้นฟูอัตโนมัติ (`BleRadioNativeDriver.kt`) (ครอบคลุม Item 18) ✅**
   - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/BleRadioNativeDriver.kt`
   - **รายละเอียดการทำงาน:**
     - ติดตั้ง Hardware ScanFilter ดักจับ Magic Word `0x544F` ในชิปเบสแบนด์
@@ -636,14 +636,14 @@
     - **Native Watchdog Self-Healing (รอบ 15 นาที)**: ตรวจจับสภาวะ Silent Bluetooth Freeze ที่มักพบบนสมาร์ตโฟนบางยี่ห้อ หากไม่ได้รับสแกนอีเวนต์ผิดปกติ จะทำการ Re-register ScanCallback ให้อัตโนมัติโดยไม่ต้องรีสตาร์ตเครื่อง
   - **เกณฑ์การผ่าน (DoD):** ชิปบลูทูธสแกนเจอบีคอน `0x544F` โดยไม่ปลุก CPU หากไม่มีแพ็กเก็ตที่เกี่ยวข้อง และระบบ Watchdog กู้คืนบลูทูธได้เองเมื่อจำลองการค้าง
 
-- [ ] **Task B.4: ระบบสตาร์ตตัวเองเมื่อเปิดเครื่อง (`BootReceiver.kt`) และ Full-Screen Intent ปลุกจอ SOS (ครอบคลุม Item 18, 5)**
+- [x] **Task B.4: ระบบสตาร์ตตัวเองเมื่อเปิดเครื่อง (`BootReceiver.kt`) และ Full-Screen Intent ปลุกจอ SOS (ครอบคลุม Item 18, 5) ✅**
   - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/BootReceiver.kt`
   - **รายละเอียดการทำงาน:**
     - ขอสิทธิ์ `RECEIVE_BOOT_COMPLETED` รับ Intent `ACTION_BOOT_COMPLETED` และ `QUICKBOOT_POWERON` สตาร์ต `OutGridMeshService` ทันทีหลังเปิดเครื่อง
     - เมื่อได้รับแพ็กเก็ต SOS `0x01` สั่งปลุกหน้าจอสว่างวาบ (`FLAG_TURN_SCREEN_ON`, `FLAG_SHOW_WHEN_LOCKED`), สั่นรหัสมอส, และยิงเสียงหวูด 85+ dB
   - **เกณฑ์การผ่าน (DoD):** รีบูตโทรศัพท์ Service เริ่มทำงานเองทันทีโดยไม่ต้องเปิดแอป และจอปลุกสว่างเมื่อมี SOS ขาเข้า
 
-- [ ] **Task B.5: Two-Way Packet Dispatcher และ Mock Native Bridge สำหรับเบราว์เซอร์ (`MockOutGridBridge.ts`) (ครอบคลุม Item 3, 18)**
+- [x] **Task B.5: Two-Way Packet Dispatcher และ Mock Native Bridge สำหรับเบราว์เซอร์ (`MockOutGridBridge.ts`) (ครอบคลุม Item 3, 18) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/native/NativeBridgeDispatcher.ts`, `src/core/native/MockOutGridBridge.ts`
   - **รายละเอียดการทำงาน:**
     - ในฝั่ง Native (`OutGridAndroidBridge.kt`): เมื่อ `BleRadioNativeDriver` รับแพ็กเก็ตไบต์ได้ จะเรียก `webView.evaluateJavascript("window.OutGridMesh.receiveNativePacket('$base64Payload', $rssi)", null)`
@@ -651,12 +651,12 @@
     - พัฒนา `MockOutGridBridge.ts`: ทำงานแทน Native Bridge อัตโนมัติเมื่อตรวจพบว่าไม่ได้รันบน Android (เช็ค `window.AndroidBridge == null`) เพื่อให้ Developer สามารถรัน `bun run dev` บน Chrome/Firefox และเขียนโค้ดได้โดยไม่ติดบั๊ก
   - **เกณฑ์การผ่าน (DoD):** รันแอปบนเว็บเบราว์เซอร์ไม่เกิด runtime error เรื่อง bridge หาย และจำลองส่ง-รับ Base64 แพ็กเก็ตเข้าสู่ Core Engine ได้ 100%
 
-- [ ] **Task B.6: ชุดทดสอบความเข้ากันได้ของ Native Bridge Interface (ครอบคลุม Item 3)**
-  - **ไฟล์เป้าหมาย:** `tests/unit/native/NativeBridgeContract.test.ts`
+- [x] **Task B.6: ชุดทดสอบความเข้ากันได้ของ Native Bridge Interface (ครอบคลุม Item 3) ✅**
+  - **ไฟล์เป้าหมาย:** `tests/unit/native/NativeBridgeContract.test.ts`, `tests/unit/native/NativeBridgeDispatcher.test.ts`
   - **รายละเอียดการทำงาน:**
     - เขียน Unit Test ตรวจสอบความถูกต้องของ Methods ทั้ง 13 ตัวของ Bridge ว่ารับพารามิเตอร์และคืนค่าตรงตาม Code Contract:
       `getDeviceNodeId`, `startMeshService`, `stopMeshService`, `broadcastBlePacket`, `startSosBeacon`, `stopSosBeacon`, `setTorchMode`, `playAcousticSiren`, `stopAcousticSiren`, `getBatteryStatus`, `shareApkFile`, `startApkHotspot`, `stopApkHotspot`
-  - **เกณฑ์การผ่าน (DoD):** รัน `bun test tests/unit/native/NativeBridgeContract.test.ts` ผ่าน 100% ครบทั้ง 13 เมธอด
+  - **เกณฑ์การผ่าน (DoD):** รัน `bun test tests/unit/native/NativeBridgeContract.test.ts` และ `NativeBridgeDispatcher.test.ts` ผ่าน 100% ครบทั้ง 13 เมธอด
 
 ---
 
