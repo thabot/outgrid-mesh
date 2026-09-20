@@ -54,39 +54,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
     private fun configureWebView() {
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.databaseEnabled = true
-        settings.allowFileAccess = false
-        settings.allowContentAccess = false
+        settings.allowFileAccess = true
+        settings.allowContentAccess = true
+        settings.allowFileAccessFromFileURLs = true
+        settings.allowUniversalAccessFromFileURLs = true
         settings.cacheMode = WebSettings.LOAD_DEFAULT
 
-        // ── Fix: prevent white flash — set dark background immediately ──
         webView.setBackgroundColor(Color.parseColor("#090d16"))
 
-        // ── Fix: enable ES module support required by SvelteKit ──
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            WebView.setWebContentsDebuggingEnabled(false)
-        }
-
-        // Standard AndroidX AssetLoader handles MIME types, encoding & SPA routing
-        val assetLoader = WebViewAssetLoader.Builder()
-            .setDomain("appassets.androidplatform.net")
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
-            .build()
-
-        webView.webViewClient = object : WebViewClientCompat() {
-            override fun shouldInterceptRequest(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): WebResourceResponse? {
-                val url = request?.url ?: return null
-                return assetLoader.shouldInterceptRequest(url)
-            }
-        }
+        // Standard WebViewClient for local asset file loading
+        webView.webViewClient = object : WebViewClientCompat() {}
 
         // WebChromeClient to capture JS console messages to Logcat for debugging
         webView.webChromeClient = object : android.webkit.WebChromeClient() {
@@ -101,8 +83,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Load entry index page via standard assets path
-        webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
+        // Load entry index page directly from offline local assets
+        webView.loadUrl("file:///android_asset/index.html")
     }
 
     override fun onDestroy() {
