@@ -88,6 +88,13 @@
         หากตรวจพบโหนด 2 เครื่องที่มีทั้ง H3 Cell Index เดียวกันและ Short NodeID 24-bit ซ้ำกันในระยะวิทยุ:
         1. **Secondary Key Disambiguation**: ดึง 2 ไบต์ท้ายของ Full Public Key 32B (Ed25519 / X25519) มาเป็น Suffix ห้อยท้าย เช่น `#9B1C-E4`
         2. **Silent NodeID Re-Roll**: แอปจะทำการสุ่ม Re-roll รหัส Short NodeID 24-bit ตัวใหม่ของตนเองในพื้นหลังแบบเงียบๆ ทันที พร้อมประกาศอัปเดตสถานะใหม่ เพื่อขจัดความสับสนใน Mesh Routing 100%
+  17. **สเปกโปรโตคอลวิทยุกู้ภัย 27 Bytes (TOG v1.1 Presence Micro-Packet ⭐️)**:
+      - *โครงสร้างระดับบิต (27 Bytes จากเพดาน 31B, เหลือ 4B Headroom)*:
+        - **Header & Our Node (9B)**: Type/Hop (1B) + Short NodeID (3B, 16.7M) + Battery/Status (1B) + H3 Res 9 (4B)
+        - **Radio & Node Capabilities (1B)**: ระบุ Stationary (b0), Power Tier (b1-2), BLE (b3), LoRa (b4), Wi-Fi Direct (b5), Wi-Fi HaLow 802.11ah Sub-1GHz (b6), Internet Gateway (b7)
+        - **5 Best Neighbors (15B, โหนดละ 3B พอดีเป๊ะ)**: Short NodeID (2B) + Fused Packed Byte (1B: H3 6 ทิศรอบตัว 3-bit + แบตเตอรี่ 5 ขีด 3-bit + RSSI 4 ระดับ 2-bit)
+        - **Check Digit (2B)**: CRC-16-CCITT (Polynomial `0x1021`) ป้องกันบิตเพี้ยนในอากาศ 99.998%
+      - *เอกสารอ้างอิงทางการ*: แยกจัดเก็บรายละเอียดทั้งหมดไว้ใน [docs/TOG_v1.1_WIRE_SPECIFICATION.md](file:///d:/thabot/git/gitlab/thabot/Mesh/OutGridMesh/docs/TOG_v1.1_WIRE_SPECIFICATION.md)
 
 ---
 
@@ -129,16 +136,17 @@
     - 📱 **บนมือถือ (Mobile APK - สูงสุด 200 โหนด)**: คัดกรองด้วย Smart Priority (1. SOS Nodes 2. Friends 3. Closest Proximity RSSI) จำกัดไว้ไม่เกิน 200 โหนด ป้องกัน Bluetooth Stack หน่วง แบตเตอรี่อึด เครื่องไม่ร้อน
     - 🌐 **บนเว็บเบราว์เซอร์ (Web Command Center - สูงสุด 1,000 โหนด)**: แสดงภาพรวมระดับเมือง/จังหวัดได้สูงสุด 1,000 โหนดรอบจุดที่สนใจ รองรับศูนย์บัญชาการกู้ภัย
     - **High-Performance Canvas Marker & Clustering**: ใช้ HTML5 Canvas ผืนเดียววาดจุดร่วมกับ Dynamic Clustering รวมกลุ่มตัวเลขเมื่อซูมออก ไม่สร้าง DOM Element ทำให้ลื่นไหลระดับ 60 FPS แม้มีจุดจำนวนมาก
-  - **โปรโตคอลวิทยุกู้ภัยจิ๋ว 25 Bytes บรรจุ 5 โหนดข้างเคียง (25-Byte Micro-Packet 5-Neighbor Sharing)**:
+  - **โปรโตคอลวิทยุกู้ภัยจิ๋ว 27 Bytes บรรจุ 5 โหนดข้างเคียง (27-Byte Micro-Packet 5-Neighbor Sharing ⭐️)**:
     - สอดคล้องกับมาตรฐาน **Thabot OutGrid Protocol (TOG v1.1 Wire Spec)** ที่กำหนดรหัส `TOGPacketType` ไว้ในระดับ Header:
-      - `0x01` (`SOS_BEACON`): 🚨 ข้อความฉุกเฉิน (สั่นเตือน, แบนเนอร์สีแดง, กระจายต่อเร่งด่วน TTL 25 Hops)
+      - `0x01` (`SOS_BEACON`): 🚨 ข้อความฉุกเฉิน (สั่นเตือน, แบนเนอร์สีแดง, กระจายต่อเร่งด่วน TTL 25 Hops, พิกัด < 1m)
       - `0x02` / `0x03` (`DIRECT_CHAT` / `GROUP_CHAT`): 💬 ข้อความแชทปกติ (1:1 E2EE หรือแชทสาธารณะ)
-      - `0x07` (`PRESENCE_CHIRP`): 📡 ส่งสถานะตัวเอง (แบต 5 ขีด + พิกัด H3) และ 👥 ส่งรายการ 5 โหนดข้างเคียง
+      - `0x07` (`PRESENCE_CHIRP`): 📡 ส่งสถานะตัวเอง (แบต 5 ขีด + พิกัด H3 + Radio Type) และ 👥 ส่งรายการ 5 โหนดข้างเคียง
       - `0x05` (`DELIVERY_ACK`): 💓 การตอบรับว่ายังคงอยู่ (Keep-Alive ACK) เพื่อรักษาจุดเขียว 🟢 Online
-    - ออกแบบการบีบอัดระดับบิต (Bit-Packing) ลงใน 25 Bytes ไม่เกินขีดจำกัด 31 Bytes ของ BLE Legacy:
-      - **Header & Our Node (9 Bytes)**: Type/Hop (1B) + Short NodeID (3B, 16.7 ล้านเครื่อง) + Battery/Status (1B, แบตเตอรี่ 5 ขีด) + H3 Cell Location (4B)
-      - **5 Best Neighbors (15 Bytes, 3 Bytes/โหนด)**: แต่ละโหนดใช้เพียง 3 Bytes ➔ Short NodeID (2B) + RSSI 4-bit (0.5B) + แบตเตอรี่ 5 ขีด 3-bit + SOS Flag 1-bit
-      - **CRC8 Checksum (1 Byte)**: ตรวจสอบความสมบูรณ์ ป้องกันข้อมูลขยะ
+    - ออกแบบการบีบอัดระดับบิต (Bit-Packing) ลงใน 27 Bytes เหลือ 4 Bytes Headroom ตามมาตรฐาน Apple Find My (เพดาน 31 Bytes ของ BLE Legacy):
+      - **Header & Our Node (9 Bytes)**: Type/Hop (1B) + Short NodeID (3B, 16.7 ล้านเครื่อง) + Battery/Status (1B, แบตเตอรี่ 5 ขีด) + H3 Cell Location Res 9 (4B)
+      - **Radio & Node Capabilities (1 Byte)**: แฟล็ก Stationary (b0), Power Tier (b1-2), BLE (b3), LoRa Bridge (b4), Wi-Fi Direct (b5), Wi-Fi HaLow 802.11ah Sub-1GHz (b6), Internet Gateway (b7)
+      - **5 Best Neighbors (15 Bytes, โหนดละ 3 Bytes พอดีเป๊ะ)**: Short NodeID (2B) + Fused Packed Byte (1B: H3 6 ทิศรอบตัว 3-bit + แบตเตอรี่ 5 ขีด 3-bit + RSSI 4 ระดับ 2-bit)
+      - **CRC-16-CCITT Check Digit (2 Bytes)**: ตรวจสอบความสมบูรณ์ ป้องกันข้อมูลขยะและบิตพลิกในอากาศ 99.998%
     - **ระเบียบ Spatial Disambiguation ในคลื่นวิทยุ (Spatial Disambiguation Rules)**:
       - Short NodeID 24-bit (3 Bytes) มีพื้นที่รหัส 16,777,216 ค่า ถูกรับประกันความไม่ซ้ำซ้อนระดับท้องถิ่นด้วย H3 Cell Index (4B) ซึ่งครอบคลุมรัศมี 5–10 กม.
       - หากเกิดสภาวะชนกัน (Collision) ในเซลล์เดียวกัน ให้ใช้ 2 ไบต์ท้ายของ Public Key (Ed25519) แยกแยะ และโหนดจะทำการ Re-roll รหัส 24-bit ใหม่อัตโนมัติในพื้นหลัง

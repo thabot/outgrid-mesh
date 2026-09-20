@@ -198,6 +198,13 @@
       หากตรวจพบโหนด 2 เครื่องที่มีทั้ง H3 Cell Index เดียวกันและ Short NodeID 24-bit ซ้ำกันในระยะวิทยุ:
       1. *Secondary Key Disambiguation*: ดึง 2 ไบต์ท้ายของ Full Public Key 32B (Ed25519 / X25519) มาเป็น Suffix ห้อยท้าย เช่น `#9B1C-E4`
       2. *Silent NodeID Re-Roll*: แอปจะทำการสุ่ม Re-roll รหัส Short NodeID 24-bit ตัวใหม่ของตนเองในพื้นหลังแบบเงียบๆ ทันที พร้อมประกาศอัปเดตสถานะใหม่ เพื่อขจัดความสับสนใน Mesh Routing 100%
+13. **สเปกโปรโตคอลวิทยุสถานะและเพื่อนบ้าน 27 Bytes (TOG v1.1 Presence Micro-Packet ⭐️):**
+    - ออกแบบการบีบอัดระดับบิต (Bit-Packing) ลงใน 27 Bytes เหลือ 4 Bytes Headroom ตามมาตรฐาน Apple Find My (เพดาน 31 Bytes ของ BLE Legacy):
+      - **Header & Our Node (9 Bytes)**: Type/Hop (1B) + Short NodeID (3B, 16.7 ล้านเครื่อง) + Battery/Status (1B) + H3 Res 9 (4B)
+      - **Radio & Node Capabilities (1 Byte)**: Stationary (b0), Power Tier (b1-2), BLE (b3), LoRa Bridge (b4), Wi-Fi Direct (b5), Wi-Fi HaLow 802.11ah Sub-1GHz (b6), Internet Gateway (b7)
+      - **5 Best Neighbors (15 Bytes, โหนดละ 3 Bytes พอดีเป๊ะ)**: Short NodeID (2B) + Fused Packed Byte (1B: H3 6 ทิศรอบตัว 3-bit + แบตเตอรี่ 5 ขีด 3-bit + RSSI 4 ระดับ 2-bit)
+      - **CRC-16-CCITT Check Digit (2 Bytes)**: ตรวจสอบความสมบูรณ์ ป้องกันข้อมูลขยะและบิตพลิกในอากาศ 99.998%
+    - รายละเอียดทางเทคนิคฉบับเต็ม: จัดเก็บในเอกสารเฉพาะทาง [docs/TOG_v1.1_WIRE_SPECIFICATION.md](file:///d:/thabot/git/gitlab/thabot/Mesh/OutGridMesh/docs/TOG_v1.1_WIRE_SPECIFICATION.md)
 
 ---
 
