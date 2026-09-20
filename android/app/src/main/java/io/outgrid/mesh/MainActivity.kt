@@ -61,14 +61,80 @@ class MainActivity : AppCompatActivity() {
         settings.databaseEnabled = true
         settings.allowFileAccess = true
         settings.allowContentAccess = true
-        settings.allowFileAccessFromFileURLs = true
-        settings.allowUniversalAccessFromFileURLs = true
         settings.cacheMode = WebSettings.LOAD_DEFAULT
 
         webView.setBackgroundColor(Color.parseColor("#090d16"))
 
-        // Standard WebViewClient for local asset file loading
-        webView.webViewClient = object : WebViewClientCompat() {}
+        // Enable Chrome DevTools remote debugging
+        WebView.setWebContentsDebuggingEnabled(true)
+
+        // Standard AndroidX AssetLoader handles secure https:// origin for ES Modules & WebCrypto
+        val assetLoader = WebViewAssetLoader.Builder()
+            .setDomain("appassets.androidplatform.net")
+            .addPathHandler("/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
+        webView.webViewClient = object : WebViewClientCompat() {
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): WebResourceResponse? {
+                val url = request?.url ?: return null
+                val path = url.path ?: "/"
+
+                // Handle root domain request and serve offline index.html entry
+                if (url.host == "appassets.androidplatform.net" && (path == "/" || path.isEmpty())) {
+                    return try {
+                        val inputStream = assets.open("index.html")
+                        val response = WebResourceResponse("text/html", "UTF-8", inputStream)
+                        val headers = mutableMapOf(
+                            "Access-Control-Allow-Origin" to "*",
+                            "Cache-Control" to "no-cache"
+                        )
+                        response.responseHeaders = headers
+                        response
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
+                // Delegate asset loading to AndroidX WebViewAssetLoader
+                var response = assetLoader.shouldInterceptRequest(url)
+
+                // Client SPA fallback: if not found and route does not have file extension, serve index.html
+                if (response == null && url.host == "appassets.androidplatform.net" && !path.substringAfterLast("/").contains(".")) {
+                    return try {
+                        val inputStream = assets.open("index.html")
+                        val fallbackResponse = WebResourceResponse("text/html", "UTF-8", inputStream)
+                        fallbackResponse.responseHeaders = mutableMapOf("Access-Control-Allow-Origin" to "*")
+                        fallbackResponse
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
+                if (response == null) return null
+
+                // Enforce JavaScript and web asset MIME types for modern Chromium ES Module dynamic loading
+                val effectiveMime = when {
+                    path.endsWith(".js") -> "text/javascript"
+                    path.endsWith(".css") -> "text/css"
+                    path.endsWith(".json") -> "application/json"
+                    path.endsWith(".svg") -> "image/svg+xml"
+                    path.endsWith(".png") -> "image/png"
+                    path.endsWith(".html") -> "text/html"
+                    path.endsWith(".wasm") -> "application/wasm"
+                    else -> response.mimeType
+                }
+                response.mimeType = effectiveMime
+
+                val headers = response.responseHeaders?.toMutableMap() ?: mutableMapOf()
+                headers["Access-Control-Allow-Origin"] = "*"
+                response.responseHeaders = headers
+
+                return response
+            }
+        }
 
         // WebChromeClient to capture JS console messages to Logcat for debugging
         webView.webChromeClient = object : android.webkit.WebChromeClient() {
@@ -83,8 +149,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Load entry index page directly from offline local assets
-        webView.loadUrl("file:///android_asset/index.html")
+        // Load entry index page via synthetic secure origin
+        webView.loadUrl("https://appassets.androidplatform.net/")
     }
 
     override fun onDestroy() {
