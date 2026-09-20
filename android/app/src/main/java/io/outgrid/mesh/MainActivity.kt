@@ -103,10 +103,11 @@ class MainActivity : AppCompatActivity() {
             override fun onReceivedError(
                 view: WebView?,
                 request: WebResourceRequest?,
-                error: androidx.webkit.WebResourceErrorCompat
+                error: androidx.webkit.WebResourceErrorCompat?
             ) {
-                android.util.Log.e("OutGridWebView", "WebView error: ${error.description} for ${request?.url}")
-                super.onReceivedError(view, request, error)
+                error?.let {
+                    android.util.Log.e("OutGridWebView", "WebView error: ${it.description} for ${request?.url}")
+                }
             }
         }
 

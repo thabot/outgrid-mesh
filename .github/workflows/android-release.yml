@@ -60,6 +60,16 @@ jobs:
       - name: Run Unit & Integration Tests
         run: bun test
 
+      - name: Inject Build Version Metadata
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%d")
+          echo "VITE_APP_VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "VITE_APP_COMMIT=${COMMIT_SHA}" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+          echo "Prepared version v${VERSION} (${COMMIT_SHA})"
+
       - name: Build Web PWA Bundle (Android mode — no BASE_PATH)
         run: bun run build
         env:
