@@ -98,10 +98,13 @@ jobs:
             - **Channel:** `${{ steps.meta.outputs.env_name }}`
             - **Architecture:** Android Native 24/7 Background Mesh Service + BLE Coded PHY (S=8) + Wi-Fi P2P
             - **Zero Internet Dependency:** 100% Offline Communication & Sideloading
-            
-            ### 📥 Download
-            Download the standalone APK below:
-            - **[${{ steps.meta.outputs.apk_name }}](${{ steps.meta.outputs.apk_name }})**
+
+            ### 📥 ดาวน์โหลด APK
+            คลิกปุ่ม **Assets** ด้านล่าง หรือดาวน์โหลดโดยตรงจากลิงก์นี้:
+
+            **[${{ steps.meta.outputs.apk_name }}](https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.release_tag }}/${{ steps.meta.outputs.apk_name }})**
+
+            > ⚠️ **ข้อควรระวัง:** ไฟล์นี้ไม่ได้อยู่ในโค้ดของ Repository — ต้องดาวน์โหลดผ่านลิงก์ด้านบน หรือจากแท็บ **Releases** เท่านั้น
           files: dist-apk/${{ steps.meta.outputs.apk_name }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
         env:
