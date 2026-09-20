@@ -853,10 +853,10 @@
 
 ---
 
-### 🚚 SPRINT G: ระบบขับเคลื่อนกู้ภัยขั้นสูงและการสื่อสารด้วยเสียง (Autonomous Mobility, DTN Custody & Acoustic Engine)
+### 🚚 SPRINT G: ระบบขับเคลื่อนกู้ภัยขั้นสูงและการสื่อสารด้วยเสียง (Autonomous Mobility, DTN Custody & Acoustic Engine) ✅ [COMPLETED 100%]
 > **เป้าหมาย:** พัฒนาระบบส่งต่อข้อมูลแบบ Store-and-Forward ข้ามตำบลผ่านรถกู้ภัย (Data Mule), การโอนย้ายสิทธิ์ Bundle ที่ปลอดภัย, วัคซีนลบข้อมูลที่ช่วยเหลือเสร็จแล้ว, และการส่งพิกัดผ่านเสียงความถี่สูง Ultrasonic FSK ทะลุซากตึก
 
-- [ ] **Task G.1: ระบบตรวจจับความเคลื่อนไหวอัตโนมัติและโหมดรถกู้ภัย (Autonomous Data Mule Mode) (ครอบคลุม เสาหลัก 10, 13)**
+- [x] **Task G.1: ระบบตรวจจับความเคลื่อนไหวอัตโนมัติและโหมดรถกู้ภัย (Autonomous Data Mule Mode) (ครอบคลุม เสาหลัก 10, 13) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/dtn/MobilityTracker.ts`, `src/core/dtn/DataMuleEngine.ts`
   - **รายละเอียดการทำงาน:**
     - อ่านค่า Accelerometer ผสานกับตำแหน่งพิกัด GPS: หากตรวจพบความเร็วเคลื่อนที่ $\ge 15\text{ km/h}$ ต่อเนื่องเกิน 30 วินาที ให้สลับบทบาทเป็น **`DATA_MULE_ACTIVE`** อัตโนมัติ
@@ -864,7 +864,7 @@
     - เมื่อความเร็วลดลงเหลือ $0\text{ km/h}$ ในเขตที่มีสัญญาณเน็ตหรือศูนย์อพยพ ให้ระบายข้อมูล (Unload Bundles) ขึ้น Cloudflare Gateway ทันที
   - **เกณฑ์การผ่าน (DoD):** จำลองความเร็ว $25\text{ km/h}$ โหมด Data Mule ถูกกระตุ้นและแลกเปลี่ยน Bundle อัตโนมัติโดยไม่ต้องมีการคลิกหน้าจอ
 
-- [ ] **Task G.2: โพรโทคอลโอนย้ายสิทธิ์การถือครองข้อมูลฉุกเฉิน (DTN Bundle Custody Transfer Protocol) (ครอบคลุม เสาหลัก 10)**
+- [x] **Task G.2: โพรโทคอลโอนย้ายสิทธิ์การถือครองข้อมูลฉุกเฉิน (DTN Bundle Custody Transfer Protocol) (ครอบคลุม เสาหลัก 10) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/dtn/HopGovernance.ts`, `src/core/dtn/BundleStore.ts`
   - **รายละเอียดการทำงาน:**
     - กำหนดโครงสร้าง Bundle ตามมาตรฐาน DTN: `Bundle_ID (16B)`, `Created_At (8B)`, `Expires_At (8B)`, `Priority (1B)`, `Hop_Count (1B)`, `Custodian_Node (8B)`, `Payload`
@@ -875,7 +875,7 @@
     - นโยบายคุ้มครองชีวิต: **ห้ามทิ้ง Red SOS (`0x01`) เด็ดขาด 100%** แม้หน่วยความจำจะเต็ม
   - **เกณฑ์การผ่าน (DoD):** ทดสอบการส่งต่อ Bundle ข้าม 3 โหนด สิทธิ์การถือครองถูกส่งมอบอย่างถูกต้องและไม่มีข้อความสูญหาย
 
-- [ ] **Task G.3: ระบบกระจายวัคซีนลบข้อมูลที่ช่วยเหลือเสร็จแล้ว (Epidemic Vaccine Kill Pill Engine) (ครอบคลุม เสาหลัก 11)**
+- [x] **Task G.3: ระบบกระจายวัคซีนลบข้อมูลที่ช่วยเหลือเสร็จแล้ว (Epidemic Vaccine Kill Pill Engine) (ครอบคลุม เสาหลัก 11) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/dtn/NetworkHealingEngine.ts`
   - **รายละเอียดการทำงาน:**
     - เมื่อผู้ประสบภัยได้รับการช่วยเหลือแล้ว หรือข้อมูลถูกซิงก์ขึ้นสู่ระบบแม่ข่ายสำเร็จ ระบบจะสร้างแพ็กเก็ต **`0x09: VACCINE_KILL_PILL`** แนบ `Bundle_ID` + ลายเซ็น Authority Signature
@@ -884,7 +884,7 @@
       - ยุติการส่งต่อข้อมูลที่หมดความจำเป็น ช่วยคืนพื้นที่ RAM และ Bandwidth ให้กับผู้ประสบภัยรายอื่น
   - **เกณฑ์การผ่าน (DoD):** ปล่อยแพ็กเก็ตวัคซีน โหนดในวง Mesh ทั้งหมดลบ Bundle เป้าหมายทิ้งภายใน 100ms
 
-- [ ] **Task G.4: แผงควบคุมเสียงความถี่สูงและการสังเคราะห์รหัสมอส (Ultrasonic FSK & Acoustic Morse HUD) (ครอบคลุม เสาหลัก 14)**
+- [x] **Task G.4: แผงควบคุมเสียงความถี่สูงและการสังเคราะห์รหัสมอส (Ultrasonic FSK & Acoustic Morse HUD) (ครอบคลุม เสาหลัก 14) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/emergency/AcousticMorseEngine.ts`, `src/core/emergency/FskDemodulator.ts`, `src/ui/components/AcousticBeaconPanel.svelte`
   - **รายละเอียดการทำงาน:**
     - **Acoustic Morse Tone (960Hz / 1440Hz)**: สังเคราะห์เสียงไซเรนฉุกเฉินระดับ 85+ dB เพื่อให้ทีมค้นหากู้ภัยได้ยินเสียงจากใต้ซากอาคาร
@@ -1137,12 +1137,12 @@ interface IncomingSosProps {
 | Sprint | ชื่อสปรินต์และขอบเขตงาน | สถานะความพร้อม | ผลการทดสอบ (DoD) |
 | :---: | :--- | :---: | :--- |
 | **Sprint A** | **Survival Battery & Peer Distance HUD** | **✅ เสร็จสมบูรณ์ (100%)** | `BatteryStatusBanner`, 5-Bar HUD, Last-Gasp Beacon, AMOLED Black |
-| **Sprint B** | **Offline APK Sideload & Hardware Bridge** | **📋 พร้อมเริ่มพัฒนา** | ดูด APK ในเครื่อง, Wi-Fi Hotspot Sideloading, ไฟฉายกล้องหลัง |
-| **Sprint C** | **High-Resilience QR Code Generator** | **📋 สเปกและ Core พร้อม** | Pure TS Canvas/SVG QR, Reed-Solomon Level H กู้คืน 30% |
-| **Sprint D** | **Incoming SOS Alert & 5s Mode Fallback** | **📋 สเปกและ Core พร้อม** | ปลุกจอ WakeLock, เสียงหวูด 85+ dB, สลับโหมด 5s Fallback |
-| **Sprint E** | **Full Emergency Chat Hub & WebP Media** | **📋 สเปกและ Core พร้อม** | Broadcast, แชท 1:1 E2EE (28B), WebPบีบอัด, เสียง Opus |
-| **Sprint F** | **Zero-Knowledge Backup & Storage Parity** | **📋 สเปกและ Core พร้อม** | ZK Encrypted Backup, เพดาน SQLite 50MB, Guest Parity 100% |
-| **Sprint G** | **Autonomous Mobility, DTN Custody & Acoustic** | **📋 สเปกและ Core พร้อม** | Data Mule $\ge 15\text{km/h}$, Vaccine Kill Pill, Ultrasonic FSK |
+| **Sprint B** | **Offline APK Sideload & Hardware Bridge** | **✅ เสร็จสมบูรณ์ (100%)** | ดูด APK ในเครื่อง, Wi-Fi Hotspot Sideloading, ไฟฉายกล้องหลัง |
+| **Sprint C** | **High-Resilience QR Code Generator** | **✅ เสร็จสมบูรณ์ (100%)** | Pure TS Canvas/SVG QR, Reed-Solomon Level H กู้คืน 30% |
+| **Sprint D** | **Incoming SOS Alert & 5s Mode Fallback** | **✅ เสร็จสมบูรณ์ (100%)** | ปลุกจอ WakeLock, เสียงหวูด 85+ dB, สลับโหมด 5s Fallback |
+| **Sprint E** | **Full Emergency Chat Hub & WebP Media** | **✅ เสร็จสมบูรณ์ (100%)** | Broadcast, แชท 1:1 E2EE (28B), WebPบีบอัด, เสียง Opus |
+| **Sprint F** | **Zero-Knowledge Backup & Storage Parity** | **✅ เสร็จสมบูรณ์ (100%)** | ZK Encrypted Backup, เพดาน SQLite 50MB, Guest Parity 100% |
+| **Sprint G** | **Autonomous Mobility, DTN Custody & Acoustic** | **✅ เสร็จสมบูรณ์ (100%)** | Data Mule $\ge 15\text{km/h}$, Vaccine Kill Pill, Ultrasonic FSK |
 | **Sprint H** | **Android Native Production Build & Hardware Plugin** | **✅ เสร็จสมบูรณ์ (100%)** | โครงสร้าง `android/`, `OutGridBlePlugin.kt`, Build Release APK |
 
 ---
