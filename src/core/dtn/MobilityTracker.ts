@@ -16,14 +16,66 @@ export interface IGpsFix {
 export class MobilityTracker {
   private static readonly MULE_SPEED_MIN_KMH = 20.0;
   private static readonly MULE_SPEED_MAX_KMH = 80.0;
+  private static readonly DATA_MULE_TRIGGER_SPEED_KMH = 15.0;
+  private static readonly DATA_MULE_SUSTAINED_MS = 30000; // 30 seconds
 
   private recentFixes: IGpsFix[] = [];
+  private sustainedMotionStartTime: number | null = null;
+  private isMuleRoleActive: boolean = false;
 
   public addFix(fix: IGpsFix): void {
     this.recentFixes.push(fix);
-    if (this.recentFixes.length > 5) {
+    if (this.recentFixes.length > 10) {
       this.recentFixes.shift();
     }
+    this.evaluateMuleState(fix.speedKmh, fix.timestamp);
+  }
+
+  /**
+   * Updates motion state using either GPS speed or accelerometer estimation
+   */
+  public updateMotion(speedKmh: number, accelMps2 = 0, timestamp: number = Date.now()): void {
+    // If significant accelerometer motion detected, combine with speed
+    const effectiveSpeed = accelMps2 > 1.5 && speedKmh < 5 ? 15.0 : speedKmh;
+    this.evaluateMuleState(effectiveSpeed, timestamp);
+  }
+
+  private evaluateMuleState(speedKmh: number, timestamp: number): void {
+    if (speedKmh >= MobilityTracker.DATA_MULE_TRIGGER_SPEED_KMH) {
+      if (this.sustainedMotionStartTime === null) {
+        this.sustainedMotionStartTime = timestamp;
+      } else if (timestamp - this.sustainedMotionStartTime >= MobilityTracker.DATA_MULE_SUSTAINED_MS) {
+        this.isMuleRoleActive = true;
+      }
+    } else {
+      this.sustainedMotionStartTime = null;
+      if (speedKmh <= 2.0) {
+        this.isMuleRoleActive = false;
+      }
+    }
+  }
+
+  /**
+   * Returns true if device is currently classified as DATA_MULE_ACTIVE
+   */
+  public isDataMuleActive(): boolean {
+    return this.isMuleRoleActive || this.isHighPriorityMule();
+  }
+
+  /**
+   * Returns true if device has stopped or is stationary (0 km/h)
+   */
+  public isStationary(): boolean {
+    if (this.recentFixes.length === 0) return true;
+    const latest = this.recentFixes[this.recentFixes.length - 1];
+    return latest.speedKmh < 1.0;
+  }
+
+  /**
+   * Forcefully overrides Data Mule active state (e.g. for simulations or emergency dispatch)
+   */
+  public setDataMuleActive(active: boolean): void {
+    this.isMuleRoleActive = active;
   }
 
   /**
@@ -44,3 +96,4 @@ export class MobilityTracker {
     return this.recentFixes[this.recentFixes.length - 1].bearingDeg;
   }
 }
+

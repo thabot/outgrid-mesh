@@ -11,6 +11,7 @@
   import DonationDashboard from './DonationDashboard.svelte';
   import BeaconControlsBar from './BeaconControlsBar.svelte';
   import ApkShareScreen from './ApkShareScreen.svelte';
+  import AcousticBeaconPanel from './AcousticBeaconPanel.svelte';
 
   export let isOpen = false;
   export let appVersion = '1.1.0';
@@ -129,6 +130,9 @@
         {:else if currentSection === 'beacon'}
           <div class="sub-content">
             <BeaconControlsBar />
+            <div style="margin-top: 14px;">
+              <AcousticBeaconPanel />
+            </div>
           </div>
         {:else if currentSection === 'fund'}
           <div class="sub-content">
