@@ -698,10 +698,10 @@
 
 ---
 
-### 🧭 SPRINT D: สถาปัตยกรรมนำทางและสลับโหมดอัตโนมัติ (Navigation & State Machine)
+### 🧭 SPRINT D: สถาปัตยกรรมนำทางและสลับโหมดอัตโนมัติ (Navigation & State Machine) ✅ [COMPLETED 100%]
 > **เป้าหมาย:** ตรวจจับเน็ตหลุดสลับเข้าโหมดวิทยุ `DISASTER_MESH` ใน 5 วินาที, แถบสถานะ Network Bar, Hamburger Drawer ☰, Bottom Nav Bar 5 ปุ่ม และระบบสิทธิ์ Android 13+ Notifications
 
-- [ ] **Task D.1: พัฒนาแถบสถานะ Network & ตัวนับโหนดรอบตัว (`NetworkStatusBar.svelte`) (ครอบคลุม Item 12, 6, 1)**
+- [x] **Task D.1: พัฒนาแถบสถานะ Network & ตัวนับโหนดรอบตัว (`NetworkStatusBar.svelte`) (ครอบคลุม Item 12, 6, 1) ✅**
   - **ไฟล์เป้าหมาย:** `src/ui/components/NetworkStatusBar.svelte`
   - **รายละเอียดการทำงาน:**
     - แสดงประเภทสัญญาณสด: `5G/4G`, `Wi-Fi`, `Disaster Mesh (สีส้ม)`, หรือ `Isolated`
@@ -709,7 +709,7 @@
     - แสดง % แบตเตอรี่พร้อมเวลาคงเหลือ และตัวนับโหนด `👥 12 โหนด` ที่แตะเพื่อเปิดดูสรุปจำแนกประเภท (SOS, เพื่อน, รีเลย์, เกตเวย์)
   - **เกณฑ์การผ่าน (DoD):** ตัดเน็ตครบ 5 วินาที แถบเปลี่ยนเป็นสีส้ม `Disaster Mesh` และตัวเลขโหนดแสดงผลถูกต้อง
 
-- [ ] **Task D.2: พัฒนาสถาปัตยกรรม Hybrid Navigation (Drawer + Bottom Bar) (`+page.svelte`) (ครอบคลุม Item 15)**
+- [x] **Task D.2: พัฒนาสถาปัตยกรรม Hybrid Navigation (Drawer + Bottom Bar) (`+page.svelte`) (ครอบคลุม Item 15) ✅**
   - **ไฟล์เป้าหมาย:** 
     - `src/ui/components/HamburgerDrawer.svelte`
     - `src/ui/components/BottomNavigationBar.svelte`
@@ -720,7 +720,7 @@
     - คงโครงสร้างคอมโพเนนต์เดิมไว้ทั้งหมด 100% ไม่ลบทิ้ง
   - **เกณฑ์การผ่าน (DoD):** สลับหน้าจอผ่าน Bottom Bar ได้ลื่นไหล และเปิดปิด Drawer จากเมนู ☰ ได้สมบูรณ์
 
-- [ ] **Task D.3: ระบบสิทธิ์ฮาร์ดแวร์ All-in-One และ WebChromeClient Bridge (ครอบคลุม Item 10, 3)**
+- [x] **Task D.3: ระบบสิทธิ์ฮาร์ดแวร์ All-in-One และ WebChromeClient Bridge (ครอบคลุม Item 10, 3) ✅**
   - **ไฟล์เป้าหมาย:** `android/app/src/main/java/io/outgrid/mesh/MainActivity.kt`
   - **รายละเอียดการทำงาน:**
     - ขอสิทธิ์ Runtime พร้อมกัน 10 รายการตอนเปิดแอปครั้งแรก:
@@ -734,7 +734,7 @@
     - ติดตั้ง `WebChromeClient`: อนุมัติสิทธิ์ GPS (`onGeolocationPermissionsShowPrompt`), กล้อง/ไมค์ (`onPermissionRequest`), และเลือกภาพแนบแชท (`onShowFileChooser`)
   - **เกณฑ์การผ่าน (DoD):** หน้าเว็บสามารถเข้าถึง GPS และเปิดกล้อง/คลังภาพได้ทันทีโดยไม่มีข้อผิดพลาด และสิทธิ์ POST_NOTIFICATIONS ถูกขออย่างถูกต้อง
 
-- [ ] **Task D.4: Automated Unit Tests สำหรับ State Machine และ Flapping Prevention (ครอบคลุม Item 12)**
+- [x] **Task D.4: Automated Unit Tests สำหรับ State Machine และ Flapping Prevention (ครอบคลุม Item 12) ✅**
   - **ไฟล์เป้าหมาย:** `tests/unit/ui/NetworkStateEngine.test.ts`
   - **รายละเอียดการทำงาน:**
     - ทดสอบตัวจัดการสลับโหมดเครือข่ายทั้ง 4 สถานะ: Online Cloud (`5G/Wi-Fi`) ➔ 5s Grace Period ➔ Offline Mesh (`DISASTER_MESH`) ➔ Reconnect Cloud Sync

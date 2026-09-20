@@ -14,6 +14,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+
 /**
  * Main Entry Activity for OutGrid Rescue
  * Creator & Lead Architect: Thabot <thabo47@gmail.com>
@@ -25,10 +30,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private var androidBridge: OutGridAndroidBridge? = null
 
+    // Batch Runtime Permissions Request Launcher (Sprint D Task D.3)
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val grantedCount = permissions.values.count { it }
+        android.util.Log.i("OutGridMesh", "Runtime permissions granted: $grantedCount / ${permissions.size}")
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Request all required hardware and notification permissions
+        requestRuntimePermissions()
 
         // Initialize WebView for OutGrid Rescue UI
         webView = findViewById(R.id.webView)
@@ -57,6 +73,39 @@ class MainActivity : AppCompatActivity() {
             startForegroundService(serviceIntent)
         } else {
             startService(serviceIntent)
+        }
+    }
+
+    private fun requestRuntimePermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+
+        // 1. Precise GPS Location (Emergency SOS <1m accuracy)
+        permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        // 2. Camera & Audio (SOS Flashlight, QR Scan, Voice Clips)
+        permissionsToRequest.add(Manifest.permission.CAMERA)
+        permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
+
+        // 3. Bluetooth Mesh Permissions (Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+
+        // 4. Nearby Wi-Fi Devices (Android 13+ for Offline APK Hotspot)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionsToRequest.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        val ungranted = permissionsToRequest.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (ungranted.isNotEmpty()) {
+            permissionLauncher.launch(ungranted.toTypedArray())
         }
     }
 
@@ -157,7 +206,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // WebChromeClient to capture JS console messages to Logcat for debugging
+        // WebChromeClient to capture JS console, handle Geolocation & Media permissions (Sprint D Task D.3)
         webView.webChromeClient = object : android.webkit.WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
                 consoleMessage?.let {
@@ -167,6 +216,19 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
                 return true
+            }
+
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: android.webkit.GeolocationPermissions.Callback?
+            ) {
+                // Grant geolocation for app assets origin
+                callback?.invoke(origin, true, false)
+            }
+
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                // Grant camera / microphone WebRTC access for QR scanning & emergency voice clips
+                request?.grant(request.resources)
             }
         }
 

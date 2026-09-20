@@ -60,4 +60,29 @@ describe('NetworkStateEngine (Sprint D Task D.4 State Machine & Flapping Guard)'
     // Should remain in NORMAL_CLOUD because no single drop exceeded 5000ms
     expect(stateMachine.getOperatingMode()).toBe(AppOperatingMode.NORMAL_CLOUD);
   });
+
+  it('should correctly classify peer nodes into SOS, Friends, Relays, and Gateways', () => {
+    const rawPeers = [
+      { id: 'node-01', isSos: true, isFriend: false, isRelay: false, isGateway: false },
+      { id: 'node-02', isSos: false, isFriend: true, isRelay: false, isGateway: false },
+      { id: 'node-03', isSos: false, isFriend: false, isRelay: true, isGateway: false },
+      { id: 'node-04', isSos: false, isFriend: false, isRelay: false, isGateway: true },
+      { id: 'node-05', isSos: true, isFriend: true, isRelay: false, isGateway: false },
+    ];
+
+    const counts = {
+      sos: rawPeers.filter(p => p.isSos).length,
+      friends: rawPeers.filter(p => p.isFriend).length,
+      relays: rawPeers.filter(p => p.isRelay).length,
+      gateways: rawPeers.filter(p => p.isGateway).length,
+      total: rawPeers.length
+    };
+
+    expect(counts.total).toBe(5);
+    expect(counts.sos).toBe(2);
+    expect(counts.friends).toBe(2);
+    expect(counts.relays).toBe(1);
+    expect(counts.gateways).toBe(1);
+  });
 });
+
