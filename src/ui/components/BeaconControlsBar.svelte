@@ -1,0 +1,243 @@
+<script lang="ts">
+  /**
+   * Emergency Hardware & Power HUD Bar (BeaconControlsBar)
+   * Controls Flashlight SOS Strobe, Acoustic Morse Siren, and Panic Beacon
+   * Creator & Lead Architect: Thabot <thabo47@gmail.com>
+   * Protocol: TOG v1.1 Emergency Hardware
+   * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
+   */
+  import { EmergencyBeaconControls } from '../../core/emergency/EmergencyBeaconControls';
+  import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
+  import { onDestroy } from 'svelte';
+
+  const controls = new EmergencyBeaconControls();
+  const dispatcher = NativeBridgeDispatcher.getInstance();
+
+  export let isTorchActive = false;
+  export let isSirenActive = false;
+  export let isMuted = false;
+  export let thermalWarning = false;
+
+  let thermalCheckInterval: any = null;
+
+  function toggleTorch() {
+    if (isTorchActive) {
+      controls.stopFlashlight();
+      dispatcher.stopTorch();
+      isTorchActive = false;
+    } else {
+      controls.startFlashlightMorse();
+      dispatcher.toggleTorch(true);
+      isTorchActive = true;
+      startThermalMonitoring();
+    }
+  }
+
+  function toggleSosStrobe() {
+    if (isTorchActive) {
+      controls.stopFlashlight();
+      dispatcher.stopTorch();
+      isTorchActive = false;
+    } else {
+      controls.startFlashlightMorse();
+      dispatcher.startSosStrobe();
+      isTorchActive = true;
+      startThermalMonitoring();
+    }
+  }
+
+  function toggleSiren() {
+    if (isSirenActive) {
+      controls.stopAcousticSiren();
+      isSirenActive = false;
+    } else {
+      controls.startAcousticSiren();
+      isSirenActive = true;
+    }
+  }
+
+  function toggleMute() {
+    isMuted = controls.toggleMute();
+  }
+
+  function triggerMasterPanic() {
+    controls.startPanicBeacon();
+    dispatcher.startSosStrobe();
+    dispatcher.vibrateSosPattern();
+    isTorchActive = true;
+    isSirenActive = true;
+    isMuted = false;
+    startThermalMonitoring();
+  }
+
+  function stopAll() {
+    controls.stopAllBeacons();
+    dispatcher.stopTorch();
+    isTorchActive = false;
+    isSirenActive = false;
+    thermalWarning = false;
+    if (thermalCheckInterval) clearInterval(thermalCheckInterval);
+  }
+
+  function startThermalMonitoring() {
+    if (thermalCheckInterval) clearInterval(thermalCheckInterval);
+    thermalCheckInterval = setInterval(() => {
+      const cut = controls.checkThermalCutoff();
+      if (cut) {
+        dispatcher.stopTorch();
+        isTorchActive = false;
+        thermalWarning = true;
+        clearInterval(thermalCheckInterval);
+      }
+    }, 2000);
+  }
+
+  onDestroy(() => {
+    if (thermalCheckInterval) clearInterval(thermalCheckInterval);
+  });
+</script>
+
+<div class="beacon-controls-root">
+  <div class="controls-header">
+    <span class="header-title">⚡ ฮาร์ดแวร์ฉุกเฉิน (Emergency Hardware)</span>
+    {#if thermalWarning}
+      <span class="badge-thermal">⚠️ ตัดไฟฉายอัตโนมัติ (ครบ 5 นาทีเพื่อป้องกันความร้อน)</span>
+    {/if}
+  </div>
+
+  <div class="btn-grid">
+    <button
+      class="btn-beacon"
+      class:active={isTorchActive}
+      on:click={toggleSosStrobe}
+      title="กะพริบไฟแฟลชหลังมือถือรหัสมอส SOS (... --- ...)"
+    >
+      <span class="icon">⚡</span>
+      <span class="text">{isTorchActive ? 'ปิดไฟฉาย SOS' : 'ไฟฉาย SOS Morse'}</span>
+    </button>
+
+    <button
+      class="btn-beacon"
+      class:active={isSirenActive}
+      on:click={toggleSiren}
+      title="ส่งสัญญาณหวูดไซเรนความถี่สูง 960Hz / 1440Hz ทะลุสิ่งกีดขวาง"
+    >
+      <span class="icon">📢</span>
+      <span class="text">{isSirenActive ? (isMuted ? 'หวูดปิดเสียงอยู่' : 'ปิดหวูดไซเรน') : 'หวูดไซเรน 85dB'}</span>
+    </button>
+
+    {#if isSirenActive}
+      <button class="btn-mute" on:click={toggleMute}>
+        {isMuted ? '🔊 เปิดเสียงหวูด' : '🔇 ปิดเสียงชั่วคราว'}
+      </button>
+    {/if}
+
+    <button
+      class="btn-panic"
+      on:click={triggerMasterPanic}
+      title="เปิดไฟฉาย SOS + หวูดไซเรน + สั่นรหัสมอสพร้อมกันทันที"
+    >
+      🚨 ALL-IN PANIC
+    </button>
+
+    {#if isTorchActive || isSirenActive}
+      <button class="btn-stop" on:click={stopAll}>
+        ⏹️ ปิดสัญญาณทั้งหมด
+      </button>
+    {/if}
+  </div>
+</div>
+
+<style>
+  .beacon-controls-root {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 0.75rem;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .controls-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .header-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #38bdf8;
+  }
+  .badge-thermal {
+    font-size: 0.7rem;
+    background: #7f1d1d;
+    color: #fca5a5;
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+  .btn-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .btn-beacon {
+    background: #1e293b;
+    color: #cbd5e1;
+    border: 1px solid #334155;
+    padding: 0.45rem 0.85rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+  }
+  .btn-beacon.active {
+    background: #f59e0b;
+    color: #0f172a;
+    border-color: #fbbf24;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+  }
+  .btn-mute {
+    background: #334155;
+    color: #f1f5f9;
+    border: none;
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .btn-panic {
+    background: #dc2626;
+    color: #ffffff;
+    border: none;
+    padding: 0.45rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+    animation: pulse-panic 1.5s infinite;
+  }
+  .btn-stop {
+    background: #475569;
+    color: #f8fafc;
+    border: none;
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  @keyframes pulse-panic {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+    100% { transform: scale(1); }
+  }
+</style>

@@ -5,6 +5,7 @@
   import HelpManualScreen from '../ui/components/HelpManualScreen.svelte';
   import SosMapView from '../ui/components/SosMapView.svelte';
   import BatteryStatusBanner from '../ui/components/BatteryStatusBanner.svelte';
+  import BeaconControlsBar from '../ui/components/BeaconControlsBar.svelte';
 
   let activeTab: 'sos' | 'feed' | 'map' | 'manual' | 'donation' = 'sos';
   let isUltraSurvival = false;
@@ -51,6 +52,8 @@
     bind:isUltraSurvival
     onTriggerLastGasp={handleTriggerLastGasp}
   />
+
+  <BeaconControlsBar />
 
   <section class="content-area">
     {#if activeTab === 'sos'}

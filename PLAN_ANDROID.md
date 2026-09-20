@@ -538,7 +538,7 @@
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │  [ Sprint A: Official Assets & Offline Basemap ] ──► Logo Version 1 + World L2 (5MB) ✅ │
 │  [ Sprint B: Native Android Bridge & 24/7 ] ───────► Service + WakeLock + BleRadio ✅ │
-│  [ Sprint C: Emergency Hardware & Power HUD ] ─────► Battery Runtime + Torch/Siren    │
+│  [ Sprint C: Emergency Hardware & Power HUD ] ─────► Battery Runtime + Torch/Siren ✅ │
 │  [ Sprint D: Navigation & State Machine Engine ] ──► 5s Fallback + Drawer + BottomNav │
 │  [ Sprint E: Tactical Radar & Offline Chat Hub ] ──► Radar HUD + E2EE + WebP/Opus/Pin  │
 │  [ Sprint F: Zero-Barrier Security & Sideload ] ───► Offline QR + APK Hotspot + i18n  │
@@ -660,26 +660,26 @@
 
 ---
 
-### 🔋 SPRINT C: ฮาร์ดแวร์ฉุกเฉินและการคำนวณพลังงานอัจฉริยะ (Emergency Hardware & Power HUD)
+### 🔋 SPRINT C: ฮาร์ดแวร์ฉุกเฉินและการคำนวณพลังงานอัจฉริยะ (Emergency Hardware & Power HUD) ✅ [COMPLETED 100%]
 > **เป้าหมาย:** คำนวณเวลาคงเหลือของแบตเตอรี่เป็น `ชั่วโมง:นาที`, สวิตช์ 1-Tap Ultra Saver, ไฟฉายกะพริบ SOS ผ่าน CameraManager และหวูดไซเรนรหัสมอส
 
-- [ ] **Task C.1: พัฒนาเอนจินคำนวณเวลาแบตเตอรี่คงเหลือ (`BatteryRuntimeEstimator.ts`) (ครอบคลุม Item 1)**
+- [x] **Task C.1: พัฒนาเอนจินคำนวณเวลาแบตเตอรี่คงเหลือ (`BatteryRuntimeEstimator.ts`) (ครอบคลุม Item 1) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/battery/BatteryRuntimeEstimator.ts`, `tests/unit/battery/BatteryRuntimeEstimator.test.ts`
   - **รายละเอียดการทำงาน:**
     - อ่านค่า % แบตเตอรี่, สถานะชาร์จ, และคำนวณอัตราการกินไฟเฉลี่ย
     - แปลงผลลัพธ์เป็นชั่วโมงและนาที: `🔋 78% (ใช้ได้อีกประมาณ 18 ชม. 45 นาที)`
     - ตรวจจับฮาร์ดแวร์โหลดสูง (เปิดไฟฉาย SOS หรือเปิดหวูดไซเรน) แล้วปรับลดเวลาลงตามจริง
     - ตรวจจับแบตเตอรี่วิกฤตที่ 5%: ส่งแพ็กเก็ต **Last-Gasp Beacon** แจ้งพิกัดสุดท้ายก่อนเครื่องดับ
-  - **เกณฑ์การผ่าน (DoD):** ชุดทดสอบคำนวณเวลาแบตเตอรี่ได้แม่นยำและ Last-Gasp Beacon ถูกทริกเกอร์ที่ 5%
+  - **เกณฑ์การผ่าน (DoD):** ชุดทดสอบคำนวณเวลาแบตเตอรี่ได้แม่นยำและ Last-Gasp Beacon ถูกทริกเกอร์ที่ 5% (4/4 tests passed)
 
-- [ ] **Task C.2: สวิตช์โหมดประหยัดพลังงานขั้นสูงสุด (1-Tap Ultra Saver Mode) (ครอบคลุม Item 1)**
-  - **ไฟล์เป้าหมาย:** `src/core/battery/DutyCycleManager.ts`, `src/ui/components/NetworkStatusBar.svelte`
+- [x] **Task C.2: สวิตช์โหมดประหยัดพลังงานขั้นสูงสุด (1-Tap Ultra Saver Mode) (ครอบคลุม Item 1) ✅**
+  - **ไฟล์เป้าหมาย:** `src/core/battery/DutyCycleManager.ts`, `src/ui/components/BatteryStatusBanner.svelte`, `src/ui/components/BeaconControlsBar.svelte`
   - **รายละเอียดการทำงาน:**
     - ปุ่มเปิดโหมดประหยัดพลังงานแตะครั้งเดียว: ขยายรอบ Heartbeat เป็น 60s, ปรับธีมจอเป็นดำสนิท True AMOLED Black
     - แสดงตัวเลขเวลาที่ยืดออกไปให้ผู้ใช้เห็นทันที (เช่น *จากเหลือ 4 ชม. ➔ ยืดเป็น 14 ชม. 30 นาที*)
   - **เกณฑ์การผ่าน (DoD):** แตะสลับโหมด Duty Cycle ปรับเป็น 60s และธีมหน้าจอกลายเป็นสีดำสนิท
 
-- [ ] **Task C.3: พัฒนาตัวสั่งการไฟฉาย SOS และหวูดไซเรนรหัสมอส (`EmergencyBeaconControls.ts` & `EmergencyFlashlightController.kt`) (ครอบคลุม Item 11)**
+- [x] **Task C.3: พัฒนาตัวสั่งการไฟฉาย SOS และหวูดไซเรนรหัสมอส (`EmergencyBeaconControls.ts` & `EmergencyFlashlightController.kt`) (ครอบคลุม Item 11) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/emergency/EmergencyBeaconControls.ts`, `android/app/src/main/java/io/outgrid/mesh/EmergencyFlashlightController.kt`, `src/ui/components/BeaconControlsBar.svelte`
   - **รายละเอียดการทำงาน:**
     - **Native Morse Flash Loop**: ย้ายลูปจังหวะการกะพริบไฟฉาย SOS `... --- ...` (200ms dot, 600ms dash, 200ms element gap, 600ms letter gap) ไปรันบน Native Background Thread (`EmergencyFlashlightController.kt`) ผ่าน Android `CameraManager.setTorchMode` เพื่อความแม่นยำระดับเสี้ยววินาที ไร้ปัญหา Jitter จาก JS Engine
@@ -688,13 +688,13 @@
     - ปุ่ม **Master Panic Button [ALL-IN SOS]**: สั่งไฟฉาย + หวูด + ยิงแพ็กเก็ตวิทยุพร้อมกันในคลิกเดียว
   - **เกณฑ์การผ่าน (DoD):** กด Panic Button ไฟฉายกะพริบรหัสมอสตรงจังหวะเป๊ะ เสียงหวูดดังขึ้นพร้อมกัน และไฟฉายตัดอัตโนมัติเมื่อครบ 5 นาที
 
-- [ ] **Task C.4: Automated Unit Tests สำหรับฮาร์ดแวร์ฉุกเฉินและระบบพลังงาน (ครอบคลุม Item 1, 11)**
+- [x] **Task C.4: Automated Unit Tests สำหรับฮาร์ดแวร์ฉุกเฉินและระบบพลังงาน (ครอบคลุม Item 1, 11) ✅**
   - **ไฟล์เป้าหมาย:** `tests/unit/emergency/EmergencyBeaconControls.test.ts`
   - **รายละเอียดการทำงาน:**
     - ทดสอบ State Machine ของหวูดไซเรน: การสลับความถี่ 960Hz ↔ 1440Hz และปุ่ม Mute ปิดเสียงทันที
     - ทดสอบจังหวะรหัสมอสของไฟฉาย SOS ให้ถูกต้องตามค่า Timing (จุด 200ms, ขีด 600ms)
     - ทดสอบฟังก์ชัน Auto Thermal Timeout ตัดไฟฉายเมื่อจำลองเวลาผ่านไป 300,000ms (5 นาที)
-  - **เกณฑ์การผ่าน (DoD):** รัน `bun test tests/unit/emergency/EmergencyBeaconControls.test.ts` ผ่าน 100%
+  - **เกณฑ์การผ่าน (DoD):** รัน `bun test tests/unit/emergency/EmergencyBeaconControls.test.ts` ผ่าน 100% (4/4 tests passed)
 
 ---
 

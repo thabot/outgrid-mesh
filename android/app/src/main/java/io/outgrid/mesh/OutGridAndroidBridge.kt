@@ -33,6 +33,7 @@ class OutGridAndroidBridge(
     private var cameraId: String? = null
     private var isTorchActive = false
     private var hotspotService = LocalHotspotSideloadService(context)
+    private var flashlightController = EmergencyFlashlightController(context)
 
     init {
         try {
@@ -42,6 +43,7 @@ class OutGridAndroidBridge(
 
     @JavascriptInterface
     fun toggleTorch(enabled: Boolean): Boolean {
+        flashlightController.stopStrobe()
         return try {
             cameraId?.let { id ->
                 cameraManager?.setTorchMode(id, enabled)
@@ -55,13 +57,16 @@ class OutGridAndroidBridge(
 
     @JavascriptInterface
     fun startSosStrobe(): Boolean {
-        // Triggers SOS pattern or turns on strobe
-        return toggleTorch(true)
+        flashlightController.startSosStrobe()
+        isTorchActive = true
+        return true
     }
 
     @JavascriptInterface
     fun stopTorch(): Boolean {
-        return toggleTorch(false)
+        flashlightController.stopStrobe()
+        isTorchActive = false
+        return true
     }
 
     @JavascriptInterface
