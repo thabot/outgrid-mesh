@@ -3,6 +3,45 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script>
+			// Global On-Screen Error Catcher for OutGrid WebView Debugging
+			function showOnScreenError(title, msg, source, stack) {
+				var errBox = document.getElementById('debug-error-box');
+				if (!errBox) {
+					errBox = document.createElement('div');
+					errBox.id = 'debug-error-box';
+					errBox.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#0f172a;color:#ef4444;padding:24px;box-sizing:border-box;font-family:monospace;font-size:14px;overflow:auto;z-index:999999;border:4px solid #ef4444;';
+					document.body ? document.body.appendChild(errBox) : document.documentElement.appendChild(errBox);
+				}
+				errBox.innerHTML = '<h2 style="color:#f87171;margin-top:0;">🚨 ' + title + '</h2>' +
+					'<p style="color:#f1f5f9;"><b>Message:</b> ' + msg + '</p>' +
+					'<p style="color:#94a3b8;"><b>Source:</b> ' + (source || 'unknown') + '</p>' +
+					(stack ? '<pre style="background:#1e293b;color:#cbd5e1;padding:12px;border-radius:6px;overflow:auto;max-height:60vh;">' + stack + '</pre>' : '') +
+					'<p style="color:#38bdf8;margin-top:16px;">📸 กรุณาแคปภาพหน้าจอนี้เพื่อนำไปวิเคราะห์แก้ไขทันที</p>';
+			}
+
+			window.addEventListener('error', function(e) {
+				showOnScreenError('Runtime / Loading Error', e.message, e.filename + ':' + e.lineno, e.error ? e.error.stack : '');
+			});
+
+			window.addEventListener('unhandledrejection', function(e) {
+				var reason = e.reason || {};
+				showOnScreenError('Unhandled Promise Rejection', reason.message || String(reason), '', reason.stack || '');
+			});
+
+			// Fallback: If SvelteKit has not mounted within 3 seconds, show diagnostic warning
+			setTimeout(function() {
+				var appRoot = document.querySelector('.app-root');
+				if (!appRoot) {
+					showOnScreenError(
+						'SvelteKit Mount Timeout',
+						'แอปไม่สามารถโหลด UI เข้าสู่หน้าจอได้ (SvelteKit ไม่ได้เริ่มทำงาน หรือไฟล์ JS หลักไม่ถูกเรียก)',
+						window.location.href,
+						'Current URL: ' + window.location.href + '\nDocument readyState: ' + document.readyState
+					);
+				}
+			}, 3000);
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
