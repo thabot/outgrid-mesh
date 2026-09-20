@@ -200,12 +200,27 @@ class OutGridAndroidBridge(
     }
 
     /**
+     * Transmits a raw TOG v1.1 packet over Bluetooth LE hardware
+     */
+    @JavascriptInterface
+    fun transmitRadioPacket(base64Payload: String, txPowerHigh: Boolean = true): Boolean {
+        return try {
+            val rawBytes = Base64.decode(base64Payload, Base64.NO_WRAP)
+            val blePlugin = OutGridBlePlugin(context)
+            blePlugin.transmitPacket(rawBytes, txPowerHigh)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
      * Dispatches raw radio packet bytes up to Web JavaScript
      */
     fun dispatchIncomingPacket(bytes: ByteArray, rssi: Int) {
         val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
         webView.post {
-            webView.evaluateJavascript("window.OutGridMesh && window.OutGridMesh.receiveNativePacket('', );", null)
+            webView.evaluateJavascript("window.OutGridMesh && window.OutGridMesh.receiveNativePacket('$base64', $rssi);", null)
         }
     }
 }
+

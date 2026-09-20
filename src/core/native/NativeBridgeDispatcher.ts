@@ -143,4 +143,17 @@ export class NativeBridgeDispatcher {
     const raw = this.bridgeImpl.getBarometerAltitude();
     return typeof raw === 'string' ? JSON.parse(raw) : raw;
   }
+
+  public transmitRadioPacket(bytes: Uint8Array, txPowerHigh: boolean = true): boolean {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = typeof btoa !== 'undefined'
+      ? btoa(binary)
+      : Buffer.from(bytes).toString('base64');
+
+    return Boolean(this.bridgeImpl.transmitRadioPacket(base64, txPowerHigh));
+  }
 }
+

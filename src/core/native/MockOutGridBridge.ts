@@ -124,6 +124,17 @@ export class MockOutGridBridge {
     this.barometerAltitude = { ...this.barometerAltitude, ...barometer };
   }
 
+  private lastTransmittedPacket: { base64: string; txPowerHigh: boolean } | null = null;
+
+  public transmitRadioPacket(base64Payload: string, txPowerHigh: boolean = true): boolean {
+    this.lastTransmittedPacket = { base64: base64Payload, txPowerHigh };
+    return true;
+  }
+
+  public getLastTransmittedPacket(): { base64: string; txPowerHigh: boolean } | null {
+    return this.lastTransmittedPacket;
+  }
+
   // Getters for assertion in tests
   public isTorchOn(): boolean {
     return this.torchEnabled;
@@ -141,3 +152,4 @@ export class MockOutGridBridge {
     return this.screenAwake;
   }
 }
+

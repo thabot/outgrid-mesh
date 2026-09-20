@@ -1143,7 +1143,7 @@ interface IncomingSosProps {
 | **Sprint E** | **Full Emergency Chat Hub & WebP Media** | **📋 สเปกและ Core พร้อม** | Broadcast, แชท 1:1 E2EE (28B), WebPบีบอัด, เสียง Opus |
 | **Sprint F** | **Zero-Knowledge Backup & Storage Parity** | **📋 สเปกและ Core พร้อม** | ZK Encrypted Backup, เพดาน SQLite 50MB, Guest Parity 100% |
 | **Sprint G** | **Autonomous Mobility, DTN Custody & Acoustic** | **📋 สเปกและ Core พร้อม** | Data Mule $\ge 15\text{km/h}$, Vaccine Kill Pill, Ultrasonic FSK |
-| **Sprint H** | **Android Native Production Build & Hardware Plugin** | **📋 สเปกและ Blueprint พร้อม** | โครงสร้าง `android/`, `OutGridBlePlugin.kt`, Build Release APK |
+| **Sprint H** | **Android Native Production Build & Hardware Plugin** | **✅ เสร็จสมบูรณ์ (100%)** | โครงสร้าง `android/`, `OutGridBlePlugin.kt`, Build Release APK |
 
 ---
 
