@@ -62,13 +62,13 @@
   async function initMap() {
     // Dynamic import to avoid SSR issues
     L = (await import('leaflet')) as typeof import('leaflet');
-    // Fix default marker icon paths (Leaflet/Vite quirk)
+    // Fix default marker icon paths — use locally bundled assets (no CDN required)
     // @ts-ignore
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconRetinaUrl: '/_vendor/marker-icon-2x.png',
+      iconUrl: '/_vendor/marker-icon.png',
+      shadowUrl: '/_vendor/marker-shadow.png',
     });
 
     map = L.map(mapEl, {
