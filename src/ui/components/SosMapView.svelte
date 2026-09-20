@@ -52,6 +52,9 @@
   let isLocating = false;
   let locationError = '';
   let heatmap = new KAnonymityHeatmap();
+  let basemapLayer: any = null;
+  let isBasemapLoaded = false;
+  let isOfflineMode = false;
 
   // Demo seed data: 10 simulated mesh nodes in Bangkok/flood zone area
   const DEMO_NODES: Array<{ id: string; lat: number; lng: number }> = [
@@ -109,6 +112,9 @@
       attribution: ODBL_ATTRIBUTION,
     }).addTo(map);
 
+    // Load offline World Basemap L2
+    await loadWorldBasemapL2();
+
     // Seed heatmap with demo nodes
     for (const node of DEMO_NODES) {
       const h3Idx = H3GridEngine.coordToH3(node.lat, node.lng, 9);
@@ -117,6 +123,45 @@
 
     renderHexHeatmap();
     renderSosTargets();
+  }
+
+  async function loadWorldBasemapL2() {
+    if (!map || !L) return;
+    try {
+      const resp = await fetch('/data/world_basemap_l2.json');
+      if (!resp.ok) return;
+      const geoJson = await resp.json();
+
+      if (basemapLayer) basemapLayer.remove();
+
+      basemapLayer = L.geoJSON(geoJson, {
+        style: (feature: any) => {
+          const layerType = feature?.properties?.layer;
+          if (layerType === 'country') {
+            return { color: '#0284c7', weight: 1.2, fillOpacity: 0.05, fillColor: '#38bdf8' };
+          } else if (layerType === 'state') {
+            return { color: '#64748b', weight: 0.8, dashArray: '3, 3', fillOpacity: 0.03 };
+          } else if (layerType === 'river') {
+            return { color: '#0ea5e9', weight: 1.5, opacity: 0.6 };
+          }
+          return { color: '#94a3b8', weight: 1 };
+        },
+        pointToLayer: (feature: any, latlng: any) => {
+          return L!.circleMarker(latlng, {
+            radius: 4,
+            fillColor: '#f59e0b',
+            color: '#ffffff',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8,
+          }).bindTooltip(`🏙️ ${feature?.properties?.name || 'City'}`, { direction: 'top' });
+        }
+      }).addTo(map);
+
+      isBasemapLoaded = true;
+    } catch (err) {
+      console.warn('World Basemap L2 offline load skipped:', err);
+    }
   }
 
   function renderHexHeatmap() {
@@ -334,6 +379,9 @@
     <div class="toolbar-left">
       <span class="map-title">🗺️ OutGrid Map</span>
       <span class="badge-osm">© OpenStreetMap</span>
+      {#if isBasemapLoaded}
+        <span class="badge-basemap" title="World Vector Basemap Level 2 ออฟไลน์ติดเครื่อง 100%">🌍 Basemap L2</span>
+      {/if}
     </div>
     <div class="toolbar-right">
       <button
@@ -421,6 +469,15 @@
     color: #64748b;
     padding: 2px 8px;
     border-radius: 9999px;
+  }
+
+  .badge-basemap {
+    font-size: 0.7rem;
+    background: #0284c7;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-weight: 600;
   }
 
   .btn-control {

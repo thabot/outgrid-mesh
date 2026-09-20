@@ -33,6 +33,7 @@
 <main class="app-root" class:ultra-survival={isUltraSurvival}>
   <header class="app-header">
     <div class="logo">
+      <img src="/logo.png" alt="OutGrid Mesh Logo" class="brand-logo-img" />
       <span class="pulse-indicator"></span>
       <h1>OutGrid Mesh</h1>
       <span class="version-tag">{versionLabel}</span>
@@ -96,6 +97,14 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+  .brand-logo-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #0284c7;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
   }
   .logo h1 {
     margin: 0;

@@ -125,4 +125,40 @@ export class VectorTileParser {
       features
     };
   }
+
+  /**
+   * Validates and parses GeoJSON World Basemap Level 2
+   */
+  public static parseWorldBasemapGeoJson(geoJsonData: any): {
+    valid: boolean;
+    featureCount: number;
+    layers: Record<string, number>;
+  } {
+    if (!geoJsonData || geoJsonData.type !== 'FeatureCollection' || !Array.isArray(geoJsonData.features)) {
+      throw new Error('Invalid GeoJSON: must be a FeatureCollection with features array');
+    }
+
+    const layers: Record<string, number> = {
+      country: 0,
+      state: 0,
+      river: 0,
+      city: 0,
+      other: 0,
+    };
+
+    for (const f of geoJsonData.features) {
+      const layerType = f?.properties?.layer ?? 'other';
+      if (layers[layerType] !== undefined) {
+        layers[layerType]++;
+      } else {
+        layers.other++;
+      }
+    }
+
+    return {
+      valid: true,
+      featureCount: geoJsonData.features.length,
+      layers,
+    };
+  }
 }
