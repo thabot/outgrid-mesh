@@ -534,23 +534,25 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                          Plan Android: 6 Production Sprints                            │
+│                          Plan Android: 8 Production Sprints                            │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│  [ Sprint A: Official Assets & Offline Basemap ] ──► Logo Version 1 + World L2 (5MB)  │
+│  [ Sprint A: Official Assets & Offline Basemap ] ──► Logo Version 1 + World L2 (5MB) ✅ │
 │  [ Sprint B: Native Android Bridge & 24/7 ] ───────► Service + WakeLock + BleRadio    │
 │  [ Sprint C: Emergency Hardware & Power HUD ] ─────► Battery Runtime + Torch/Siren    │
 │  [ Sprint D: Navigation & State Machine Engine ] ──► 5s Fallback + Drawer + BottomNav │
 │  [ Sprint E: Tactical Radar & Offline Chat Hub ] ──► Radar HUD + E2EE + WebP/Opus/Pin  │
 │  [ Sprint F: Zero-Barrier Security & Sideload ] ───► Offline QR + APK Hotspot + i18n  │
+│  [ Sprint G: Autonomous Mobility & Acoustic ] ─────► Data Mule + DTN + Ultrasonic FSK │
+│  [ Sprint H: Native Android Production Build ] ────► Capacitor + BlePlugin + Release  │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### 🚀 SPRINT A: การติดตั้งแบรนด์ทางการและแผนที่เวกเตอร์ทั้งโลก (Brand Assets & World Basemap L2)
+### 🚀 SPRINT A: การติดตั้งแบรนด์ทางการและแผนที่เวกเตอร์ทั้งโลก (Brand Assets & World Basemap L2) ✅ [COMPLETED 100%]
 > **เป้าหมาย:** ติดตั้ง Logo Version 1 ลงระบบทั้ง Android Native และ Web พร้อมทั้งสกัดข้อมูลเวกเตอร์ทั้งโลก Natural Earth 1:50m เป็น `world_basemap_l2.json` (~5-6 MB) ฝังลงใน Assets ของ APK
 
-- [ ] **Task A.1: ติดตั้ง Logo Version 1 เป็น Android Adaptive Icons และ Web Assets (ครอบคลุม Item 9)**
+- [x] **Task A.1: ติดตั้ง Logo Version 1 เป็น Android Adaptive Icons และ Web Assets (ครอบคลุม Item 9) ✅**
   - **ไฟล์เป้าหมาย:** 
     - `scripts/generateAppIcons.js` (Automated Multi-Resolution Generator)
     - `android/app/src/main/res/drawable/ic_launcher_foreground.xml`
@@ -568,7 +570,7 @@
     - วางโลโก้ขนาด 36x36 px บนมุมซ้ายของ Header ในหน้าเว็บ (`+page.svelte`)
   - **เกณฑ์การผ่าน (DoD):** รัน `bun scripts/generateAppIcons.js` สร้างไฟล์ไอคอนครบทุกโฟลเดอร์ ไอคอนแอปบนมือถือและ Favicon บนเบราว์เซอร์แสดงผลเป็นโลโก้ Version 1 อย่างคมชัด
 
-- [ ] **Task A.2: พัฒนา Pipeline ดึงและบีบอัด World Vector Basemap L2 (`scripts/fetchAndOptimizeWorldBasemap.js`) (ครอบคลุม Item 2)**
+- [x] **Task A.2: พัฒนา Pipeline ดึงและบีบอัด World Vector Basemap L2 (`scripts/fetchAndOptimizeWorldBasemap.js`) (ครอบคลุม Item 2) ✅**
   - **ไฟล์เป้าหมาย:** `scripts/fetchAndOptimizeWorldBasemap.js`, `static/data/world_basemap_l2.json`
   - **รายละเอียดการทำงาน:**
     - ดึงข้อมูลจาก Natural Earth Scale 1:50m (Public Domain CC0): ขอบเขต 200+ ประเทศ (`ne_50m_admin_0_countries`), จังหวัด/รัฐ (`ne_50m_admin_1_states_provinces`), แม่น้ำสายหลัก (`ne_50m_rivers_lake_centerlines`), และเมืองสำคัญ (`ne_50m_populated_places`)
@@ -580,7 +582,7 @@
     - บันทึกลงใน `static/data/world_basemap_l2.json` พร้อมตรวจโครงสร้าง GeoJSON
   - **เกณฑ์การผ่าน (DoD):** รัน `bun scripts/fetchAndOptimizeWorldBasemap.js` แล้วไฟล์ `world_basemap_l2.json` ถูกสร้างขึ้นโดยมีขนาดไม่เกิน 6 MB
 
-- [ ] **Task A.3: อัปเดต `VectorTileParser.ts` และเชื่อมต่อ Leaflet Canvas ใน `SosMapView.svelte` (ครอบคลุม Item 2)**
+- [x] **Task A.3: อัปเดต `VectorTileParser.ts` และเชื่อมต่อ Leaflet Canvas ใน `SosMapView.svelte` (ครอบคลุม Item 2) ✅**
   - **ไฟล์เป้าหมาย:** `src/core/spatial/VectorTileParser.ts`, `src/ui/components/SosMapView.svelte`
   - **รายละเอียดการทำงาน:**
     - ปรับปรุง `VectorTileParser.ts` ให้โหลดและพาร์ส `world_basemap_l2.json` ขึ้นมาเป็น Leaflet GeoJSON Vector Layer แบบ Canvas
@@ -588,7 +590,7 @@
     - เพิ่มปุ่มสลับระยะทาง (Toggle Peer Distance `🟢 ~45 ม. | 🟩🟩🟩🟩⬜`) และปุ่มสลับโหนดทั้งหมด (Show All Nodes Toggle)
   - **เกณฑ์การผ่าน (DoD):** เปิดแอปในโหมดเครื่องบิน แผนที่โลกเวกเตอร์แสดงผลขึ้นมาได้ทันทีใน <1 วินาที
 
-- [ ] **Task A.4: Automated Validation Tests สำหรับ World Basemap L2 (ครอบคลุม Item 2)**
+- [x] **Task A.4: Automated Validation Tests สำหรับ World Basemap L2 (ครอบคลุม Item 2) ✅**
   - **ไฟล์เป้าหมาย:** `tests/unit/spatial/WorldBasemapValidation.test.ts`
   - **รายละเอียดการทำงาน:**
     - เขียนชุดทดสอบตรวจสอบความถูกต้องของไฟล์ `world_basemap_l2.json`:
@@ -596,7 +598,7 @@
       2. ตรวจสอบโครงสร้าง GeoJSON มาตรฐาน (`type === "FeatureCollection"`)
       3. ตรวจสอบว่ามี Features ครบทุกเลเยอร์หลัก (`country`, `state`, `river`, `city`)
       4. ตรวจสอบว่าพิกัดทั้งหมดถูกบีบอัดทศนิยมไม่เกิน 3 ตำแหน่ง
-  - **เกณฑ์การผ่าน (DoD):** รัน `bun test tests/unit/spatial/WorldBasemapValidation.test.ts` ผ่าน 100%
+  - **เกณฑ์การผ่าน (DoD):** รัน `bun test tests/unit/spatial/WorldBasemapValidation.test.ts` ผ่าน 100% (5/5 tests passed)
 
 ---
 
