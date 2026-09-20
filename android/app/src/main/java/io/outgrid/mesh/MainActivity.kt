@@ -72,10 +72,10 @@ class MainActivity : AppCompatActivity() {
             WebView.setWebContentsDebuggingEnabled(false)
         }
 
-        // Map root / directly to assets so /_app/... and /index.html resolve seamlessly
+        // Standard AndroidX AssetLoader handles MIME types, encoding & SPA routing
         val assetLoader = WebViewAssetLoader.Builder()
             .setDomain("appassets.androidplatform.net")
-            .addPathHandler("/", WebViewAssetLoader.AssetsPathHandler(this))
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
 
         webView.webViewClient = object : WebViewClientCompat() {
@@ -101,8 +101,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Load entry index page from root of appassets domain
-        webView.loadUrl("https://appassets.androidplatform.net/index.html")
+        // Load entry index page via standard assets path
+        webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
     }
 
     override fun onDestroy() {

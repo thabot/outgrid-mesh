@@ -71,9 +71,9 @@
     // @ts-ignore
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
-      iconRetinaUrl: '/_vendor/marker-icon-2x.png',
-      iconUrl: '/_vendor/marker-icon.png',
-      shadowUrl: '/_vendor/marker-shadow.png',
+      iconRetinaUrl: '/assets/_vendor/marker-icon-2x.png',
+      iconUrl: '/assets/_vendor/marker-icon.png',
+      shadowUrl: '/assets/_vendor/marker-shadow.png',
     });
 
     map = L.map(mapEl, {
