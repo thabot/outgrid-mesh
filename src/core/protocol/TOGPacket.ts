@@ -63,3 +63,57 @@ export interface IH3LocalDeltaOffset {
   deltaX: number; // int16 (-1500m to +1500m)
   deltaY: number; // int16 (-1500m to +1500m)
 }
+
+/**
+ * H3 Hexagonal 6-Direction index relative to our cell
+ * Fits in 3 bits (0b000 - 0b110)
+ */
+export enum H3Direction {
+  SAME_CELL = 0,
+  NORTH = 1,
+  NORTH_EAST = 2,
+  SOUTH_EAST = 3,
+  SOUTH = 4,
+  SOUTH_WEST = 5,
+  NORTH_WEST = 6
+}
+
+/**
+ * Radio & Node Capabilities Bitmask (Byte 9 of Presence Chirp)
+ */
+export enum RadioCapabilitiesBitmask {
+  STATIONARY_NODE = 1 << 0,     // 0x01: Fixed node (tower/rooftop)
+  POWER_TIER_MASK = 0x06,       // Bits 1-2: 00=Normal, 01=Critical<20%, 10=Charging, 11=Permanent
+  BLE_ACTIVE = 1 << 3,          // 0x08: Bluetooth LE Active (100-300m)
+  LORA_BRIDGE_ACTIVE = 1 << 4,  // 0x10: LoRa Bridge Active (15-20km)
+  WIFI_STANDARD_READY = 1 << 5, // 0x20: Wi-Fi Direct ready for APK Sideload (50-100m)
+  WIFI_HALOW_ACTIVE = 1 << 6,   // 0x40: Wi-Fi HaLow 802.11ah Sub-1GHz Active (1-3km)
+  INTERNET_GATEWAY = 1 << 7     // 0x80: Active Internet Outlink (Starlink/Cellular)
+}
+
+/**
+ * Single Neighbor Record (3 Bytes inside 27-byte Presence Chirp)
+ */
+export interface IPresenceNeighbor {
+  shortNodeId: number;   // 16 bits (0 - 65535)
+  direction: H3Direction; // 3 bits (0 - 6)
+  batteryLevel: number;  // 3 bits (1 - 5, 20% increments)
+  rssiTier: number;      // 2 bits (0=Weak <-85dBm, 1=Med, 2=Good, 3=Strong >-60dBm)
+}
+
+/**
+ * Decoded TOG v1.1 Presence Chirp Packet (27 Bytes Wire Format)
+ */
+export interface IPresenceChirp {
+  packetType: TOGPacketType; // 5 bits (0x07)
+  hopCount: number;          // 3 bits (0 - 7)
+  ourShortNodeId: number;    // 24 bits (0 - 16,777,215)
+  batteryLevel: number;      // 3 bits (1 - 5)
+  isCharging: boolean;       // 1 bit
+  statusFlags: number;       // 4 bits
+  ourH3Index: number;        // 32 bits (Uber H3 Res 9)
+  radioCapabilities: number; // 8 bits (RadioCapabilitiesBitmask)
+  neighbors: IPresenceNeighbor[]; // 0 to 5 neighbors (each 3 Bytes)
+  crc16: number;             // 16 bits (CRC-16-CCITT)
+}
+
