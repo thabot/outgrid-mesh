@@ -11,6 +11,7 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 
 /**
