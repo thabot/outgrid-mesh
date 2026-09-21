@@ -62,6 +62,11 @@ object BleRadioNativeDriver {
         }
     }
 
+    // Service UUID: 0x544F ('TO' in ASCII) matching TOG v1.1 Wire Specification & UpgardBT
+    private val TOG_SERVICE_UUID = java.util.UUID.fromString("0000544f-0000-1000-8000-00805f9b34fb")
+    private val TOG_PARCEL_UUID = android.os.ParcelUuid(TOG_SERVICE_UUID)
+    private const val TOG_MANUFACTURER_ID = 0x544F
+
     fun startScanning() {
         if (isScanning || scanner == null) return
 
@@ -77,10 +82,11 @@ object BleRadioNativeDriver {
                 .build()
         }
 
-        // Hardware ScanFilter targeting OutGrid TOG Magic 0x544F ('TO')
+        // Hardware ScanFilter targeting Service UUID & Manufacturer Data with open fallback
         val filters = listOf(
-            ScanFilter.Builder()
-                .build()
+            ScanFilter.Builder().setServiceUuid(TOG_PARCEL_UUID).build(),
+            ScanFilter.Builder().setManufacturerData(TOG_MANUFACTURER_ID, byteArrayOf()).build(),
+            ScanFilter.Builder().build()
         )
 
         try {
@@ -106,13 +112,40 @@ object BleRadioNativeDriver {
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             super.onScanResult(callbackType, result)
             lastScanEventTimestamp = System.currentTimeMillis()
-            val bytes = result?.scanRecord?.bytes ?: return
+            val record = result?.scanRecord ?: return
             val rssi = result.rssi
-            
-            // Fast check for TOG Magic (0x54, 0x4F)
-            if (bytes.size >= 2 && bytes[0] == 0x54.toByte() && bytes[1] == 0x4F.toByte()) {
-                // Incoming TOG v1.1 Packet detected from air!
-                packetListener?.invoke(bytes, rssi)
+
+            // 1. Check Service Data for TOG_PARCEL_UUID (Standard Android BLE transport)
+            val serviceData = record.getServiceData(TOG_PARCEL_UUID)
+            if (serviceData != null && serviceData.isNotEmpty()) {
+                packetListener?.invoke(serviceData, rssi)
+                return
+            }
+
+            // 2. Check Manufacturer Data for TOG_MANUFACTURER_ID (0x544F)
+            val mfgData = record.getManufacturerSpecificData(TOG_MANUFACTURER_ID)
+            if (mfgData != null && mfgData.isNotEmpty()) {
+                packetListener?.invoke(mfgData, rssi)
+                return
+            }
+
+            // 3. Raw AD payload scan: Search for TOG Magic (0x54, 0x4F) in advertising byte stream
+            val rawBytes = record.bytes ?: return
+            if (rawBytes.size >= 2) {
+                // Direct index 0 check
+                if (rawBytes[0] == 0x54.toByte() && rawBytes[1] == 0x4F.toByte()) {
+                    packetListener?.invoke(rawBytes, rssi)
+                    return
+                }
+
+                // Search inside AD structure blocks for Magic 0x544F
+                for (i in 0 until (rawBytes.size - 4)) {
+                    if (rawBytes[i] == 0x54.toByte() && rawBytes[i + 1] == 0x4F.toByte()) {
+                        val packetSlice = rawBytes.copyOfRange(i, rawBytes.size)
+                        packetListener?.invoke(packetSlice, rssi)
+                        return
+                    }
+                }
             }
         }
     }

@@ -68,13 +68,27 @@
     activeTab = tab;
   }
 
+  import { AuthManager } from '../core/auth/AuthManager';
+
+  let auth = new AuthManager();
+  let myProfile = auth.getProfile();
+
   function handleStartDirectChat(e: CustomEvent<{ peerId: string; peerName: string }>) {
     activeTab = 'chat';
   }
 
   onMount(() => {
-    // Automatically start periodic BLE Presence broadcasting on launch
-    peerDiscoveryManager.startPresenceBroadcaster();
+    // Derive unique 16-bit short numeric node ID from our own unique nodeId
+    let numericNodeId = 0x47A1;
+    try {
+      const parsed = parseInt(myProfile.nodeId.slice(0, 4), 16);
+      if (!isNaN(parsed) && parsed > 0) {
+        numericNodeId = parsed;
+      }
+    } catch {}
+
+    // Automatically start periodic BLE Presence broadcasting with unique node ID on launch
+    peerDiscoveryManager.startPresenceBroadcaster(numericNodeId);
   });
 
   onDestroy(() => {

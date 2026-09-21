@@ -11,7 +11,7 @@ import { describe, it, expect } from 'bun:test';
 import { readFileSync } from 'fs';
 
 describe('i18n Bundle Completeness (10 Languages 100% Parity)', () => {
-  const languages = ['th', 'en', 'my', 'lo', 'km', 'vi', 'ms', 'zh', 'ja', 'es'];
+  const languages = ['en', 'th', 'zh', 'es', 'ja', 'hi', 'ar', 'fr', 'ru', 'pt'];
   const expectedKeys = [
     'app_name',
     'one_tap_sos',

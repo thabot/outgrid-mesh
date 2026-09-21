@@ -39,20 +39,26 @@
 
   // Scanner state
   let videoEl: HTMLVideoElement;
+  let canvasEl: HTMLCanvasElement | null = null;
+  let canvasCtx: CanvasRenderingContext2D | null = null;
   let mediaStream: MediaStream | null = null;
   let isCameraActive = false;
   let cameraError = '';
   let manualInputCode = '';
+  let scanAnimationId: number | null = null;
+  let isScanningFrame = false;
+
+  // Feedback states
   let scanSuccessMessage = '';
   let scanErrorMessage = '';
-  let safetyNumberInfo: { formatted: string } | null = null;
+  let safetyNumberInfo: any = null;
 
-  // Search query
+  // Search filter
   let searchQuery = '';
 
   // Saved contacts interface
   export interface ISavedFriend {
-    id: string;             // Short node ID (e.g. "#4C55")
+    id: string; // e.g. "#4C55"
     fullNodeId?: string;
     name: string;
     avatarEmoji: string;
@@ -115,7 +121,7 @@
 
       myQrSvg = OfflineQrGenerator.renderSvg(myContactPayload, {
         pixelSize: 8,
-        margin: 2,
+        margin: 4,
         inverted: false
       });
     } catch (err) {
@@ -144,13 +150,18 @@
 
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
         audio: false
       });
       if (videoEl) {
         videoEl.srcObject = mediaStream;
         await videoEl.play();
         isCameraActive = true;
+        startQrDecodeLoop();
       }
     } catch (err: any) {
       isCameraActive = false;
@@ -162,12 +173,84 @@
     }
   }
 
+  function startQrDecodeLoop() {
+    if (typeof window === 'undefined') return;
+    if (!canvasEl) {
+      canvasEl = document.createElement('canvas');
+      canvasCtx = canvasEl.getContext('2d', { willReadFrequently: true });
+    }
+
+    const decodeFrame = async () => {
+      if (!isCameraActive || !videoEl || videoEl.readyState !== videoEl.HAVE_ENOUGH_DATA) {
+        if (isCameraActive) {
+          scanAnimationId = requestAnimationFrame(decodeFrame);
+        }
+        return;
+      }
+
+      if (isScanningFrame) {
+        scanAnimationId = requestAnimationFrame(decodeFrame);
+        return;
+      }
+
+      isScanningFrame = true;
+      try {
+        const width = videoEl.videoWidth;
+        const height = videoEl.videoHeight;
+        if (width > 0 && height > 0 && canvasEl && canvasCtx) {
+          if (canvasEl.width !== width || canvasEl.height !== height) {
+            canvasEl.width = width;
+            canvasEl.height = height;
+          }
+          canvasCtx.drawImage(videoEl, 0, 0, width, height);
+          const imageData = canvasCtx.getImageData(0, 0, width, height);
+
+          // Dynamically import jsQR
+          const jsQrModule = await import('jsqr');
+          const jsQR = jsQrModule.default || (jsQrModule as any);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBoth'
+          });
+
+          if (code && code.data) {
+            const detectedText = code.data.trim();
+            if (detectedText.startsWith('OG:v1:PAIR:') || detectedText.startsWith('WIFI:')) {
+              // Haptic feedback if available
+              if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                try { navigator.vibrate(80); } catch {}
+              }
+              processPairingString(detectedText);
+              // Stop camera and close scan modal on successful QR detection
+              stopCamera();
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        // Continue scanning frame
+      } finally {
+        isScanningFrame = false;
+      }
+
+      if (isCameraActive) {
+        scanAnimationId = requestAnimationFrame(decodeFrame);
+      }
+    };
+
+    scanAnimationId = requestAnimationFrame(decodeFrame);
+  }
+
   function stopCamera() {
+    if (scanAnimationId !== null) {
+      cancelAnimationFrame(scanAnimationId);
+      scanAnimationId = null;
+    }
     if (mediaStream) {
       mediaStream.getTracks().forEach(track => track.stop());
       mediaStream = null;
     }
     isCameraActive = false;
+    isScanningFrame = false;
   }
 
   function openModal(mode: 'my_qr' | 'scan_qr') {
