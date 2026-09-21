@@ -28,41 +28,90 @@
   let graceTimer: any = null;
   let unsubscribeState: (() => void) | null = null;
 
-  function updateNetworkStatus() {
-    if (typeof navigator !== 'undefined') {
-      const isOnline = navigator.onLine;
-      const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
-      
-      if (isOnline) {
-        if (connection?.type === 'wifi' || connection?.effectiveType === '4g') {
-          networkType = connection.type === 'wifi' ? 'wifi' : '5g_4g';
-        } else {
-          networkType = '5g_4g';
-        }
-        stateMachine.updateConnectivity(true);
-        graceCountdown = 0;
-        if (graceTimer) clearInterval(graceTimer);
-      } else {
-        // Disconnected - check state machine
-        stateMachine.updateConnectivity(false);
-        if (stateMachine.getOperatingMode() === AppOperatingMode.DISASTER_MESH) {
-          networkType = peerCounts.total > 0 ? 'disaster_mesh' : 'isolated';
-          graceCountdown = 0;
-        } else {
-          // In 5s grace period
-          if (!graceTimer) {
-            graceCountdown = 5;
-            graceTimer = setInterval(() => {
-              graceCountdown--;
-              stateMachine.checkGracePeriod();
-              if (graceCountdown <= 0 || stateMachine.getOperatingMode() === AppOperatingMode.DISASTER_MESH) {
-                clearInterval(graceTimer);
-                graceTimer = null;
-                networkType = peerCounts.total > 0 ? 'disaster_mesh' : 'isolated';
-              }
-            }, 1000);
+  let probeTimer: any = null;
+  let isProbing = false;
+
+  async function checkActiveInternet(): Promise<boolean> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return false;
+    }
+    // Perform active HTTP probe with tight 2.5s timeout
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      // Attempt probe to public lightweight endpoint with cache-busting
+      const res = await fetch(`https://cloudflare.com/cdn-cgi/trace?_t=${Date.now()}`, {
+        method: 'HEAD',
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function updateNetworkStatus() {
+    if (typeof navigator === 'undefined') return;
+
+    // Fast check: if navigator explicitly says offline
+    const navOffline = !navigator.onLine;
+    if (navOffline) {
+      applyOfflineState();
+      return;
+    }
+
+    // If online according to browser, verify with active probe to catch WebView false-positive 4G
+    if (!isProbing) {
+      isProbing = true;
+      const reachable = await checkActiveInternet();
+      isProbing = false;
+
+      if (!reachable) {
+        applyOfflineState();
+        return;
+      }
+    }
+
+    // Active internet confirmed
+    const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+    if (connection?.type === 'wifi') {
+      networkType = 'wifi';
+    } else {
+      networkType = '5g_4g';
+    }
+    stateMachine.updateConnectivity(true);
+    graceCountdown = 0;
+    if (graceTimer) {
+      clearInterval(graceTimer);
+      graceTimer = null;
+    }
+  }
+
+  function applyOfflineState() {
+    stateMachine.updateConnectivity(false);
+    if (stateMachine.getOperatingMode() === AppOperatingMode.DISASTER_MESH) {
+      networkType = peerCounts.total > 0 ? 'disaster_mesh' : 'isolated';
+      graceCountdown = 0;
+      if (graceTimer) {
+        clearInterval(graceTimer);
+        graceTimer = null;
+      }
+    } else {
+      // In 5s grace period
+      if (!graceTimer) {
+        graceCountdown = 5;
+        graceTimer = setInterval(() => {
+          graceCountdown--;
+          stateMachine.checkGracePeriod();
+          if (graceCountdown <= 0 || stateMachine.getOperatingMode() === AppOperatingMode.DISASTER_MESH) {
+            clearInterval(graceTimer);
+            graceTimer = null;
+            networkType = peerCounts.total > 0 ? 'disaster_mesh' : 'isolated';
           }
-        }
+        }, 1000);
       }
     }
   }
@@ -105,12 +154,15 @@
     if (typeof window !== 'undefined') {
       window.addEventListener('online', updateNetworkStatus);
       window.addEventListener('offline', updateNetworkStatus);
+      // Periodic active probe every 5 seconds to catch silent mobile network changes
+      probeTimer = setInterval(updateNetworkStatus, 5000);
     }
   });
 
   onDestroy(() => {
     if (unsubscribeState) unsubscribeState();
     if (graceTimer) clearInterval(graceTimer);
+    if (probeTimer) clearInterval(probeTimer);
     if (typeof window !== 'undefined') {
       window.removeEventListener('online', updateNetworkStatus);
       window.removeEventListener('offline', updateNetworkStatus);

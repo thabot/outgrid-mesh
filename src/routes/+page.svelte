@@ -1,4 +1,5 @@
 <script lang="ts">
+  import 'leaflet/dist/leaflet.css';
   import OneTapSos from '../ui/components/OneTapSos.svelte';
   import CrisisFeed from '../ui/components/CrisisFeed.svelte';
   import DonationDashboard from '../ui/components/DonationDashboard.svelte';

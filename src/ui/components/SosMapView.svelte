@@ -138,22 +138,22 @@
         style: (feature: any) => {
           const layerType = feature?.properties?.layer;
           if (layerType === 'country') {
-            return { color: '#0284c7', weight: 1.2, fillOpacity: 0.05, fillColor: '#38bdf8' };
+            return { color: '#0284c7', weight: 1.5, fillOpacity: 0.02, fillColor: '#38bdf8', opacity: 0.4 };
           } else if (layerType === 'state') {
-            return { color: '#64748b', weight: 0.8, dashArray: '3, 3', fillOpacity: 0.03 };
+            return { color: '#38bdf8', weight: 1, dashArray: '4, 4', fillOpacity: 0.01, opacity: 0.35 };
           } else if (layerType === 'river') {
-            return { color: '#0ea5e9', weight: 1.5, opacity: 0.6 };
+            return { color: '#0ea5e9', weight: 1.5, opacity: 0.5 };
           }
-          return { color: '#94a3b8', weight: 1 };
+          return { color: '#64748b', weight: 0.8, opacity: 0.3 };
         },
         pointToLayer: (feature: any, latlng: any) => {
           return L!.circleMarker(latlng, {
-            radius: 4,
+            radius: 3.5,
             fillColor: '#f59e0b',
             color: '#ffffff',
             weight: 1,
-            opacity: 1,
-            fillOpacity: 0.8,
+            opacity: 0.8,
+            fillOpacity: 0.7,
           }).bindTooltip(`🏙️ ${feature?.properties?.name || 'City'}`, { direction: 'top' });
         }
       }).addTo(map);
@@ -618,5 +618,31 @@
   @keyframes sos-pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.25); }
+  }
+
+  /* Global Leaflet Engine & Tile Layer Overrides */
+  :global(.map-container.leaflet-container) {
+    width: 100% !important;
+    height: 100% !important;
+    background: #0b132b !important;
+    outline: none !important;
+  }
+
+  :global(.leaflet-tile-pane) {
+    z-index: 200 !important;
+  }
+
+  :global(.leaflet-tile) {
+    filter: brightness(0.85) contrast(1.15) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  :global(.leaflet-overlay-pane) {
+    z-index: 400 !important;
+  }
+
+  :global(.leaflet-marker-pane) {
+    z-index: 600 !important;
   }
 </style>
