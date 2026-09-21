@@ -29,11 +29,12 @@ describe('SosMapView (Phase 5 Task 10.3 — Spatial Map UI)', () => {
     expect(pageContent).toContain('🗺️');
   });
 
-  it('should have Leaflet CSS loaded in app.html', () => {
-    const appHtmlPath = join(ROOT, 'src/app.html');
-    const content = readFileSync(appHtmlPath, 'utf-8');
-    expect(content).toContain('leaflet');
-    expect(content).toContain('stylesheet');
+  it('should have Leaflet CSS loaded locally in SosMapView component', () => {
+    const svelteCode = readFileSync(
+      join(process.cwd(), 'src/ui/components/SosMapView.svelte'),
+      'utf-8'
+    );
+    expect(svelteCode).toContain("import('leaflet/dist/leaflet.css')");
   });
 
   it('should comply with ODbL attribution requirement (© OpenStreetMap)', () => {

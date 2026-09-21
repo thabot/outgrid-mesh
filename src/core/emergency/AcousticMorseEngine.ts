@@ -96,4 +96,23 @@ export class AcousticMorseEngine {
 
     return tones;
   }
+
+  /**
+   * Generates alternating dual-tone emergency acoustic siren (960Hz / 1440Hz 85dB)
+   * penetrating collapsed structures and heavy rain
+   */
+  public static generateDualToneSiren(
+    cycles = 6,
+    lowFreq = 960,
+    highFreq = 1440,
+    halfCycleMs = 350
+  ): IMorseTone[] {
+    const tones: IMorseTone[] = [];
+    for (let i = 0; i < cycles; i++) {
+      tones.push({ frequency: lowFreq, durationMs: halfCycleMs, isSilence: false });
+      tones.push({ frequency: highFreq, durationMs: halfCycleMs, isSilence: false });
+    }
+    return tones;
+  }
 }
+

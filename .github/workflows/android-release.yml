@@ -60,7 +60,17 @@ jobs:
       - name: Run Unit & Integration Tests
         run: bun test
 
-      - name: Build Web PWA Bundle (Android mode — no BASE_PATH)
+      - name: Inject Build Version Metadata
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          BUILD_DATE=$(date -u +"%Y-%m-%d")
+          echo "VITE_APP_VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "VITE_APP_COMMIT=${COMMIT_SHA}" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+          echo "Prepared version v${VERSION} (${COMMIT_SHA})"
+
+      - name: Build Web PWA Bundle (Android mode — relative paths)
         run: bun run build
         env:
           VITE_APP_VERSION: ${{ env.VITE_APP_VERSION }}
@@ -68,15 +78,12 @@ jobs:
           VITE_APP_BUILD_DATE: ${{ env.VITE_APP_BUILD_DATE }}
           VITE_ANDROID_BUILD: "true"
 
-      - name: Bundle Leaflet CSS into assets (offline — no CDN dependency)
+      - name: Bundle Leaflet Marker Icons into assets (offline)
         run: |
           mkdir -p build/_vendor
-          curl -sL "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" -o build/_vendor/leaflet.css
           curl -sL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png" -o build/_vendor/marker-icon.png
           curl -sL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png" -o build/_vendor/marker-icon-2x.png
           curl -sL "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png" -o build/_vendor/marker-shadow.png
-          # Patch index.html to use local vendor leaflet CSS instead of CDN
-          sed -i 's|https://unpkg.com/leaflet@1.9.4/dist/leaflet.css|/_vendor/leaflet.css|g' build/index.html
 
       - name: Copy Web Bundle into Android Assets
         run: |
@@ -91,7 +98,7 @@ jobs:
       - name: Build Android APK with Gradle
         run: |
           cd android
-          gradle assembleDebug --no-daemon
+          gradle assembleDebug --no-daemon --stacktrace
           mkdir -p ../dist-apk
           cp app/build/outputs/apk/debug/app-debug.apk ../dist-apk/${{ steps.meta.outputs.apk_name }}
 

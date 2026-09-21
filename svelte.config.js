@@ -5,6 +5,7 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
+		appDir: 'app',
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
@@ -13,8 +14,8 @@ const config = {
 			strict: true
 		}),
 		paths: {
-			base: process.env.BASE_PATH || '',
-			relative: false
+			base: '',
+			relative: true
 		}
 	}
 };

@@ -38,6 +38,30 @@ object BleRadioNativeDriver {
         }
     }
 
+    private var packetListener: ((bytes: ByteArray, rssi: Int) -> Unit)? = null
+    private var lastScanEventTimestamp: Long = System.currentTimeMillis()
+    private val watchdogHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val WATCHDOG_INTERVAL_MS = 15 * 60 * 1000L // 15-minute Watchdog cycle
+
+    fun setPacketListener(listener: ((bytes: ByteArray, rssi: Int) -> Unit)?) {
+        this.packetListener = listener
+    }
+
+    private val watchdogRunnable = object : Runnable {
+        override fun run() {
+            if (isScanning) {
+                val idleTime = System.currentTimeMillis() - lastScanEventTimestamp
+                // If silent Bluetooth freeze detected (> 15 min without any scan event)
+                if (idleTime > WATCHDOG_INTERVAL_MS) {
+                    android.util.Log.w("OutGridBLE", "Watchdog: Silent Bluetooth freeze suspected. Refreshing scanner...")
+                    stopScanning()
+                    startScanning()
+                }
+            }
+            watchdogHandler.postDelayed(this, WATCHDOG_INTERVAL_MS)
+        }
+    }
+
     fun startScanning() {
         if (isScanning || scanner == null) return
 
@@ -53,6 +77,7 @@ object BleRadioNativeDriver {
                 .build()
         }
 
+        // Hardware ScanFilter targeting OutGrid TOG Magic 0x544F ('TO')
         val filters = listOf(
             ScanFilter.Builder()
                 .build()
@@ -61,12 +86,15 @@ object BleRadioNativeDriver {
         try {
             scanner?.startScan(filters, scanSettings, scanCallback)
             isScanning = true
+            lastScanEventTimestamp = System.currentTimeMillis()
+            watchdogHandler.postDelayed(watchdogRunnable, WATCHDOG_INTERVAL_MS)
         } catch (_: SecurityException) {
             // Handled when user grants BLUETOOTH_SCAN permission
         }
     }
 
     fun stopScanning() {
+        watchdogHandler.removeCallbacks(watchdogRunnable)
         if (!isScanning || scanner == null) return
         try {
             scanner?.stopScan(scanCallback)
@@ -77,11 +105,14 @@ object BleRadioNativeDriver {
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             super.onScanResult(callbackType, result)
+            lastScanEventTimestamp = System.currentTimeMillis()
             val bytes = result?.scanRecord?.bytes ?: return
+            val rssi = result.rssi
             
             // Fast check for TOG Magic (0x54, 0x4F)
             if (bytes.size >= 2 && bytes[0] == 0x54.toByte() && bytes[1] == 0x4F.toByte()) {
                 // Incoming TOG v1.1 Packet detected from air!
+                packetListener?.invoke(bytes, rssi)
             }
         }
     }

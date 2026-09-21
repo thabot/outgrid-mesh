@@ -11,7 +11,13 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
 /**
  * Main Entry Activity for OutGrid Rescue
@@ -22,15 +28,32 @@ import androidx.webkit.WebViewClientCompat
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private var androidBridge: OutGridAndroidBridge? = null
+
+    // Batch Runtime Permissions Request Launcher (Sprint D Task D.3)
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val grantedCount = permissions.values.count { it }
+        android.util.Log.i("OutGridMesh", "Runtime permissions granted: $grantedCount / ${permissions.size}")
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Request all required hardware and notification permissions
+        requestRuntimePermissions()
+
         // Initialize WebView for OutGrid Rescue UI
         webView = findViewById(R.id.webView)
         configureWebView()
+
+        // Wire BLE Radio incoming packets directly into JavaScript bridge
+        BleRadioNativeDriver.setPacketListener { bytes, rssi ->
+            androidBridge?.dispatchIncomingPacket(bytes, rssi)
+        }
 
         // Handle hardware Back button to navigate back in WebView history
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -53,64 +76,137 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    private fun requestRuntimePermissions() {
+        val permissionsToRequest = mutableListOf<String>()
+
+        // 1. Precise GPS Location (Emergency SOS <1m accuracy)
+        permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        // 2. Camera & Audio (SOS Flashlight, QR Scan, Voice Clips)
+        permissionsToRequest.add(Manifest.permission.CAMERA)
+        permissionsToRequest.add(Manifest.permission.RECORD_AUDIO)
+
+        // 3. Bluetooth Mesh Permissions (Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+            permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+
+        // 4. Nearby Wi-Fi Devices (Android 13+ for Offline APK Hotspot)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionsToRequest.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+            permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        val ungranted = permissionsToRequest.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (ungranted.isNotEmpty()) {
+            permissionLauncher.launch(ungranted.toTypedArray())
+        }
+    }
+
     private fun configureWebView() {
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
+        
+        // Expose Native Android Bridge to window.AndroidBridge
+        androidBridge = OutGridAndroidBridge(this, webView)
+        webView.addJavascriptInterface(androidBridge!!, "AndroidBridge")
         settings.databaseEnabled = true
-        settings.allowFileAccess = false
-        settings.allowContentAccess = false
+        settings.allowFileAccess = true
+        settings.allowContentAccess = true
         settings.cacheMode = WebSettings.LOAD_DEFAULT
 
-        // ── Fix: prevent white flash — set dark background immediately ──
         webView.setBackgroundColor(Color.parseColor("#090d16"))
 
-        // ── Fix: enable ES module support required by SvelteKit ──
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            WebView.setWebContentsDebuggingEnabled(false)
-        }
+        // Enable Chrome DevTools remote debugging
+        WebView.setWebContentsDebuggingEnabled(true)
 
-        // Direct Local Asset Interceptor
-        // Handles root-relative imports (/_app/...) and vendor assets (/_vendor/...)
+        // Standard AndroidX AssetLoader handles secure https:// origin for ES Modules & WebCrypto
+        val assetLoader = WebViewAssetLoader.Builder()
+            .setDomain("appassets.androidplatform.net")
+            .addPathHandler("/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
         webView.webViewClient = object : WebViewClientCompat() {
             override fun shouldInterceptRequest(
                 view: WebView?,
                 request: WebResourceRequest?
             ): WebResourceResponse? {
                 val url = request?.url ?: return null
-                if (url.host == "appassets.androidplatform.net") {
-                    var path = url.path ?: ""
-                    if (path.isEmpty() || path == "/") {
-                        path = "/index.html"
-                    }
-                    val assetPath = path.removePrefix("/")
-                    try {
-                        val stream = assets.open(assetPath)
-                        val mimeType = guessMimeType(assetPath)
-                        val headers = mapOf(
+                val path = url.path ?: "/"
+
+                // Handle root domain request and serve offline index.html entry
+                if (url.host == "appassets.androidplatform.net" && (path == "/" || path.isEmpty())) {
+                    return try {
+                        val inputStream = assets.open("index.html")
+                        val response = WebResourceResponse("text/html", "UTF-8", inputStream)
+                        val headers = mutableMapOf(
                             "Access-Control-Allow-Origin" to "*",
                             "Cache-Control" to "no-cache"
                         )
-                        return WebResourceResponse(mimeType, "UTF-8", 200, "OK", headers, stream)
+                        response.responseHeaders = headers
+                        response
                     } catch (e: Exception) {
-                        android.util.Log.e("OutGridWebView", "Local asset not found: $assetPath", e)
+                        null
                     }
                 }
-                return super.shouldInterceptRequest(view, request)
-            }
 
-            override fun onReceivedError(
-                view: WebView?,
-                request: WebResourceRequest?,
-                error: androidx.webkit.WebResourceErrorCompat
-            ) {
-                android.util.Log.e("OutGridWebView", "WebView error: ${error.description} for ${request?.url}")
-                super.onReceivedError(view, request, error)
+                // Delegate asset loading to AndroidX WebViewAssetLoader
+                var response = assetLoader.shouldInterceptRequest(url)
+
+                // Direct AssetManager fallback if AssetLoader did not resolve the asset
+                if (response == null && url.host == "appassets.androidplatform.net") {
+                    val cleanPath = path.removePrefix("/")
+                    response = try {
+                        val inputStream = assets.open(cleanPath)
+                        WebResourceResponse(null, null, inputStream)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
+                // Client SPA fallback: if not found and route does not have file extension, serve index.html
+                if (response == null && url.host == "appassets.androidplatform.net" && !path.substringAfterLast("/").contains(".")) {
+                    return try {
+                        val inputStream = assets.open("index.html")
+                        val fallbackResponse = WebResourceResponse("text/html", "UTF-8", inputStream)
+                        fallbackResponse.responseHeaders = mutableMapOf("Access-Control-Allow-Origin" to "*")
+                        fallbackResponse
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
+                if (response == null) return null
+
+                // Enforce JavaScript and web asset MIME types for modern Chromium ES Module dynamic loading
+                val effectiveMime = when {
+                    path.endsWith(".js") -> "text/javascript"
+                    path.endsWith(".css") -> "text/css"
+                    path.endsWith(".json") -> "application/json"
+                    path.endsWith(".svg") -> "image/svg+xml"
+                    path.endsWith(".png") -> "image/png"
+                    path.endsWith(".html") -> "text/html"
+                    path.endsWith(".wasm") -> "application/wasm"
+                    else -> response.mimeType
+                }
+                response.mimeType = effectiveMime
+
+                val headers = response.responseHeaders?.toMutableMap() ?: mutableMapOf()
+                headers["Access-Control-Allow-Origin"] = "*"
+                response.responseHeaders = headers
+
+                return response
             }
         }
 
-        // WebChromeClient to capture JS console messages to Logcat for debugging
+        // WebChromeClient to capture JS console, handle Geolocation & Media permissions (Sprint D Task D.3)
         webView.webChromeClient = object : android.webkit.WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
                 consoleMessage?.let {
@@ -121,27 +217,23 @@ class MainActivity : AppCompatActivity() {
                 }
                 return true
             }
+
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: android.webkit.GeolocationPermissions.Callback?
+            ) {
+                // Grant geolocation for app assets origin
+                callback?.invoke(origin, true, false)
+            }
+
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                // Grant camera / microphone WebRTC access for QR scanning & emergency voice clips
+                request?.grant(request.resources)
+            }
         }
 
-        // Load entry index page from local assets via appassets virtual host
-        webView.loadUrl("https://appassets.androidplatform.net/index.html")
-    }
-
-    private fun guessMimeType(path: String): String = when {
-        path.endsWith(".html") -> "text/html; charset=utf-8"
-        path.endsWith(".js") || path.endsWith(".mjs") -> "text/javascript"
-        path.endsWith(".css") -> "text/css"
-        path.endsWith(".json") -> "application/json"
-        path.endsWith(".svg") -> "image/svg+xml"
-        path.endsWith(".png") -> "image/png"
-        path.endsWith(".jpg") || path.endsWith(".jpeg") -> "image/jpeg"
-        path.endsWith(".webp") -> "image/webp"
-        path.endsWith(".wasm") -> "application/wasm"
-        path.endsWith(".pbf") -> "application/x-protobuf"
-        path.endsWith(".woff2") -> "font/woff2"
-        path.endsWith(".woff") -> "font/woff"
-        path.endsWith(".ttf") -> "font/ttf"
-        else -> "application/octet-stream"
+        // Load entry index page via synthetic secure origin
+        webView.loadUrl("https://appassets.androidplatform.net/")
     }
 
     override fun onDestroy() {

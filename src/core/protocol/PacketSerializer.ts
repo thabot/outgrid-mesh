@@ -10,8 +10,11 @@ import {
   TOG_VERSION,
   TOGPacketType,
   TOGPriority,
+  H3Direction,
   type ITOGHeader,
-  type ITOGPacket
+  type ITOGPacket,
+  type IPresenceChirp,
+  type IPresenceNeighbor
 } from './TOGPacket';
 import { CRC16 } from './CRC16';
 
@@ -215,4 +218,171 @@ export class PacketSerializer {
 
     return buf;
   }
+
+  /**
+   * Packs Neighbor Fused Byte (1 Byte):
+   * Bit 0-2 (3 bits): H3 6-Direction (0-6)
+   * Bit 3-5 (3 bits): Battery 5 Tiers (1-5)
+   * Bit 6-7 (2 bits): RSSI 4 Levels (0-3)
+   */
+  public static packNeighborFusedByte(
+    direction: H3Direction,
+    batteryLevel: number,
+    rssiTier: number
+  ): number {
+    const dir = Math.min(6, Math.max(0, direction)) & 0x07;
+    const bat = Math.min(5, Math.max(1, batteryLevel)) & 0x07;
+    const rssi = Math.min(3, Math.max(0, rssiTier)) & 0x03;
+    return dir | (bat << 3) | (rssi << 6);
+  }
+
+  /**
+   * Unpacks Neighbor Fused Byte (1 Byte) into { direction, batteryLevel, rssiTier }
+   */
+  public static unpackNeighborFusedByte(fusedByte: number): {
+    direction: H3Direction;
+    batteryLevel: number;
+    rssiTier: number;
+  } {
+    const direction = (fusedByte & 0x07) as H3Direction;
+    const batteryLevel = (fusedByte >> 3) & 0x07;
+    const rssiTier = (fusedByte >> 6) & 0x03;
+    return { direction, batteryLevel, rssiTier };
+  }
+
+  /**
+   * Serializes a 27-Byte Presence Chirp Micro-Packet (0x07: PRESENCE_CHIRP)
+   * Strictly formatted for BLE Legacy 31-byte limit with 4-byte Apple Find My style headroom.
+   */
+  public static serializePresenceChirp(
+    chirp: Omit<IPresenceChirp, 'packetType' | 'crc16'>
+  ): Uint8Array {
+    // 27 Bytes total:
+    // [0] Type (5b: 0x07) | Hop (3b: 0-7) - 1B
+    // [1-3] Our Short NodeID (24 bits) - 3B
+    // [4] Bat 5 Tiers (3b) | Charging (1b) | Status Flags (4b) - 1B
+    // [5-8] Our H3 Cell Res 9 Index (32 bits) - 4B
+    // [9] Radio Capabilities (1B)
+    // [10-24] 5 Neighbors (5 * 3B = 15B)
+    // [25-26] CRC-16-CCITT (2B)
+    const buf = new Uint8Array(27);
+    const view = new DataView(buf.buffer);
+
+    // Byte 0: Type (5b) | Hop (3b)
+    const pType = TOGPacketType.PRESENCE_CHIRP & 0x1f;
+    const hop = (chirp.hopCount & 0x07) << 5;
+    view.setUint8(0, hop | pType);
+
+    // Byte 1-3: Our Short NodeID (24 bits, Big-Endian)
+    const shortId = chirp.ourShortNodeId & 0xffffff;
+    view.setUint8(1, (shortId >> 16) & 0xff);
+    view.setUint8(2, (shortId >> 8) & 0xff);
+    view.setUint8(3, shortId & 0xff);
+
+    // Byte 4: Battery & Charging & Status
+    const bat = Math.min(5, Math.max(1, chirp.batteryLevel)) & 0x07;
+    const chg = chirp.isCharging ? 0x08 : 0x00;
+    const flags = (chirp.statusFlags & 0x0f) << 4;
+    view.setUint8(4, bat | chg | flags);
+
+    // Byte 5-8: Our H3 Index (32 bits uint)
+    view.setUint32(5, chirp.ourH3Index >>> 0, false);
+
+    // Byte 9: Radio Capabilities
+    view.setUint8(9, chirp.radioCapabilities & 0xff);
+
+    // Byte 10-24: Up to 5 neighbors (each 3 Bytes = 2B NodeID + 1B Fused)
+    const neighborCount = Math.min(5, chirp.neighbors.length);
+    for (let i = 0; i < 5; i++) {
+      const offset = 10 + (i * 3);
+      if (i < neighborCount) {
+        const n = chirp.neighbors[i];
+        view.setUint16(offset, n.shortNodeId & 0xffff, false);
+        const fused = this.packNeighborFusedByte(n.direction, n.batteryLevel, n.rssiTier);
+        view.setUint8(offset + 2, fused);
+      } else {
+        // Pad empty slots with 0
+        view.setUint16(offset, 0, false);
+        view.setUint8(offset + 2, 0);
+      }
+    }
+
+    // Byte 25-26: CRC-16-CCITT calculated over Bytes 0 to 24
+    const crc = CRC16.compute(buf, 0, 25);
+    view.setUint16(25, crc & 0xffff, false);
+
+    return buf;
+  }
+
+  /**
+   * Deserializes a 27-Byte Presence Chirp Micro-Packet
+   */
+  public static deserializePresenceChirp(buffer: Uint8Array): IPresenceChirp {
+    if (buffer.length < 27) {
+      throw new Error(`Presence Chirp buffer too short: ${buffer.length} < 27 bytes`);
+    }
+
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    // 1. Verify CRC-16
+    const expectedCrc = view.getUint16(25, false);
+    const computedCrc = CRC16.compute(buffer, 0, 25);
+    if (expectedCrc !== computedCrc) {
+      throw new Error(`CRC-16 mismatch for Presence Chirp: 0x${expectedCrc.toString(16)} !== 0x${computedCrc.toString(16)}`);
+    }
+
+    // Byte 0: Type & Hop
+    const b0 = view.getUint8(0);
+    const packetType = (b0 & 0x1f) as TOGPacketType;
+    const hopCount = (b0 >> 5) & 0x07;
+    if (packetType !== TOGPacketType.PRESENCE_CHIRP) {
+      throw new Error(`Invalid packet type for Presence Chirp: ${packetType}`);
+    }
+
+    // Byte 1-3: Our Short NodeID (24 bits)
+    const ourShortNodeId = (view.getUint8(1) << 16) | (view.getUint8(2) << 8) | view.getUint8(3);
+
+    // Byte 4: Battery & Status
+    const b4 = view.getUint8(4);
+    const batteryLevel = b4 & 0x07;
+    const isCharging = (b4 & 0x08) !== 0;
+    const statusFlags = (b4 >> 4) & 0x0f;
+
+    // Byte 5-8: Our H3 Index
+    const ourH3Index = view.getUint32(5, false);
+
+    // Byte 9: Radio Capabilities
+    const radioCapabilities = view.getUint8(9);
+
+    // Byte 10-24: 5 Neighbors
+    const neighbors: IPresenceNeighbor[] = [];
+    for (let i = 0; i < 5; i++) {
+      const offset = 10 + (i * 3);
+      const shortNodeId = view.getUint16(offset, false);
+      const fused = view.getUint8(offset + 2);
+      if (shortNodeId !== 0 || fused !== 0) {
+        const { direction, batteryLevel: nBat, rssiTier } = this.unpackNeighborFusedByte(fused);
+        neighbors.push({
+          shortNodeId,
+          direction,
+          batteryLevel: nBat,
+          rssiTier
+        });
+      }
+    }
+
+    return {
+      packetType,
+      hopCount,
+      ourShortNodeId,
+      batteryLevel,
+      isCharging,
+      statusFlags,
+      ourH3Index,
+      radioCapabilities,
+      neighbors,
+      crc16: expectedCrc
+    };
+  }
 }
+

@@ -20,17 +20,41 @@
     distanceMeters?: number;
   }> = [];
 
+  export let peerNodes: Array<{
+    shortNodeId: string;
+    lat: number;
+    lng: number;
+    batteryBars: number; // 1 to 5 bars
+    rssiTier: number;    // 0 to 3
+    distanceMeters: number;
+  }> = [
+    { shortNodeId: '#4C55', lat: 13.7570, lng: 100.5025, batteryBars: 5, rssiTier: 3, distanceMeters: 45 },
+    { shortNodeId: '#9B1C', lat: 13.7555, lng: 100.5005, batteryBars: 4, rssiTier: 2, distanceMeters: 110 },
+    { shortNodeId: '#2E8A', lat: 13.7585, lng: 100.5040, batteryBars: 3, rssiTier: 2, distanceMeters: 230 },
+    { shortNodeId: '#7F3D', lat: 13.7540, lng: 100.4990, batteryBars: 2, rssiTier: 1, distanceMeters: 380 },
+    { shortNodeId: '#E104', lat: 13.7610, lng: 100.5080, batteryBars: 1, rssiTier: 0, distanceMeters: 520 },
+  ];
+
+  export let showPeerDistance: boolean = true;
+  export let showAllNodes: boolean = true;
+
+  import { getBatteryBarsVisual } from '../../core/battery/BatteryRuntimeEstimator';
+
   // --------------- State ---------------
   let mapEl: HTMLDivElement;
   let map: LeafletMap | null = null;
   let L: typeof import('leaflet') | null = null;
   let hexLayers: any[] = [];
   let sosMarkers: any[] = [];
+  let peerMarkers: any[] = [];
   let myMarker: any = null;
   let myPos: { lat: number; lng: number } | null = null;
   let isLocating = false;
   let locationError = '';
   let heatmap = new KAnonymityHeatmap();
+  let basemapLayer: any = null;
+  let isBasemapLoaded = false;
+  let isOfflineMode = false;
 
   // Demo seed data: 10 simulated mesh nodes in Bangkok/flood zone area
   const DEMO_NODES: Array<{ id: string; lat: number; lng: number }> = [
@@ -62,13 +86,18 @@
   async function initMap() {
     // Dynamic import to avoid SSR issues
     L = (await import('leaflet')) as typeof import('leaflet');
+    try {
+      await import('leaflet/dist/leaflet.css');
+    } catch {
+      // Fallback if bundler handles css separately
+    }
     // Fix default marker icon paths — use locally bundled assets (no CDN required)
     // @ts-ignore
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
-      iconRetinaUrl: '/_vendor/marker-icon-2x.png',
-      iconUrl: '/_vendor/marker-icon.png',
-      shadowUrl: '/_vendor/marker-shadow.png',
+      iconRetinaUrl: '/assets/_vendor/marker-icon-2x.png',
+      iconUrl: '/assets/_vendor/marker-icon.png',
+      shadowUrl: '/assets/_vendor/marker-shadow.png',
     });
 
     map = L.map(mapEl, {
@@ -83,6 +112,9 @@
       attribution: ODBL_ATTRIBUTION,
     }).addTo(map);
 
+    // Load offline World Basemap L2
+    await loadWorldBasemapL2();
+
     // Seed heatmap with demo nodes
     for (const node of DEMO_NODES) {
       const h3Idx = H3GridEngine.coordToH3(node.lat, node.lng, 9);
@@ -91,6 +123,45 @@
 
     renderHexHeatmap();
     renderSosTargets();
+  }
+
+  async function loadWorldBasemapL2() {
+    if (!map || !L) return;
+    try {
+      const resp = await fetch('/data/world_basemap_l2.json');
+      if (!resp.ok) return;
+      const geoJson = await resp.json();
+
+      if (basemapLayer) basemapLayer.remove();
+
+      basemapLayer = L.geoJSON(geoJson, {
+        style: (feature: any) => {
+          const layerType = feature?.properties?.layer;
+          if (layerType === 'country') {
+            return { color: '#0284c7', weight: 1.5, fillOpacity: 0.02, fillColor: '#38bdf8', opacity: 0.4 };
+          } else if (layerType === 'state') {
+            return { color: '#38bdf8', weight: 1, dashArray: '4, 4', fillOpacity: 0.01, opacity: 0.35 };
+          } else if (layerType === 'river') {
+            return { color: '#0ea5e9', weight: 1.5, opacity: 0.5 };
+          }
+          return { color: '#64748b', weight: 0.8, opacity: 0.3 };
+        },
+        pointToLayer: (feature: any, latlng: any) => {
+          return L!.circleMarker(latlng, {
+            radius: 3.5,
+            fillColor: '#f59e0b',
+            color: '#ffffff',
+            weight: 1,
+            opacity: 0.8,
+            fillOpacity: 0.7,
+          }).bindTooltip(`🏙️ ${feature?.properties?.name || 'City'}`, { direction: 'top' });
+        }
+      }).addTo(map);
+
+      isBasemapLoaded = true;
+    } catch (err) {
+      console.warn('World Basemap L2 offline load skipped:', err);
+    }
   }
 
   function renderHexHeatmap() {
@@ -151,6 +222,47 @@
           `<br><small style="color:#94a3b8">ID: ${target.id}</small>`
         );
       sosMarkers.push(marker);
+    }
+  }
+
+  function renderPeerNodes() {
+    if (!L || !map) return;
+
+    for (const m of peerMarkers) m.remove();
+    peerMarkers = [];
+
+    if (!showAllNodes) return;
+
+    for (const peer of peerNodes) {
+      const batVisual = getBatteryBarsVisual(peer.batteryBars);
+      const distStr = showPeerDistance ? `~${peer.distanceMeters} ม.` : '';
+      const peerHtml = `
+        <div class="peer-pin" style="border-color: ${batVisual.color};">
+          <span class="peer-dot" style="background: ${batVisual.color};"></span>
+          <span class="peer-label">${peer.shortNodeId}</span>
+          ${distStr ? `<span class="peer-dist">${distStr}</span>` : ''}
+        </div>
+      `;
+
+      const peerIcon = L!.divIcon({
+        html: peerHtml,
+        className: 'peer-icon-wrapper',
+        iconSize: [80, 36],
+        iconAnchor: [40, 18],
+      });
+
+      const popupHtml = `
+        <b>📡 โหนดในรัศมีวิทยุ: ${peer.shortNodeId}</b><br>
+        <span>🔋 แบตเตอรี่: ${batVisual.text} (${batVisual.percentStr})</span><br>
+        <span>📶 สัญญาณ: ${peer.rssiTier === 3 ? '🟢 แรงมาก' : peer.rssiTier === 2 ? '🟡 ดี' : peer.rssiTier === 1 ? '🟠 ปานกลาง' : '🔴 อ่อน'}</span><br>
+        ${showPeerDistance ? `<span>📏 ระยะห่างโดยประมาณ: ~${peer.distanceMeters} เมตร</span>` : ''}
+      `;
+
+      const marker = L!.marker([peer.lat, peer.lng], { icon: peerIcon })
+        .addTo(map!)
+        .bindPopup(popupHtml);
+
+      peerMarkers.push(marker);
     }
   }
 
@@ -254,8 +366,11 @@
     }
   });
 
-  // Reactively re-render SOS targets when prop changes
-  $: if (map && L) renderSosTargets();
+  // Reactively re-render SOS targets and Peer nodes when props or toggle states change
+  $: if (map && L) {
+    renderSosTargets();
+    renderPeerNodes();
+  }
 </script>
 
 <div class="mapview-root">
@@ -264,8 +379,29 @@
     <div class="toolbar-left">
       <span class="map-title">🗺️ OutGrid Map</span>
       <span class="badge-osm">© OpenStreetMap</span>
+      {#if isBasemapLoaded}
+        <span class="badge-basemap" title="World Vector Basemap Level 2 ออฟไลน์ติดเครื่อง 100%">🌍 Basemap L2</span>
+      {/if}
     </div>
     <div class="toolbar-right">
+      <button
+        class="btn-control"
+        class:active={showAllNodes}
+        on:click={() => showAllNodes = !showAllNodes}
+        title="สลับแสดงเฉพาะจุด SOS หรือโหนดทั้งหมดในรัศมีวิทยุ"
+      >
+        {showAllNodes ? '🌐 โหนดทั้งหมด' : '🚨 เฉพาะ SOS'}
+      </button>
+
+      <button
+        class="btn-control"
+        class:active={showPeerDistance}
+        on:click={() => showPeerDistance = !showPeerDistance}
+        title="เปิด/ปิดการแสดงระยะทางบนหมุดโหนด"
+      >
+        {showPeerDistance ? '📏 ซ่อนระยะ' : '📏 แสดงระยะ'}
+      </button>
+
       <button class="btn-locate" class:locating={isLocating} on:click={locateMe} disabled={isLocating}>
         {isLocating ? '📡 กำลังหาตำแหน่ง...' : '📍 หาตำแหน่งของฉัน'}
       </button>
@@ -282,6 +418,7 @@
     <span class="legend-item"><span class="dot" style="background:#f59e0b"></span> โหนดปานกลาง</span>
     <span class="legend-item"><span class="dot" style="background:#ef4444"></span> โหนดหนาแน่น</span>
     <span class="legend-item">🚨 จุด SOS</span>
+    <span class="legend-item">🔋 แบตเตอรี่เพื่อน 5 ขีด</span>
     <span class="legend-item">📍 ตำแหน่งคุณ</span>
   </div>
 
@@ -332,6 +469,36 @@
     color: #64748b;
     padding: 2px 8px;
     border-radius: 9999px;
+  }
+
+  .badge-basemap {
+    font-size: 0.7rem;
+    background: #0284c7;
+    color: #ffffff;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-weight: 600;
+  }
+
+  .btn-control {
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #334155;
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .btn-control:hover {
+    background: #334155;
+    color: #f1f5f9;
+  }
+  .btn-control.active {
+    background: #0369a1;
+    color: #ffffff;
+    border-color: #38bdf8;
   }
 
   .btn-locate {
@@ -411,8 +578,71 @@
     line-height: 1;
   }
 
+  :global(.peer-icon-wrapper) {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  :global(.peer-pin) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.9);
+    color: #f8fafc;
+    border: 1.5px solid #22c55e;
+    border-radius: 9999px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+  }
+
+  :global(.peer-dot) {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  :global(.peer-label) {
+    color: #38bdf8;
+  }
+
+  :global(.peer-dist) {
+    color: #94a3b8;
+    font-size: 9px;
+    font-weight: 500;
+  }
+
   @keyframes sos-pulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.25); }
+  }
+
+  /* Global Leaflet Engine & Tile Layer Overrides */
+  :global(.map-container.leaflet-container) {
+    width: 100% !important;
+    height: 100% !important;
+    background: #0b132b !important;
+    outline: none !important;
+  }
+
+  :global(.leaflet-tile-pane) {
+    z-index: 200 !important;
+  }
+
+  :global(.leaflet-tile) {
+    filter: brightness(0.85) contrast(1.15) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  :global(.leaflet-overlay-pane) {
+    z-index: 400 !important;
+  }
+
+  :global(.leaflet-marker-pane) {
+    z-index: 600 !important;
   }
 </style>
