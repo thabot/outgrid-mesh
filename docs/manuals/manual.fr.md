@@ -3,6 +3,18 @@
 **Auteur:** Thabot (<thabo47@gmail.com>)  
 **Licence:** AGPL-3.0 Bien Public Humanitaire à But Non Lucratif
 
+[🏠 Accueil / README](../../README.md) • 
+[🇹🇭 ไทย](manual.th.md) • 
+[🇬🇧 English](manual.en.md) • 
+[🇨🇳 中文](manual.zh.md) • 
+[🇪🇸 Español](manual.es.md) • 
+[🇯🇵 日本語](manual.ja.md) • 
+[🇫🇷 Français](manual.fr.md) • 
+[🇵🇹 Português](manual.pt.md) • 
+[🇷🇺 Русский](manual.ru.md) • 
+[🇸🇦 العربية](manual.ar.md) • 
+[🇮🇳 हिन्दी](manual.hi.md)
+
 ---
 
 ## 1. Installation de l'Application
@@ -78,3 +90,24 @@
 
 - En dessous de 20% de batterie, le système bascule en **Deep Hibernation**, réduisant l'intervalle de scan radio pour préserver plus de **100 heures d'autonomie**.
 - Fermez les applications tierces inutilisées afin de réserver votre batterie aux communications de sauvetage.
+
+---
+
+## 6. Procédure Opérationnelle Standard d'Urgence en 3 Phases (3-Phase Emergency SOP)
+
+### 🟢 Phase 1 : Préparation Pré-Catastrophe (Pre-Disaster Readiness)
+1. **Installation et Permissions :** Installez OutGrid Mesh au préalable. Accordez le Bluetooth, la localisation précise et l'exemption d'optimisation de batterie.
+2. **Appairage Présentiel QR :** Scannez les codes QR en face-à-face avec vos proches pour échanger les clés de chiffrement de bout en bout X25519/Ed25519.
+3. **Réserve Énergétique :** Maintenez téléphones et batteries externes chargés à 100%.
+
+### 🔴 Phase 2 : Catastrophe Active et Coupure Totale (Active Disaster & Blackout)
+1. **Lancement Immédiat :** Ouvrez OutGrid Mesh dès l'effondrement des réseaux cellulaires ou électriques.
+2. **Détresse Critique / Prisonniers des Décombres :**
+   - Maintenez le bouton rouge **SOS** enfoncé pendant 1 seconde pour propager le micro-paquet de 21 octets (GPS/H3) sur 15 sauts.
+   - En milieu obscur ou sous les décombres, activez le **Code Morse Acoustique et le Flash Stroboscopique** pour guider les secours.
+3. **Personnes Indemnes :** Laissez l'application tourner en arrière-plan pour agir comme **Nœud Relais (Relay Node)** solidaire.
+4. **Destinataire Hors-Ligne (Boîte aux Lettres Spatiale H3) :** Si votre correspondant est hors-ligne, le message est mis en garde partagée par les nœuds voisins du même hexagone H3 (Spatial H3 Drop-box) et livré automatiquement par BLE dès son approche.
+
+### 🔵 Phase 3 : Sauvetage et Mule de Données (Rescue & Data Mule)
+1. **Mules de Données :** Embarcations, ambulances et secouristes mobiles ($\ge 15\text{ km/h}$) absorbent les paquets en zone coupée avec gel de sauts (Hop Freeze).
+2. **Synchronisation Cloud (Auto-Flush) :** Dès le retour en zone couverte ou au poste de commandement, les paquets accumulés sont téléversés automatiquement vers le cloud en quelques secondes.

@@ -8,6 +8,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { ModeStateMachine, AppOperatingMode } from '../../core/state/ModeStateMachine';
   import { BatteryRuntimeEstimator, type IBatteryRuntimeEstimate } from '../../core/battery/BatteryRuntimeEstimator';
+  import { i18n } from '../../core/i18n/I18nStore';
 
   export let stateMachine: ModeStateMachine = new ModeStateMachine(AppOperatingMode.NORMAL_CLOUD);
   export let peerCounts = {
@@ -17,6 +18,8 @@
     gateways: 0,
     total: 0
   };
+
+  const translations = i18n.translations;
 
   let currentMode: AppOperatingMode = stateMachine.getOperatingMode();
   let networkType: '5g_4g' | 'wifi' | 'disaster_mesh' | 'isolated' = '5g_4g';
@@ -198,7 +201,7 @@
   <div class="status-right">
     <button class="node-pill" on:click={() => showPeerModal = !showPeerModal} title="แตะเพื่อดูรายละเอียดโหนดรอบข้าง">
       <span class="node-icon">👥</span>
-      <span class="node-count">{peerCounts.total} โหนด</span>
+      <span class="node-count">{peerCounts.total} {$translations.nodes_count_suffix || 'nodes'}</span>
     </button>
 
     <div class="battery-pill" title="ระดับแบตเตอรี่และเวลาคงเหลือ">
@@ -214,7 +217,7 @@
     class="peer-modal-overlay"
     role="dialog"
     aria-modal="true"
-    aria-label="สรุปโครงข่ายโหนดรอบตัว"
+    aria-label={$translations.status_peer_summary_title || 'Peer Summary'}
     tabindex="-1"
     on:click={() => showPeerModal = false}
     on:keydown={(e) => e.key === 'Escape' && (showPeerModal = false)}
@@ -227,36 +230,36 @@
       on:keydown|stopPropagation
     >
       <div class="modal-header">
-        <h3>👥 สรุปโครงข่ายโหนดรอบตัว ({peerCounts.total})</h3>
-        <button class="close-btn" on:click={() => showPeerModal = false} aria-label="ปิดหน้าต่าง">✕</button>
+        <h3>👥 {$translations.status_peer_summary_title || 'Mesh Network Peer Summary'} ({peerCounts.total})</h3>
+        <button class="close-btn" on:click={() => showPeerModal = false} aria-label="Close">✕</button>
       </div>
 
       <div class="modal-content">
         <div class="node-row row-sos">
           <span class="row-icon">🚨</span>
-          <span class="row-label">โหนดขอความช่วยเหลือ (SOS Beacons):</span>
+          <span class="row-label">{$translations.status_peer_sos || 'Emergency SOS Beacons:'}</span>
           <span class="row-val count-sos">{peerCounts.sos}</span>
         </div>
         <div class="node-row row-friends">
           <span class="row-icon">🤝</span>
-          <span class="row-label">เพื่อนและผู้ติดต่อที่ยืนยันแล้ว:</span>
+          <span class="row-label">{$translations.status_peer_friends || 'Verified Contacts:'}</span>
           <span class="row-val">{peerCounts.friends}</span>
         </div>
         <div class="node-row row-relays">
           <span class="row-icon">🔁</span>
-          <span class="row-label">สถานีรีเลย์ชุมชน (Mesh Relays):</span>
+          <span class="row-label">{$translations.status_peer_relays || 'Mesh Relays:'}</span>
           <span class="row-val">{peerCounts.relays}</span>
         </div>
         <div class="node-row row-gateways">
           <span class="row-icon">🌐</span>
-          <span class="row-label">เกตเวย์เชื่อมต่อ LoRa / ดาวเทียม:</span>
+          <span class="row-label">{$translations.status_peer_gateways || 'Satellite / LoRa Gateways:'}</span>
           <span class="row-val">{peerCounts.gateways}</span>
         </div>
       </div>
 
       <div class="modal-footer">
-        <p class="footer-hint">ระบบค้นหาและกระจายแพ็กเก็ตผ่าน BLE Coded S=8 ในระยะวิทยุ 300ม. – 5กม.</p>
-        <button class="btn-done" on:click={() => showPeerModal = false}>ตกลง</button>
+        <p class="footer-hint">{$translations.status_modal_hint || 'BLE Coded S=8 radio range 300m – 5km.'}</p>
+        <button class="btn-done" on:click={() => showPeerModal = false}>{$translations.status_btn_done || 'OK'}</button>
       </div>
     </div>
   </div>
@@ -269,10 +272,10 @@
     align-items: center;
     background: #090f1d;
     border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 6px 12px;
-    margin-bottom: 10px;
-    font-size: 0.8rem;
+    border-radius: 6px;
+    padding: 4px 10px;
+    margin-bottom: 6px;
+    font-size: 0.75rem;
     color: #e2e8f0;
     transition: all 0.3s ease;
   }

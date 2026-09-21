@@ -3,6 +3,18 @@
 **Autor:** Thabot (<thabo47@gmail.com>)  
 **Licencia:** AGPL-3.0 Bien Público Humanitario sin Fines de Lucro
 
+[🏠 Inicio / README](../../README.md) • 
+[🇹🇭 ไทย](manual.th.md) • 
+[🇬🇧 English](manual.en.md) • 
+[🇨🇳 中文](manual.zh.md) • 
+[🇪🇸 Español](manual.es.md) • 
+[🇯🇵 日本語](manual.ja.md) • 
+[🇫🇷 Français](manual.fr.md) • 
+[🇵🇹 Português](manual.pt.md) • 
+[🇷🇺 Русский](manual.ru.md) • 
+[🇸🇦 العربية](manual.ar.md) • 
+[🇮🇳 हिन्दी](manual.hi.md)
+
 ---
 
 ## 1. Instalación de la Aplicación
@@ -78,3 +90,24 @@
 
 - Por debajo del 20% de carga, entra en **Deep Hibernation**, optimizando el ciclo de escaneo para mantenerse operativo hasta **100+ horas de guardia**.
 - Cierre otras aplicaciones en segundo plano para conservar energía vital de rescate.
+
+---
+
+## 6. Procedimiento Operativo Estándar ante Desastres en 3 Fases (3-Phase Emergency SOP)
+
+### 🟢 Fase 1: Preparación Previa al Desastre (Pre-Disaster Readiness)
+1. **Instalación y Permisos:** Instale OutGrid Mesh con anticipación. Otorgue permisos de Bluetooth, Ubicación precisa y Exención de optimización de batería.
+2. **Emparejamiento Presencial QR:** Escanee códigos QR en persona con familiares y vecinos para intercambiar claves criptográficas E2EE X25519/Ed25519 por adelantado.
+3. **Reserva de Energía:** Mantenga teléfonos y baterías portátiles completamente cargados.
+
+### 🔴 Fase 2: Desastre Activo y Apagón de Red (Active Disaster & Blackout)
+1. **Inicio Inmediato:** Abra OutGrid Mesh en cuanto colapsen las redes celulares y el suministro eléctrico.
+2. **Emergencia Crítica / Atrapados:**
+   - Mantenga pulsado el botón rojo **SOS** por 1 segundo para emitir el paquete micro de 21 bytes con coordenadas GPS/H3 a través de 15 saltos.
+   - Si se encuentra atrapado en oscuridad o escombros, active **Morse Acústico y Linterna Estroboscópica**.
+3. **Personas a Salvo:** Mantenga la app abierta en segundo plano actuando como **Nodo de Retransmisión (Relay Node)** para apoyar a la comunidad.
+4. **Mensajería con Destinatario Offline (Buzón Espacial H3):** Si envía un mensaje a alguien temporalmente sin conexión, el paquete queda en custodia en los nodos vecinos de su hexágono H3 (Spatial H3 Drop-box) y se entrega automáticamente vía BLE sin clics al aproximarse.
+
+### 🔵 Fase 3: Rescate y Mula de Datos (Rescue & Data Mule)
+1. **Mulas de Datos:** Vehículos de auxilio, lanchas y brigadistas ($\ge 15\text{ km/h}$) absorben automáticamente los paquetes con congelamiento de saltos (Hop Freeze).
+2. **Restauración en la Nube (Auto-Flush):** Al alcanzar cobertura de internet o el puesto de mando, los paquetes se sincronizan automáticamente con el centro de mando.

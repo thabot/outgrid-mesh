@@ -18,14 +18,35 @@
 [📥 Download APK](#-download--install-for-users) •
 [📖 GitHub Releases](https://github.com/thabot/outgrid-mesh/releases) •
 [📱 How to Use](#-how-to-use-3-simple-steps) •
+[🆘 Field Survival Guides](#-field-survival-guides--emergency-sop) •
 [🗺️ System Architecture](#-system-architecture-overview) •
 [💻 Developer Guide](docs/DEVELOPER_GUIDE.md) •
-[🌐 10-Language Manuals](docs/manuals/) •
 [📄 License & Author](#-license--author)
 
 ---
 
 </div>
+
+## 🆘 Field Survival Guides & Emergency SOP (คู่มือการเอาชีวิตรอดและรับมือภัยพิบัติ)
+
+> **มาตรฐานขั้นตอนปฏิบัติการฉุกเฉิน 3 ระยะ (3-Phase SOP):** 🟢 ก่อนเกิดเหตุ (Pre-Disaster) • 🔴 ระหว่างเกิดเหตุ (Active Disaster / Blackout) • 🔵 กู้ภัยและเคลื่อนย้ายข้อมูล (Rescue & Data Mule)
+
+เลือกภาษาเพื่ออ่านคู่มือการเอาชีวิตรอดภาคสนามฉบับสมบูรณ์:
+
+| ภาษา (Language) | คู่มือการใช้งานภาคสนามและเอาชีวิตรอด (Field Survival Guide & SOP) |
+| :--- | :--- |
+| 🇹🇭 **ไทย (Thai)** | 👉 [**คู่มือการใช้งานภาคสนาม OutGrid Mesh และการเอาชีวิตรอดฉุกเฉิน (TH)**](docs/manuals/manual.th.md) |
+| 🇬🇧 **English** | 👉 [**OutGrid Mesh Field Operations & Survival Guide (EN)**](docs/manuals/manual.en.md) |
+| 🇨🇳 **中文 (Chinese)** | 👉 [**OutGrid Mesh 现场操作与应急求生指南 (ZH)**](docs/manuals/manual.zh.md) |
+| 🇪🇸 **Español** | 👉 [**Guía de Operaciones de Campo y Supervivencia OutGrid Mesh (ES)**](docs/manuals/manual.es.md) |
+| 🇯🇵 **日本語 (Japanese)** | 👉 [**OutGrid Mesh フィールド運用および緊急サバイバルガイド (JA)**](docs/manuals/manual.ja.md) |
+| 🇫🇷 **Français** | 👉 [**Guide d'Opérations de Terrain et de Survie OutGrid Mesh (FR)**](docs/manuals/manual.fr.md) |
+| 🇵🇹 **Português** | 👉 [**Guia de Operações de Campo e Sobrevivência OutGrid Mesh (PT)**](docs/manuals/manual.pt.md) |
+| 🇷🇺 **Русский** | 👉 [**Руководство по Выживанию и Полевым Операциям OutGrid Mesh (RU)**](docs/manuals/manual.ru.md) |
+| 🇸🇦 **العربية (Arabic)** | 👉 [**دليل العمليات الميدانية والبقاء في حالات الطوارئ OutGrid Mesh (AR)**](docs/manuals/manual.ar.md) |
+| 🇮🇳 **हिन्दी (Hindi)** | 👉 [**OutGrid Mesh फील्ड संचालन एवं आपदा उत्तरजीविता गाइड (HI)**](docs/manuals/manual.hi.md) |
+
+---
 
 ## 📌 Introduction
 

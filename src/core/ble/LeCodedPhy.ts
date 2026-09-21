@@ -88,4 +88,57 @@ export class LeCodedPhy {
   public getCurrentScheme(): LeCodedScheme {
     return this.currentScheme;
   }
+
+  /**
+   * Checks if current physical layer is operating on Legacy 1M PHY (e.g. BT 4.2)
+   */
+  public isLegacyHardware(): boolean {
+    return this.currentPhy === BlePhyType.PHY_LE_1M || !this.capabilities.supportsLeCodedPhy;
+  }
+
+  /**
+   * Returns recommended maximum chunk size for packet fragmentation
+   * Legacy 1M / BT 4.2 -> 24 Bytes (to fit 31B Adv Packet)
+   * BLE 5 Coded PHY -> 180 Bytes (Extended Adv Packet up to 254B)
+   */
+  public getOptimalChunkSize(): number {
+    return this.currentPhy === BlePhyType.PHY_LE_CODED ? 180 : 24;
+  }
+
+  /**
+   * Safe Fallback method: If requested PHY is CODED but hardware lacks capability,
+   * cleanly fallback to PHY_LE_1M without throwing errors.
+   */
+  public ensureSafePhyMode(requestedPhy: BlePhyType): BlePhyType {
+    if (requestedPhy === BlePhyType.PHY_LE_CODED && !this.capabilities.supportsLeCodedPhy) {
+      return BlePhyType.PHY_LE_1M;
+    }
+    return requestedPhy;
+  }
+
+  /**
+   * Provides optimal PHY configuration according to emergency state and hardware limits
+   */
+  public getOptimalPhyConfig(isEmergencySOS = false): {
+    phy: BlePhyType;
+    scheme: LeCodedScheme;
+    txPowerDbm: number;
+  } {
+    if (this.capabilities.supportsLeCodedPhy) {
+      return {
+        phy: BlePhyType.PHY_LE_CODED,
+        scheme: LeCodedScheme.S8,
+        txPowerDbm: isEmergencySOS
+          ? Math.min(20, this.capabilities.maxTxPowerDbm)
+          : Math.min(8, this.capabilities.maxTxPowerDbm)
+      };
+    }
+
+    return {
+      phy: BlePhyType.PHY_LE_1M,
+      scheme: LeCodedScheme.S2,
+      txPowerDbm: isEmergencySOS ? 8 : 4
+    };
+  }
 }
+

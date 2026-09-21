@@ -26,6 +26,8 @@ export interface ISchemaPeerRow {
   is_supernode: number;
   nickname: string | null;
   safety_numbers: string | null;
+  radio_code?: number;
+  is_legacy_bt?: number;
 }
 
 export interface ISchemaDtnBundleRow {
@@ -67,7 +69,9 @@ CREATE TABLE IF NOT EXISTS peers (
     h3_tile TEXT NOT NULL,
     is_supernode INTEGER NOT NULL DEFAULT 0,
     nickname TEXT,
-    safety_numbers TEXT
+    safety_numbers TEXT,
+    radio_code INTEGER DEFAULT 0,
+    is_legacy_bt INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_peers_last_seen ON peers(last_seen);
@@ -92,3 +96,9 @@ CREATE TABLE IF NOT EXISTS vector_tiles (
 
 CREATE INDEX IF NOT EXISTS idx_tiles_zoom ON vector_tiles(zoom);
 `;
+
+export const SQLITE_BT_TIER_MIGRATION_SQL = `
+ALTER TABLE peers ADD COLUMN radio_code INTEGER DEFAULT 0;
+ALTER TABLE peers ADD COLUMN is_legacy_bt INTEGER DEFAULT 0;
+`;
+

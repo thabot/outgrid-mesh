@@ -106,11 +106,20 @@
       zoomControl: true,
     });
 
-    // OpenStreetMap tile layer — ODbL compliant
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // OpenStreetMap tile layer with offline fallback handling
+    const osmTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: ODBL_ATTRIBUTION,
-    }).addTo(map);
+    });
+
+    osmTileLayer.on('tileerror', (event: any) => {
+      // Offline fallback: hide missing tile box and reveal tactical grid
+      if (event.tile) {
+        event.tile.style.display = 'none';
+      }
+    });
+
+    osmTileLayer.addTo(map);
 
     // Load offline World Basemap L2
     await loadWorldBasemapL2();
@@ -624,7 +633,12 @@
   :global(.map-container.leaflet-container) {
     width: 100% !important;
     height: 100% !important;
-    background: #0b132b !important;
+    background-color: #0b132b !important;
+    background-image: 
+      linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+      radial-gradient(circle at center, rgba(14, 165, 233, 0.12) 0%, transparent 70%) !important;
+    background-size: 40px 40px, 40px 40px, 100% 100% !important;
     outline: none !important;
   }
 

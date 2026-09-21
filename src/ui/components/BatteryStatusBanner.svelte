@@ -59,6 +59,12 @@
     dispatch('lastGaspTriggered');
   }
 
+  let showDetailedEstimate = false;
+
+  function toggleDetailedEstimate() {
+    showDetailedEstimate = !showDetailedEstimate;
+  }
+
   onMount(() => {
     initBatteryAPI();
   });
@@ -66,26 +72,37 @@
 
 <div class="battery-banner" class:ultra-active={isUltraSurvival} class:critical={estimate.isCriticalLastGasp}>
   <div class="battery-info">
-    <span class="battery-icon">
-      {#if isCharging}
-        ⚡
-      {:else if batteryPercentage > 60}
-        🔋
-      {:else if batteryPercentage > 20}
-        🪫
-      {:else}
-        ⚠️
-      {/if}
-    </span>
+    <button
+      class="battery-icon-btn"
+      on:click={toggleDetailedEstimate}
+      aria-label="Toggle battery estimate"
+      title="แตะเพื่อเปิด/ปิดแสดงเวลาที่ใช้งานได้อีก"
+    >
+      <span class="battery-icon">
+        {#if isCharging}
+          ⚡
+        {:else if batteryPercentage > 60}
+          🔋
+        {:else if batteryPercentage > 20}
+          🪫
+        {:else}
+          ⚠️
+        {/if}
+      </span>
+    </button>
     <div class="battery-details">
       <span class="battery-text">
         <strong>{batteryPercentage}%</strong>
         {#if isCharging}
-          (กำลังชาร์จไฟ)
-        {:else if isUltraSurvival}
-          (โหมดเอาชีวิตรอด: ใช้ได้อีก ~{estimate.estimatedHours * 2} ชม.)
-        {:else}
-          (ใช้ได้อีก ~{estimate.estimatedHours} ชม. {estimate.estimatedMinutes} นาที)
+          {#if showDetailedEstimate}
+            <span class="estimate-tag">(กำลังชาร์จไฟ)</span>
+          {/if}
+        {:else if showDetailedEstimate}
+          {#if isUltraSurvival}
+            <span class="estimate-tag">(ใช้ได้อีก ~{estimate.estimatedHours * 2} ชม.)</span>
+          {:else}
+            <span class="estimate-tag">(ใช้ได้อีก ~{estimate.estimatedHours} ชม. {estimate.estimatedMinutes} นาที)</span>
+          {/if}
         {/if}
       </span>
       {#if estimate.isCriticalLastGasp}
@@ -100,15 +117,6 @@
         🚨 ส่ง Last-Gasp
       </button>
     {/if}
-
-    <button
-      class="btn-toggle-survival"
-      class:active={isUltraSurvival}
-      on:click={toggleUltraSurvival}
-      title="ขยายรอบส่งคลื่นวิทยุและลดการกินไฟหน้าจอสูงสุด"
-    >
-      {isUltraSurvival ? '🛑 ปิด Ultra Survival' : '⚡ 1-Tap Survival'}
-    </button>
   </div>
 </div>
 
@@ -120,11 +128,11 @@
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 0.5rem;
-    padding: 0.5rem 0.85rem;
-    font-size: 0.82rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
     color: #e2e8f0;
-    margin-bottom: 0.75rem;
-    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+    gap: 0.4rem;
     flex-wrap: wrap;
     transition: all 0.2s ease;
   }
@@ -141,6 +149,24 @@
     animation: critical-pulse 1.5s infinite;
   }
 
+  .battery-icon-btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .battery-icon-btn:focus-visible {
+    outline: 2px solid #38bdf8;
+    border-radius: 4px;
+  }
+  .estimate-tag {
+    color: #38bdf8;
+    font-weight: 500;
+  }
   .battery-info {
     display: flex;
     align-items: center;

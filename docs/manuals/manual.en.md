@@ -3,6 +3,18 @@
 **Author:** Thabot (<thabo47@gmail.com>)  
 **License:** AGPL-3.0 Non-Profit Humanitarian Public Good
 
+[🏠 Home / README](../../README.md) • 
+[🇹🇭 ไทย](manual.th.md) • 
+[🇬🇧 English](manual.en.md) • 
+[🇨🇳 中文](manual.zh.md) • 
+[🇪🇸 Español](manual.es.md) • 
+[🇯🇵 日本語](manual.ja.md) • 
+[🇫🇷 Français](manual.fr.md) • 
+[🇵🇹 Português](manual.pt.md) • 
+[🇷🇺 Русский](manual.ru.md) • 
+[🇸🇦 العربية](manual.ar.md) • 
+[🇮🇳 हिन्दी](manual.hi.md)
+
 ---
 
 ## 1. Application Installation
@@ -78,3 +90,24 @@
 
 - Below 20% battery, the app enters **Deep Hibernation**, adjusting radio duty cycles while preserving critical SOS reception for up to **100+ standby hours**.
 - Turn off unused background applications to conserve battery power for emergency communications.
+
+---
+
+## 6. 3-Phase Disaster Response SOP (Standard Operating Procedure)
+
+### 🟢 Phase 1: Pre-Disaster Readiness
+1. **Pre-install & Permissions:** Install OutGrid Mesh beforehand. Grant Bluetooth, Precise Location, and Battery Optimization Exemption permissions.
+2. **Family & Group In-Person Pairing:** Scan in-person QR codes with family members and neighbors to exchange X25519 / Ed25519 E2EE keys in advance.
+3. **Power Reserves:** Keep phones and external power banks fully charged.
+
+### 🔴 Phase 2: Active Disaster & Cellular Blackout
+1. **Immediate Launch:** Launch OutGrid Mesh as soon as public cellular/power infrastructure collapses.
+2. **Critical Distress / Trapped:**
+   - Press and hold the red **SOS button** for 1 second to broadcast the 21-byte sub-meter GPS/H3 packet across 15 hops.
+   - If trapped in darkness or building rubble, activate **Acoustic Morse & Strobe Torch** to guide search teams.
+3. **Safe Individuals:** Keep the app open in the background to serve as an autonomous **Relay Node** for neighbors.
+4. **Offline Recipient Messaging (Spatial H3 Drop-box):** If messaging someone whose device is currently offline, the message is safely held in custody by neighbor nodes within the same spatial H3 hexagon. Once the recipient walks into range, the packet is automatically delivered via zero-click BLE.
+
+### 🔵 Phase 3: Rescue Operations & Autonomous Mobility (Data Mule)
+1. **Data Mules:** Rescue boats, ambulances, and moving responders ($\ge 15\text{ km/h}$) automatically ingest SOS packets from isolated pockets with Hop Freeze engaged.
+2. **Cloud Re-anchoring (Auto-Flush):** Once vehicles reach internet coverage or command headquarters, all accumulated bundles auto-flush to the cloud coordinator in seconds.

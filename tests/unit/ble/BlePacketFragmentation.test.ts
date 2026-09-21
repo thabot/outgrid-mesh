@@ -1,50 +1,73 @@
-/**
- * Unit tests for BlePacketFragmentation (Chunking, Sequence Index, Reassembly)
- * Creator & Lead Architect: Thabot <thabo47@gmail.com>
- * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
- */
+import { describe, expect, it, beforeEach } from 'bun:test';
+import {
+  BlePacketFragmentation,
+  EXTENDED_BLE_CHUNK_PAYLOAD,
+  LEGACY_BLE_CHUNK_PAYLOAD,
+  CHUNK_HEADER_SIZE
+} from '../../../src/core/ble/BlePacketFragmentation';
 
-import { describe, expect, it } from 'bun:test';
-import { BlePacketFragmentation } from '../../../src/core/ble/BlePacketFragmentation';
+describe('Phase 2 - Task 2.1: BlePacketFragmentation Dual Mode & 8B Header Guard', () => {
+  beforeEach(() => {
+    BlePacketFragmentation.clearStore();
+  });
 
-describe('BlePacketFragmentation (Out-of-Order Chunking & Reassembly)', () => {
-  it('should split large payload into chunks and reassemble correctly in sequential order', () => {
-    const rawData = new Uint8Array(500);
-    for (let i = 0; i < rawData.length; i++) {
-      rawData[i] = i % 256;
+  it('should split payload into dual mode chunks correctly', () => {
+    const payload = new Uint8Array(500);
+    for (let i = 0; i < 500; i++) payload[i] = i % 256;
+
+    const messageId = 0x12345678AABBCCDDn;
+    const { extendedChunks, legacyChunks } = BlePacketFragmentation.createDualModeChunks(messageId, payload);
+
+    // 500 / 180 = 3 chunks (180, 180, 140)
+    expect(extendedChunks.length).toBe(3);
+    expect(extendedChunks[0].length).toBe(180 + CHUNK_HEADER_SIZE);
+    expect(extendedChunks[2].length).toBe(140 + CHUNK_HEADER_SIZE);
+
+    // 500 / 24 = 21 chunks
+    expect(legacyChunks.length).toBe(Math.ceil(500 / 24));
+  });
+
+  it('should reassemble out-of-order chunks statefully with collision isolation', () => {
+    const payload = new TextEncoder().encode('OutGrid Mesh emergency communication payload packet');
+    const msgId1 = 1001n;
+    const msgId2 = 2002n;
+
+    const chunksMsg1 = BlePacketFragmentation.splitIntoChunks(msgId1, payload, 10);
+    const chunksMsg2 = BlePacketFragmentation.splitIntoChunks(msgId2, payload, 10);
+
+    // Interleave ingestion from two different message IDs:
+    // Msg1 chunk 1, Msg2 chunk 0, Msg1 chunk 0, Msg1 remaining
+    let res = BlePacketFragmentation.ingestChunk(chunksMsg1[1]);
+    expect(res).toBeNull();
+
+    res = BlePacketFragmentation.ingestChunk(chunksMsg2[0]);
+    expect(res).toBeNull(); // Msg2 chunk 0 received, does not complete msg1
+
+    res = BlePacketFragmentation.ingestChunk(chunksMsg1[0]);
+    expect(res).toBeNull();
+
+    // Ingest rest of Msg1
+    for (let i = 2; i < chunksMsg1.length; i++) {
+      res = BlePacketFragmentation.ingestChunk(chunksMsg1[i]);
     }
 
-    const chunks = BlePacketFragmentation.splitIntoChunks(12345n, rawData, 150);
-    expect(chunks.length).toBe(4); // 150 + 150 + 150 + 50 = 500B
-
-    const reconstructed = BlePacketFragmentation.reassembleChunks(chunks);
-    expect(reconstructed).not.toBeNull();
-    expect(reconstructed?.length).toBe(500);
-    expect(Array.from(reconstructed || [])).toEqual(Array.from(rawData));
+    expect(res).not.toBeNull();
+    expect(new TextDecoder().decode(res!)).toBe('OutGrid Mesh emergency communication payload packet');
   });
 
-  it('should successfully reassemble even when chunks arrive completely out of order', () => {
-    const message = 'CRITICAL: Dam overflow at kilometer 24! Immediate evacuation ordered!';
-    const rawData = new TextEncoder().encode(message);
+  it('should evict incomplete buffers after timeout', () => {
+    const payload = new Uint8Array(200);
+    const chunks = BlePacketFragmentation.splitIntoChunks(999n, payload, 50);
 
-    const chunks = BlePacketFragmentation.splitIntoChunks(9999n, rawData, 20);
-    expect(chunks.length).toBeGreaterThan(1);
+    // Ingest first chunk at t = 1000
+    BlePacketFragmentation.ingestChunk(chunks[0], 1000);
 
-    // Shuffle chunks out-of-order
-    const shuffled = [chunks[2], chunks[0], chunks[3], chunks[1]].filter(Boolean);
+    // At t = 20000 (20s later), not expired yet
+    const evictedEarly = BlePacketFragmentation.evictExpiredBuffers(20000);
+    expect(evictedEarly).toBe(0);
 
-    const reconstructed = BlePacketFragmentation.reassembleChunks(shuffled);
-    expect(reconstructed).not.toBeNull();
-    expect(new TextDecoder().decode(reconstructed || undefined)).toBe(message);
-  });
-
-  it('should return null if any chunk is still missing', () => {
-    const rawData = new Uint8Array(300);
-    const chunks = BlePacketFragmentation.splitIntoChunks(777n, rawData, 100); // 3 chunks
-
-    // Only provide chunk 0 and chunk 2 (chunk 1 missing)
-    const incomplete = [chunks[0], chunks[2]];
-    const reconstructed = BlePacketFragmentation.reassembleChunks(incomplete);
-    expect(reconstructed).toBeNull();
+    // At t = 32000 (31s later), expired
+    const evictedLate = BlePacketFragmentation.evictExpiredBuffers(32000);
+    expect(evictedLate).toBe(1);
   });
 });
