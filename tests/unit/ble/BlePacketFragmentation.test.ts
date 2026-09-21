@@ -5,7 +5,11 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { BlePacketFragmentation } from '../../../src/core/ble/BlePacketFragmentation';
+import {
+  BlePacketFragmentation,
+  LEGACY_BLE_CHUNK_PAYLOAD,
+  EXTENDED_BLE_CHUNK_PAYLOAD
+} from '../../../src/core/ble/BlePacketFragmentation';
 
 describe('BlePacketFragmentation (Out-of-Order Chunking & Reassembly)', () => {
   it('should split large payload into chunks and reassemble correctly in sequential order', () => {
@@ -46,5 +50,23 @@ describe('BlePacketFragmentation (Out-of-Order Chunking & Reassembly)', () => {
     const incomplete = [chunks[0], chunks[2]];
     const reconstructed = BlePacketFragmentation.reassembleChunks(incomplete);
     expect(reconstructed).toBeNull();
+  });
+
+  it('should split and reassemble correctly using LEGACY_BLE_CHUNK_PAYLOAD (24B) for BT 4.2', () => {
+    const disasterSOS = new TextEncoder().encode('SOS MEDICAL: Severe trauma at Grid 4821');
+    const chunks = BlePacketFragmentation.splitIntoChunks(
+      8888n,
+      disasterSOS,
+      LEGACY_BLE_CHUNK_PAYLOAD
+    );
+
+    // Each chunk header is 4B + payload <= 24B = total <= 28B (safely within 31B Adv packet)
+    for (const chunk of chunks) {
+      expect(chunk.length).toBeLessThanOrEqual(28);
+    }
+
+    const reconstructed = BlePacketFragmentation.reassembleChunks(chunks);
+    expect(reconstructed).not.toBeNull();
+    expect(new TextDecoder().decode(reconstructed || undefined)).toBe('SOS MEDICAL: Severe trauma at Grid 4821');
   });
 });

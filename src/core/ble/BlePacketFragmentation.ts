@@ -5,7 +5,9 @@
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
 
-export const MAX_CHUNK_PAYLOAD = 180; // Safe chunk size below MTU 200B
+export const EXTENDED_BLE_CHUNK_PAYLOAD = 180; // Safe chunk size below MTU 200B for BLE 5 Extended Adv
+export const LEGACY_BLE_CHUNK_PAYLOAD = 24;   // Safe chunk size for Bluetooth 4.2 Legacy 31B Adv
+export const MAX_CHUNK_PAYLOAD = EXTENDED_BLE_CHUNK_PAYLOAD;
 
 export interface IFragmentChunk {
   messageId: bigint;

@@ -27,5 +27,13 @@ describe('LeCodedPhy (Bluetooth 5 LE Coded PHY Long Range Driver)', () => {
     expect(negotiated).toBe(BlePhyType.PHY_LE_1M);
     expect(legacyDriver.getCurrentPhy()).toBe(BlePhyType.PHY_LE_1M);
     expect(legacyDriver.getEstimatedRangeMeters()).toBe(80);
+    expect(legacyDriver.isLegacyHardware()).toBe(true);
+    expect(legacyDriver.getOptimalChunkSize()).toBe(24);
+  });
+
+  it('should report correct optimal chunk size on BLE 5 Coded PHY hardware', () => {
+    const modernDriver = new LeCodedPhy({ supportsLeCodedPhy: true });
+    expect(modernDriver.isLegacyHardware()).toBe(false);
+    expect(modernDriver.getOptimalChunkSize()).toBe(180);
   });
 });

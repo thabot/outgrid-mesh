@@ -40,4 +40,18 @@ describe('BleAdvertiser (BLE Advertising Engine)', () => {
     expect(extAdv.startAdvertising(largePacket)).toBe(true);
     expect(extAdv.isBroadcasting()).toBe(true);
   });
+
+  it('should safely produce legacy-compatible advertisement data in dual mode', () => {
+    const dualAdv = new BleAdvertiser({ useExtendedAdv: true, dualMode: true });
+    const packet = new Uint8Array(100);
+    for (let i = 0; i < 100; i++) packet[i] = i;
+
+    dualAdv.startAdvertising(packet);
+
+    const legacyMfg = dualAdv.getLegacyManufacturerData();
+    expect(legacyMfg).not.toBeNull();
+    expect(legacyMfg?.manufacturerId).toBe(TOG_MAGIC);
+    expect(legacyMfg?.isLegacy).toBe(true);
+    expect(legacyMfg?.data.length).toBeLessThanOrEqual(24);
+  });
 });
