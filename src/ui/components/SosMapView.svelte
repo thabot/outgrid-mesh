@@ -356,38 +356,29 @@
 </script>
 
 <div class="mapview-root">
-  <!-- Toolbar -->
-  <div class="map-toolbar">
-    <div class="toolbar-left">
-      <span class="map-title">🗺️ OutGrid Map</span>
-      <span class="badge-osm">© OpenStreetMap</span>
-      {#if isBasemapLoaded}
-        <span class="badge-basemap" title="World Vector Basemap Level 2 ออฟไลน์ติดเครื่อง 100%">🌍 Basemap L2</span>
-      {/if}
-    </div>
-    <div class="toolbar-right">
-      <button
-        class="btn-control"
-        class:active={showAllNodes}
-        on:click={() => showAllNodes = !showAllNodes}
-        title="สลับแสดงเฉพาะจุด SOS หรือโหนดทั้งหมดในรัศมีวิทยุ"
-      >
-        {showAllNodes ? '🌐 โหนดทั้งหมด' : '🚨 เฉพาะ SOS'}
-      </button>
+  <!-- Compact Action Bar (Buttons scaled down, header removed) -->
+  <div class="map-toolbar-compact">
+    <button
+      class="btn-control-compact"
+      class:active={showAllNodes}
+      on:click={() => showAllNodes = !showAllNodes}
+      title="สลับแสดงเฉพาะจุด SOS หรือโหนดทั้งหมดในรัศมีวิทยุ"
+    >
+      {showAllNodes ? '🌐 โหนดทั้งหมด' : '🚨 เฉพาะ SOS'}
+    </button>
 
-      <button
-        class="btn-control"
-        class:active={showPeerDistance}
-        on:click={() => showPeerDistance = !showPeerDistance}
-        title="เปิด/ปิดการแสดงระยะทางบนหมุดโหนด"
-      >
-        {showPeerDistance ? '📏 ซ่อนระยะ' : '📏 แสดงระยะ'}
-      </button>
+    <button
+      class="btn-control-compact"
+      class:active={showPeerDistance}
+      on:click={() => showPeerDistance = !showPeerDistance}
+      title="เปิด/ปิดการแสดงระยะทางบนหมุดโหนด"
+    >
+      {showPeerDistance ? '📏 ซ่อนระยะ' : '📏 แสดงระยะ'}
+    </button>
 
-      <button class="btn-locate" class:locating={isLocating} on:click={locateMe} disabled={isLocating}>
-        {isLocating ? '📡 กำลังหาตำแหน่ง...' : '📍 หาตำแหน่งของฉัน'}
-      </button>
-    </div>
+    <button class="btn-locate-compact" class:locating={isLocating} on:click={locateMe} disabled={isLocating}>
+      {isLocating ? '📡 กำลังหา...' : '📍 หาตำแหน่งของฉัน'}
+    </button>
   </div>
 
   {#if locationError}
@@ -422,83 +413,55 @@
     min-height: 520px;
   }
 
-  .map-toolbar {
+  .map-toolbar-compact {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0.6rem 1rem;
+    gap: 0.35rem;
+    padding: 0.35rem 0.6rem;
     background: #0f172a;
     border-bottom: 1px solid #1e293b;
     flex-wrap: wrap;
-    gap: 0.5rem;
   }
 
-  .toolbar-left {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  .map-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #38bdf8;
-  }
-
-  .badge-osm {
-    font-size: 0.7rem;
-    background: #1e293b;
-    color: #64748b;
-    padding: 2px 8px;
-    border-radius: 9999px;
-  }
-
-  .badge-basemap {
-    font-size: 0.7rem;
-    background: #0284c7;
-    color: #ffffff;
-    padding: 2px 8px;
-    border-radius: 9999px;
-    font-weight: 600;
-  }
-
-  .btn-control {
+  .btn-control-compact {
     background: #1e293b;
     color: #94a3b8;
     border: 1px solid #334155;
-    padding: 0.35rem 0.75rem;
-    border-radius: 0.375rem;
-    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
     cursor: pointer;
     font-weight: 600;
     transition: all 0.15s ease;
+    white-space: nowrap;
   }
-  .btn-control:hover {
+  .btn-control-compact:hover {
     background: #334155;
     color: #f1f5f9;
   }
-  .btn-control.active {
+  .btn-control-compact.active {
     background: #0369a1;
     color: #ffffff;
     border-color: #38bdf8;
   }
 
-  .btn-locate {
+  .btn-locate-compact {
     background: #0ea5e9;
     color: #fff;
     border: none;
-    padding: 0.4rem 0.9rem;
-    border-radius: 0.5rem;
-    font-size: 0.85rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
     cursor: pointer;
     font-weight: 600;
     transition: background 0.2s;
+    white-space: nowrap;
   }
-  .btn-locate:hover:not(:disabled) {
+  .btn-locate-compact:hover:not(:disabled) {
     background: #0284c7;
   }
-  .btn-locate:disabled,
-  .btn-locate.locating {
+  .btn-locate-compact:disabled,
+  .btn-locate-compact.locating {
     background: #334155;
     cursor: wait;
   }
