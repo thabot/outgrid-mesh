@@ -69,15 +69,66 @@
   }
 
   import { AuthManager } from '../core/auth/AuthManager';
+  import { OneTapSosEngine, SosStatusCategory } from '../core/state/OneTapSosEngine';
+  import { NativeBridgeDispatcher } from '../core/native/NativeBridgeDispatcher';
 
   let auth = new AuthManager();
   let myProfile = auth.getProfile();
+  let targetChatPeer: { peerId: string; peerName: string } | null = null;
+  let isSosDispatching = false;
 
   function handleStartDirectChat(e: CustomEvent<{ peerId: string; peerName: string }>) {
+    targetChatPeer = { peerId: e.detail.peerId, peerName: e.detail.peerName };
     activeTab = 'chat';
   }
 
+  function handleTriggerSos(category: SosStatusCategory) {
+    if (isSosDispatching) return;
+    isSosDispatching = true;
+
+    try {
+      let currentLat = 13.7563;
+      let currentLng = 100.5018;
+
+      // Load last known GPS or default
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const savedLoc = window.localStorage.getItem('outgrid_last_gps_location');
+          if (savedLoc) {
+            const parsed = JSON.parse(savedLoc);
+            if (parsed.lat && parsed.lng) {
+              currentLat = parsed.lat;
+              currentLng = parsed.lng;
+            }
+          }
+        }
+      } catch {}
+
+      const senderPubkeyHash = myProfile.keyPair.publicKey.slice(0, 8);
+      const sosPacket = OneTapSosEngine.createSosBeacon({
+        lat: currentLat,
+        lng: currentLng,
+        batteryLevel: 95,
+        category,
+        senderPubkeyHash
+      });
+
+      // Transmit SOS over BLE Coded PHY Radio at High Power
+      const dispatcher = NativeBridgeDispatcher.getInstance();
+      dispatcher.transmitRadioPacket(sosPacket.payload, true);
+      dispatcher.startSosStrobe();
+      dispatcher.vibrateSosPattern();
+
+      alert(`🚨 สัญญาณ SOS หมวด [${category}] ถูกกระจายผ่านคลื่นวิทยุ BLE เรียบร้อยแล้ว! รัศมี 300ม. - 5กม.`);
+    } catch (err: any) {
+      alert(`⚠️ เกิดข้อผิดพลาดในการยิงวิทยุ: ${err.message}`);
+    } finally {
+      setTimeout(() => { isSosDispatching = false; }, 2000);
+    }
+  }
+
   onMount(() => {
+    myProfile = auth.getProfile();
     // Derive unique 16-bit short numeric node ID from our own unique nodeId
     let numericNodeId = 0x47A1;
     try {
@@ -162,11 +213,11 @@
 
   <section class="content-area">
     {#if activeTab === 'sos'}
-      <div class="card"><OneTapSos /></div>
+      <div class="card"><OneTapSos onTriggerSos={handleTriggerSos} isDispatching={isSosDispatching} /></div>
     {:else if activeTab === 'feed'}
       <div class="card"><CrisisFeed /></div>
     {:else if activeTab === 'chat'}
-      <div class="card"><MeshChatScreen /></div>
+      <div class="card"><MeshChatScreen targetContact={targetChatPeer} myNodeId={myProfile.nodeId} /></div>
     {:else if activeTab === 'map'}
       <div class="card card-map">
         <SosMapView

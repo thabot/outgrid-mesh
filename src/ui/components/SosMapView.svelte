@@ -76,9 +76,24 @@
       shadowUrl: '/assets/_vendor/marker-shadow.png',
     });
 
+    // Check last saved GPS location from localStorage to avoid defaulting to Bangkok
+    let startCenter: [number, number] = [13.7563, 100.5018];
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const savedLoc = window.localStorage.getItem('outgrid_last_gps_location');
+        if (savedLoc) {
+          const parsed = JSON.parse(savedLoc);
+          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+            startCenter = [parsed.lat, parsed.lng];
+            myPos = { lat: parsed.lat, lng: parsed.lng };
+          }
+        }
+      }
+    } catch {}
+
     map = L.map(mapEl, {
-      center: [13.7563, 100.5018], // Bangkok default
-      zoom: 12,
+      center: startCenter,
+      zoom: 13,
       zoomControl: true,
     });
 
@@ -95,13 +110,17 @@
       }
     });
 
-    osmTileLayer.addTo(map);
+    if (map) {
+      osmTileLayer.addTo(map);
+    }
 
     // Load offline World Basemap L2
     await loadWorldBasemapL2();
 
-    renderHexHeatmap();
-    renderSosTargets();
+    if (map) {
+      renderHexHeatmap();
+      renderSosTargets();
+    }
   }
 
   async function loadWorldBasemapL2() {
@@ -113,29 +132,34 @@
 
       if (basemapLayer) basemapLayer.remove();
 
-      basemapLayer = L.geoJSON(geoJson, {
-        style: (feature: any) => {
-          const layerType = feature?.properties?.layer;
-          if (layerType === 'country') {
-            return { color: '#0284c7', weight: 1.5, fillOpacity: 0.02, fillColor: '#38bdf8', opacity: 0.4 };
-          } else if (layerType === 'state') {
-            return { color: '#38bdf8', weight: 1, dashArray: '4, 4', fillOpacity: 0.01, opacity: 0.35 };
-          } else if (layerType === 'river') {
-            return { color: '#0ea5e9', weight: 1.5, opacity: 0.5 };
+      if (map && L) {
+        basemapLayer = L.geoJSON(geoJson, {
+          style: (feature: any) => {
+            const layerType = feature?.properties?.layer;
+            if (layerType === 'country') {
+              return { color: '#0284c7', weight: 1.5, fillOpacity: 0.02, fillColor: '#38bdf8', opacity: 0.4 };
+            } else if (layerType === 'state') {
+              return { color: '#38bdf8', weight: 1, dashArray: '4, 4', fillOpacity: 0.01, opacity: 0.35 };
+            } else if (layerType === 'river') {
+              return { color: '#0ea5e9', weight: 1.5, opacity: 0.5 };
+            }
+            return { color: '#64748b', weight: 0.8, opacity: 0.3 };
+          },
+          pointToLayer: (feature: any, latlng: any) => {
+            return L!.circleMarker(latlng, {
+              radius: 3.5,
+              fillColor: '#f59e0b',
+              color: '#ffffff',
+              weight: 1,
+              opacity: 0.8,
+              fillOpacity: 0.7,
+            }).bindTooltip(`🏙️ ${feature?.properties?.name || 'City'}`, { direction: 'top' });
           }
-          return { color: '#64748b', weight: 0.8, opacity: 0.3 };
-        },
-        pointToLayer: (feature: any, latlng: any) => {
-          return L!.circleMarker(latlng, {
-            radius: 3.5,
-            fillColor: '#f59e0b',
-            color: '#ffffff',
-            weight: 1,
-            opacity: 0.8,
-            fillOpacity: 0.7,
-          }).bindTooltip(`🏙️ ${feature?.properties?.name || 'City'}`, { direction: 'top' });
+        });
+        if (map) {
+          basemapLayer.addTo(map);
         }
-      }).addTo(map);
+      }
 
       isBasemapLoaded = true;
     } catch (err) {
@@ -278,6 +302,17 @@
         const h3Idx = H3GridEngine.coordToH3(myPos.lat, myPos.lng, 9);
         heatmap.registerPresence('self', h3Idx);
         renderHexHeatmap();
+
+        // Save GPS to localStorage for persistent map restore
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem('outgrid_last_gps_location', JSON.stringify({
+              lat: myPos.lat,
+              lng: myPos.lng,
+              timestamp: Date.now()
+            }));
+          }
+        } catch {}
 
         // Update central PeerDiscoveryStore with real user GPS coordinates
         peerDiscoveryManager.setUserLocation(myPos.lat, myPos.lng);

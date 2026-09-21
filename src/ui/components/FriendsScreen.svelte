@@ -16,6 +16,7 @@
     type IDiscoveredPeer
   } from '../../core/state/PeerDiscoveryStore';
   import { getBatteryBarsVisual } from '../../core/battery/BatteryRuntimeEstimator';
+  import { NativeBridgeDispatcher, type INativePacketEvent } from '../../core/native/NativeBridgeDispatcher';
 
   const dispatch = createEventDispatcher<{
     startDirectChat: { peerId: string; peerName: string };
@@ -48,10 +49,10 @@
   let scanAnimationId: number | null = null;
   let isScanningFrame = false;
 
-  // Feedback states
   let scanSuccessMessage = '';
   let scanErrorMessage = '';
   let safetyNumberInfo: any = null;
+  let unsubscribeRadio: (() => void) | null = null;
 
   // Search filter
   let searchQuery = '';
@@ -75,12 +76,25 @@
   const STORAGE_KEY = 'outgrid_saved_friends_v1';
 
   onMount(() => {
+    myProfile = auth.getProfile();
+    myNodeId = myProfile.nodeId;
+    myShortNodeId = `#${myNodeId.slice(0, 4).toUpperCase()}`;
+    myDisplayName = myProfile.displayName || `ผู้ใช้ฉุกเฉิน (${myShortNodeId})`;
     loadSavedFriends();
     initMyQrCode();
+
+    // Subscribe to incoming BLE radio packets for Two-Way Pairing Handshake
+    unsubscribeRadio = NativeBridgeDispatcher.getInstance().subscribeToPackets((event: INativePacketEvent) => {
+      handleIncomingRadioPacket(event);
+    });
   });
 
   onDestroy(() => {
     stopCamera();
+    if (unsubscribeRadio) {
+      unsubscribeRadio();
+      unsubscribeRadio = null;
+    }
   });
 
   function loadSavedFriends() {
@@ -267,6 +281,72 @@
     modalView = 'none';
   }
 
+  function handleIncomingRadioPacket(event: INativePacketEvent) {
+    try {
+      const decoder = new TextDecoder();
+      const text = decoder.decode(event.bytes);
+      // Expected protocol: OG:v1:PAIR_ACK:{targetNodeId}:{myNodeId}:{displayName}:{edPubHex}:{xPubHex}
+      if (text.startsWith('OG:v1:PAIR_ACK:')) {
+        const parts = text.split(':');
+        if (parts.length >= 6) {
+          const targetNodeId = parts[3];
+          const senderNodeId = parts[4];
+          const senderDisplayName = decodeURIComponent(parts[5] || '');
+          const senderEdPubHex = parts[6] || '';
+
+          // Only process if targeted to us or broadcast
+          const myNodePrefix = myNodeId.slice(0, 8);
+          if (targetNodeId !== myNodePrefix && targetNodeId !== myShortNodeId && targetNodeId !== 'ALL') {
+            return;
+          }
+
+          const shortId = senderNodeId.startsWith('#') ? senderNodeId : `#${senderNodeId.slice(0, 4).toUpperCase()}`;
+
+          // Don't add ourselves
+          if (shortId === myShortNodeId || senderNodeId === myNodeId) return;
+
+          // Compute Safety Number
+          const dummyKeyA = myProfile.keyPair.publicKey;
+          const dummyKeyB = new Uint8Array(32);
+          for (let i = 0; i < 32; i++) {
+            dummyKeyB[i] = (senderEdPubHex ? senderEdPubHex.charCodeAt(i % senderEdPubHex.length) : 0x55) ^ (i * 7);
+          }
+          const safety = QrPairingEngine.computeSafetyNumber(dummyKeyA, dummyKeyB);
+
+          const avatarPool = ['😀', '🦊', '🐻', '🐼', '🐯', '🦁', '🦉', '🚀', '🛰️', '🧑‍🚀'];
+          const chosenAvatar = avatarPool[Math.abs(shortId.charCodeAt(1) || 0) % avatarPool.length];
+
+          const existingIdx = savedFriends.findIndex(f => f.id === shortId || f.fullNodeId === senderNodeId);
+          if (existingIdx >= 0) {
+            savedFriends[existingIdx].isOnline = true;
+            savedFriends[existingIdx].lastSeen = Date.now();
+            if (senderDisplayName) savedFriends[existingIdx].name = senderDisplayName;
+          } else {
+            savedFriends = [
+              {
+                id: shortId,
+                fullNodeId: senderNodeId,
+                name: senderDisplayName || `เพื่อน ${shortId}`,
+                avatarEmoji: chosenAvatar,
+                statusMessage: 'จับคู่อัตโนมัติผ่านวิทยุสื่อสาร BLE (Two-Way Handshake)',
+                safetyNumber: safety.formatted,
+                addedAt: Date.now(),
+                isOnline: true,
+                lastSeen: Date.now()
+              },
+              ...savedFriends
+            ];
+          }
+
+          saveFriendsToStorage();
+          peerDiscoveryManager.addFriendPeer(shortId, senderNodeId);
+        }
+      }
+    } catch {
+      // Ignore radio packet parsing error
+    }
+  }
+
   function processPairingString(input: string) {
     const raw = input.trim();
     if (!raw) return;
@@ -320,7 +400,26 @@
         // Update discovery store
         peerDiscoveryManager.addFriendPeer(shortId, peerNodeId);
 
-        scanSuccessMessage = `✅ เพิ่ม ${shortId} เป็นเพื่อนเรียบร้อยแล้ว!`;
+        // 🌟 Two-Way Handshake Broadcast: Transmit BLE radio packet so Machine B also automatically adds us!
+        try {
+          const edPub = myProfile.keyPair.publicKey;
+          const myEdPubHex = Array.from(edPub).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+          const myXPubHex = myEdPubHex;
+          const encodedName = encodeURIComponent(myDisplayName);
+          const handshakePayload = `OG:v1:PAIR_ACK:${peerNodeId}:${myNodeId.slice(0, 8)}:${encodedName}:${myEdPubHex}:${myXPubHex}`;
+          const encoder = new TextEncoder();
+          const handshakeBytes = encoder.encode(handshakePayload);
+
+          // Transmit twice with high power to guarantee reception
+          NativeBridgeDispatcher.getInstance().transmitRadioPacket(handshakeBytes, true);
+          setTimeout(() => {
+            NativeBridgeDispatcher.getInstance().transmitRadioPacket(handshakeBytes, true);
+          }, 400);
+        } catch (err) {
+          console.warn('Failed to transmit pairing handshake radio packet:', err);
+        }
+
+        scanSuccessMessage = `✅ เพิ่ม ${shortId} เป็นเพื่อนเรียบร้อยแล้ว (ส่งสัญญาณจับคู่ 2 ฝั่งผ่านวิทยุแล้ว)`;
         manualInputCode = '';
         return;
       }

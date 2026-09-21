@@ -42,6 +42,18 @@
       backupStatus = $t.backup_success;
     }, 1200);
   }
+  let isEditingName = false;
+  let inputDisplayName = userProfile.displayName;
+  let saveSuccessNotice = false;
+
+  function handleSaveDisplayName() {
+    if (!inputDisplayName.trim()) return;
+    auth.updateDisplayName(inputDisplayName.trim());
+    userProfile = auth.getProfile();
+    isEditingName = false;
+    saveSuccessNotice = true;
+    setTimeout(() => { saveSuccessNotice = false; }, 2500);
+  }
 </script>
 
 <div class="profile-container">
@@ -52,8 +64,33 @@
         <span>👤</span>
       </div>
       <div class="profile-meta">
-        <h3>{$t.guest_victim}</h3>
-        <span class="badge-parity">{$t.guest_parity_badge}</span>
+        <div class="name-edit-row">
+          {#if isEditingName}
+            <input
+              type="text"
+              class="name-input"
+              bind:value={inputDisplayName}
+              maxlength="24"
+              placeholder="กรอกชื่อของคุณ..."
+            />
+            <button class="btn-save-name" on:click={handleSaveDisplayName}>💾 บันทึก</button>
+            <button class="btn-cancel-name" on:click={() => { isEditingName = false; inputDisplayName = userProfile.displayName; }}>ยกเลิก</button>
+          {:else}
+            <div class="display-name-group">
+              <h3>{userProfile.displayName}</h3>
+              <button class="btn-edit-name-icon" on:click={() => isEditingName = true} title="เปลี่ยนชื่อของคุณ">
+                ✏️ แก้ไขชื่อ
+              </button>
+            </div>
+          {/if}
+        </div>
+        {#if saveSuccessNotice}
+          <div class="save-notice">✓ เปลี่ยนชื่อเรียบร้อยแล้ว</div>
+        {/if}
+        <div class="node-badge-row">
+          <span class="node-id-badge">🔑 Node ID: #{userProfile.nodeId.slice(0, 4).toUpperCase()}</span>
+          <span class="badge-parity">{$t.guest_parity_badge}</span>
+        </div>
       </div>
     </div>
 
@@ -163,10 +200,103 @@
     font-size: 1.5rem;
   }
 
+  .profile-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .name-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .display-name-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .profile-meta h3 {
     margin: 0;
-    font-size: 1.1rem;
-    color: #e2e8f0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+
+  .btn-edit-name-icon {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #38bdf8;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-edit-name-icon:hover {
+    background: #0284c7;
+    color: #fff;
+  }
+
+  .name-input {
+    background: #1e293b;
+    border: 1px solid #38bdf8;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    outline: none;
+  }
+
+  .btn-save-name {
+    background: #0284c7;
+    border: none;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn-cancel-name {
+    background: #334155;
+    border: none;
+    color: #cbd5e1;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .save-notice {
+    font-size: 0.72rem;
+    color: #4ade80;
+    font-weight: 600;
+  }
+
+  .node-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+  }
+
+  .node-id-badge {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #38bdf8;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-family: monospace;
+    font-weight: 700;
   }
 
   .badge-parity {
@@ -178,7 +308,6 @@
     border-radius: 9999px;
     font-size: 0.7rem;
     font-weight: 700;
-    margin-top: 4px;
   }
 
   .parity-callout {
