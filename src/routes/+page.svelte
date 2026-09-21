@@ -17,6 +17,7 @@
   import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../core/i18n/I18nStore';
 
   const currentLocaleStore = i18n.locale;
+  const translations = i18n.translations;
 
   function handleLanguageChange(e: Event) {
     const target = e.target as HTMLSelectElement;
@@ -88,7 +89,7 @@
         on:click={() => isUltraSurvival = !isUltraSurvival}
         title="ขยายรอบส่งคลื่นวิทยุและลดการกินไฟหน้าจอสูงสุด"
       >
-        {isUltraSurvival ? '🛑 ปิด Ultra' : '⚡ 1-Tap Survival'}
+        {isUltraSurvival ? ($translations.survival_btn_off || '🛑 Exit Ultra') : ($translations.survival_btn_on || '⚡ 1-Tap Survival')}
       </button>
 
       <div class="header-lang-selector">
@@ -100,11 +101,11 @@
         </select>
       </div>
       <nav class="nav-tabs">
-        <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 SOS</button>
-        <button class:active={activeTab === 'feed'} on:click={() => activeTab = 'feed'}>📢 Feed</button>
-        <button class:active={activeTab === 'map'} on:click={() => activeTab = 'map'}>🗺️ {$currentLocaleStore === 'th' ? 'แผนที่' : 'Map'}</button>
-        <button class:active={activeTab === 'manual'} on:click={() => activeTab = 'manual'}>📖 Manual</button>
-        <button class:active={activeTab === 'donation'} on:click={() => activeTab = 'donation'}>🤝 Fund</button>
+        <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 {$translations.sos || 'SOS'}</button>
+        <button class:active={activeTab === 'feed'} on:click={() => activeTab = 'feed'}>📢 {$translations.feed || 'Feed'}</button>
+        <button class:active={activeTab === 'map'} on:click={() => activeTab = 'map'}>🗺️ {$translations.map || 'Map'}</button>
+        <button class:active={activeTab === 'manual'} on:click={() => activeTab = 'manual'}>📖 {$translations.manual || 'Manual'}</button>
+        <button class:active={activeTab === 'donation'} on:click={() => activeTab = 'donation'}>🤝 {$translations.fund || 'Fund'}</button>
       </nav>
     </div>
   </header>
@@ -117,11 +118,6 @@
 
   <!-- Network Status Bar (Sprint D Task D.1) -->
   <NetworkStatusBar />
-
-  <BatteryStatusBanner
-    bind:isUltraSurvival
-    onTriggerLastGasp={handleTriggerLastGasp}
-  />
 
   <BeaconControlsBar />
 

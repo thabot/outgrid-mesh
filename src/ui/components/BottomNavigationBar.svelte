@@ -7,8 +7,11 @@
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
   import { createEventDispatcher } from 'svelte';
+  import { i18n } from '../../core/i18n/I18nStore';
 
   export let activeTab: 'map' | 'chat' | 'sos' | 'friends' | 'profile' = 'sos';
+
+  const translations = i18n.translations;
 
   const dispatch = createEventDispatcher<{
     tabChange: { tab: 'map' | 'chat' | 'sos' | 'friends' | 'profile' };
@@ -25,31 +28,31 @@
     class="nav-item"
     class:active={activeTab === 'map'}
     on:click={() => selectTab('map')}
-    aria-label="แผนที่กู้ภัย"
+    aria-label="Map"
   >
     <span class="icon">🗺️</span>
-    <span class="label">แผนที่</span>
+    <span class="label">{$translations.map || 'Map'}</span>
   </button>
 
   <button
     class="nav-item"
     class:active={activeTab === 'chat'}
     on:click={() => selectTab('chat')}
-    aria-label="ศูนย์แชทและฟีดกู้ภัย"
+    aria-label="Chat"
   >
     <span class="icon">💬</span>
-    <span class="label">แชท</span>
+    <span class="label">{$translations.chat || 'Chat'}</span>
   </button>
 
   <button
     class="nav-item nav-sos"
     class:active={activeTab === 'sos'}
     on:click={() => selectTab('sos')}
-    aria-label="ปุ่มฉุกเฉิน One-Tap SOS"
+    aria-label="SOS"
   >
     <div class="sos-pill">
       <span class="sos-icon">🚨</span>
-      <span class="sos-label">SOS</span>
+      <span class="sos-label">{$translations.sos || 'SOS'}</span>
     </div>
   </button>
 
@@ -57,20 +60,20 @@
     class="nav-item"
     class:active={activeTab === 'friends'}
     on:click={() => selectTab('friends')}
-    aria-label="เพื่อนและผู้ติดต่อ"
+    aria-label="Friends"
   >
     <span class="icon">👥</span>
-    <span class="label">เพื่อน</span>
+    <span class="label">{$translations.friends || 'Friends'}</span>
   </button>
 
   <button
     class="nav-item"
     class:active={activeTab === 'profile'}
     on:click={() => selectTab('profile')}
-    aria-label="โปรไฟล์และตั้งค่า"
+    aria-label="Profile"
   >
     <span class="icon">👤</span>
-    <span class="label">โปรไฟล์</span>
+    <span class="label">{$translations.profile || 'Profile'}</span>
   </button>
 </nav>
 

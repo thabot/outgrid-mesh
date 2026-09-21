@@ -45,6 +45,7 @@ export const fallbackDictionary: Record<string, string> = {
   manual: 'Manual',
   fund: 'Fund',
   nodes_around: 'nodes nearby',
+  nodes_count_suffix: 'nodes',
   emergency_hardware: 'Emergency Hardware',
   sos_morse_torch: 'SOS Flashlight',
   torch_off: 'Flashlight OFF',
@@ -72,7 +73,39 @@ export const fallbackDictionary: Record<string, string> = {
   backup_success: '✓ Zero-Knowledge Blob backup completed 100%',
   storage_title: 'Offline Local Storage (IndexedDB)',
   storage_note_1: '✓ 50MB FIFO automatic ceiling pruning prevents device storage overflow',
-  storage_note_2: '✓ SOS Beacon messages & pinned 📌 alerts are permanently preserved'
+  storage_note_2: '✓ SOS Beacon messages & pinned 📌 alerts are permanently preserved',
+  
+  // Chat & Messaging
+  chat_broadcast_tab: '📢 Broadcast',
+  chat_direct_tab: '🔒 Direct 1:1 (E2EE)',
+  chat_hop_radius: 'Relay Radius:',
+  chat_hop_local: '🟢 Nearby (3 Hops)',
+  chat_hop_community: '🟡 Community (7 Hops)',
+  chat_hop_max: '🔴 Max Range (15 Hops)',
+  chat_input_broadcast_placeholder: 'Type broadcast message to nearby nodes...',
+  chat_input_direct_placeholder: 'Type encrypted 1:1 message...',
+  chat_me: 'Me',
+  chat_encrypted_badge: 'Encrypted ChaCha20-Poly1305',
+  chat_pin_tooltip: 'Pin message to prevent auto-pruning',
+  chat_contacts_title: 'Friends & Direct Contacts',
+  chat_contacts_search: 'Search contact or Node ID...',
+  chat_no_contacts: 'No active contacts found nearby',
+  chat_back_to_list: '← Back to Contacts',
+  chat_online: 'Online via Mesh',
+  chat_quick_help: '🚨 Need urgent assistance',
+  chat_quick_safe: '📍 Safe at evacuation center',
+  chat_quick_food_water: '🍞 Need water and food',
+  chat_quick_battery_low: '🔋 Low battery warning',
+
+  // Status Bar & Modals
+  status_peer_summary_title: '👥 Mesh Network Peer Summary',
+  status_peer_sos: 'Emergency SOS Beacons:',
+  status_peer_friends: 'Verified Contacts & Friends:',
+  status_peer_relays: 'Community Mesh Relays:',
+  status_peer_gateways: 'Satellite & LoRa Gateways:',
+  status_modal_hint: 'Searching & relaying packets via BLE Coded PHY (S=8) range 300m - 5km.',
+  status_btn_done: 'Done',
+  status_isolated: 'ISOLATED'
 };
 
 // Default fallback locale when device language does not match supported list
@@ -156,6 +189,7 @@ export const thaiDictionary: Record<string, string> = {
   manual: 'คู่มือ',
   fund: 'กองทุน',
   nodes_around: 'โหนดรอบตัว',
+  nodes_count_suffix: 'โหนด',
   emergency_hardware: 'ฮาร์ดแวร์ฉุกเฉิน',
   sos_morse_torch: 'ไฟฉาย SOS Morse',
   torch_off: 'ปิดไฟฉาย',
@@ -169,7 +203,7 @@ export const thaiDictionary: Record<string, string> = {
   charging: 'กำลังชาร์จไฟ',
   survival_mode: 'โหมดเอาชีวิตรอด',
   last_gasp_btn: '🚨 ส่ง Last-Gasp',
-  survival_btn_off: '🛑 ปิด Ultra Survival',
+  survival_btn_off: '🛑 ปิด Ultra',
   survival_btn_on: '⚡ 1-Tap Survival',
   guest_victim: 'โหมดผู้ประสบภัยฉุกเฉิน (Guest Victim)',
   guest_parity_badge: '100% Full Emergency Capabilities Active',
@@ -183,7 +217,39 @@ export const thaiDictionary: Record<string, string> = {
   backup_success: '✓ สำรองข้อมูลรายชื่อเพื่อนแบบ Zero-Knowledge Blob สำเร็จแล้ว 100%',
   storage_title: 'ความจุพื้นที่ออฟไลน์ในเครื่อง (IndexedDB)',
   storage_note_1: '✓ ระบบจำกัดเพดาน 50MB FIFO Pruning อัตโนมัติ ป้องกันเครื่องเต็ม',
-  storage_note_2: '✓ ข้อความ SOS Beacon และข้อความปักหมุด 📌 ถูกล็อคถาวร ไม่ถูกลบเด็ดขาด 100%'
+  storage_note_2: '✓ ข้อความ SOS Beacon และข้อความปักหมุด 📌 ถูกล็อคถาวร ไม่ถูกลบเด็ดขาด 100%',
+
+  // Chat & Messaging
+  chat_broadcast_tab: '📢 ส่วนรวม (Broadcast)',
+  chat_direct_tab: '🔒 แชทส่วนตัว 1:1 (E2EE)',
+  chat_hop_radius: 'รัศมีส่งต่อ:',
+  chat_hop_local: '🟢 รอบตัว (3 Hops)',
+  chat_hop_community: '🟡 ชุมชน (7 Hops)',
+  chat_hop_max: '🔴 ไกลสุด (15 Hops)',
+  chat_input_broadcast_placeholder: 'พิมพ์กระจายข่าวสารรอบตัว...',
+  chat_input_direct_placeholder: 'พิมพ์ข้อความส่วนตัว 1:1 เข้ารหัส...',
+  chat_me: 'ฉัน',
+  chat_encrypted_badge: 'เข้ารหัสลับ E2EE ChaCha20-Poly1305',
+  chat_pin_tooltip: 'ปักหมุดข้อความป้องกันการถูกลบ',
+  chat_contacts_title: 'รายชื่อเพื่อนและแชทส่วนตัว',
+  chat_contacts_search: 'ค้นหารายชื่อเพื่อนหรือรหัสโหนด...',
+  chat_no_contacts: 'ไม่พบโหนดเพื่อนในระยะสัญญาณ',
+  chat_back_to_list: '← กลับหน้ารายชื่อเพื่อน',
+  chat_online: 'ออนไลน์ผ่านเครือข่ายวิทยุ',
+  chat_quick_help: '🚨 ต้องการความช่วยเหลือด่วน',
+  chat_quick_safe: '📍 ปลอดภัยแล้ว อยู่ศูนย์อพยพ',
+  chat_quick_food_water: '🍞 ต้องการน้ำและอาหาร',
+  chat_quick_battery_low: '🔋 แบตเตอรี่ใกล้หมด',
+
+  // Status Bar & Modals
+  status_peer_summary_title: '👥 สรุปโครงข่ายโหนดรอบตัว',
+  status_peer_sos: 'โหนดขอความช่วยเหลือ (SOS Beacons):',
+  status_peer_friends: 'เพื่อนและผู้ติดต่อที่ยืนยันแล้ว:',
+  status_peer_relays: 'สถานีรีเลย์ชุมชน (Mesh Relays):',
+  status_peer_gateways: 'เกตเวย์เชื่อมต่อ LoRa / ดาวเทียม:',
+  status_modal_hint: 'ระบบค้นหาและกระจายแพ็กเก็ตผ่าน BLE Coded S=8 ในระยะวิทยุ 300ม. – 5กม.',
+  status_btn_done: 'ตกลง',
+  status_isolated: 'ไม่มีสัญญาณ'
 };
 
 function getDictionaryForLocale(locale: SupportedLocale): Record<string, string> {
