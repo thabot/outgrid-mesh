@@ -78,3 +78,24 @@
 
 - Abaixo de 20%, o aplicativo ativa o modo **Deep Hibernation**, espaçando as varreduras para manter o aparelho ativo por mais de **100 horas**.
 - Desative aplicativos desnecessários para resguardar a carga de resgate.
+
+---
+
+## 6. Procedimento Operacional Padrão de Emergência em 3 Fases (3-Phase Emergency SOP)
+
+### 🟢 Fase 1: Preparação Prévia (Pre-Disaster Readiness)
+1. **Instalação e Permissões:** Instale o OutGrid Mesh com antecedência. Conceda permissões de Bluetooth, Localização precisa e Isenção de otimização de bateria.
+2. **Pareamento Presencial QR:** Escaneie códigos QR presencialmente com familiares e vizinhos para trocar chaves criptográficas E2EE X25519/Ed25519.
+3. **Reserva de Energia:** Mantenha celulares e baterias externas totalmente carregados.
+
+### 🔴 Fase 2: Desastre Ativo e Apagão Total (Active Disaster & Blackout)
+1. **Ativação Imediata:** Abra o OutGrid Mesh assim que as redes de celular ou energia caírem.
+2. **Emergência Crítica / Soterrados:**
+   - Pressione o botão vermelho **SOS** por 1 segundo para irradiar o micro-pacote de 21 bytes (GPS/H3) por 15 saltos.
+   - Em escombros ou no escuro, acione o **Código Morse Acústico e Luz Estroboscópica** para guiar as equipes de resgate.
+3. **Pessoas em Segurança:** Mantenha o app em segundo plano atuando como **Nó Repetidor (Relay Node)** comunitário.
+4. **Mensagem para Destinatário Offline (Caixa Postal Espacial H3):** Se enviar mensagem para alguém sem sinal, ela fica sob custódia dos nós vizinhos do hexágono H3 (Spatial H3 Drop-box) e é entregue via BLE sem cliques quando ele se aproximar.
+
+### 🔵 Fase 3: Resgate e Mula de Dados (Rescue & Data Mule)
+1. **Mulas de Dados:** Barcos de resgate, ambulâncias e equipes móveis ($\ge 15\text{ km/h}$) absorvem pacotes com congelamento de saltos (Hop Freeze).
+2. **Restauração em Nuvem (Auto-Flush):** Ao atingir cobertura de internet ou o comando central, os dados são enviados para a nuvem automaticamente em segundos.
