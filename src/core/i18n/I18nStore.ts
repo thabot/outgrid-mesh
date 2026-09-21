@@ -38,20 +38,57 @@ export const fallbackDictionary: Record<string, string> = {
   evacuate_immediate: 'Evacuate Immediately'
 };
 
-// In-memory locale fallback without direct platform leaks
-let memoryLocale: SupportedLocale = 'th';
+// Default fallback locale when device language does not match supported list
+const DEFAULT_FALLBACK_LOCALE: SupportedLocale = 'en';
 
-function getPersistedLocale(): SupportedLocale {
+function detectDeviceLocale(): SupportedLocale {
+  try {
+    if (typeof navigator !== 'undefined') {
+      const candidates: string[] = [];
+      if (Array.isArray(navigator.languages) && navigator.languages.length > 0) {
+        candidates.push(...navigator.languages);
+      }
+      if (navigator.language) {
+        candidates.push(navigator.language);
+      }
+      const supportedCodes = new Set(SUPPORTED_LOCALES.map((l) => l.code as string));
+
+      for (const lang of candidates) {
+        if (!lang) continue;
+        const normalized = lang.toLowerCase();
+        // Exact match e.g. "th", "en", "zh", "ja"
+        if (supportedCodes.has(normalized)) {
+          return normalized as SupportedLocale;
+        }
+        // Prefix match e.g. "th-TH" -> "th", "en-US" -> "en", "zh-CN" -> "zh"
+        const prefix = normalized.split('-')[0];
+        if (supportedCodes.has(prefix)) {
+          return prefix as SupportedLocale;
+        }
+      }
+    }
+  } catch {
+    // Navigator unavailable
+  }
+  return DEFAULT_FALLBACK_LOCALE;
+}
+
+// In-memory locale fallback without direct platform leaks
+let memoryLocale: SupportedLocale = detectDeviceLocale();
+
+export function getPersistedLocale(): SupportedLocale {
   try {
     const storage = (globalThis as any)['local' + 'Storage'];
     if (storage) {
       const saved = storage.getItem('outgrid_locale');
-      if (saved) return saved as SupportedLocale;
+      if (saved && SUPPORTED_LOCALES.some((l) => l.code === saved)) {
+        return saved as SupportedLocale;
+      }
     }
   } catch {
     // Platform storage unavailable
   }
-  return memoryLocale;
+  return detectDeviceLocale();
 }
 
 function savePersistedLocale(locale: SupportedLocale): void {

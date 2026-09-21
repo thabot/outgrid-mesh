@@ -38,9 +38,10 @@ class MainActivity : AppCompatActivity() {
         android.util.Log.i("OutGridMesh", "Runtime permissions granted: $grantedCount / ${permissions.size}")
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         setContentView(R.layout.activity_main)
 
         // Request all required hardware and notification permissions
