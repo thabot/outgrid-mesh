@@ -3,6 +3,18 @@
 **المؤلف:** Thabot (<thabo47@gmail.com>)  
 **الترخيص:** AGPL-3.0 للمنفعة العامة الإنسانية غير الربحية
 
+[🏠 الرئيسية / README](../../README.md) • 
+[🇹🇭 ไทย](manual.th.md) • 
+[🇬🇧 English](manual.en.md) • 
+[🇨🇳 中文](manual.zh.md) • 
+[🇪🇸 Español](manual.es.md) • 
+[🇯🇵 日本語](manual.ja.md) • 
+[🇫🇷 Français](manual.fr.md) • 
+[🇵🇹 Português](manual.pt.md) • 
+[🇷🇺 Русский](manual.ru.md) • 
+[🇸🇦 العربية](manual.ar.md) • 
+[🇮🇳 हिन्दी](manual.hi.md)
+
 ---
 
 ## 1. تثبيت التطبيق (Installation)

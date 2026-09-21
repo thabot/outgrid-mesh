@@ -3,6 +3,18 @@
 **लेखक:** Thabot (<thabo47@gmail.com>)  
 **लाइसेंस:** AGPL-3.0 गैर-लाभकारी मानवीय सार्वजनिक हित
 
+[🏠 मुख्य पृष्ठ / README](../../README.md) • 
+[🇹🇭 ไทย](manual.th.md) • 
+[🇬🇧 English](manual.en.md) • 
+[🇨🇳 中文](manual.zh.md) • 
+[🇪🇸 Español](manual.es.md) • 
+[🇯🇵 日本語](manual.ja.md) • 
+[🇫🇷 Français](manual.fr.md) • 
+[🇵🇹 Português](manual.pt.md) • 
+[🇷🇺 Русский](manual.ru.md) • 
+[🇸🇦 العربية](manual.ar.md) • 
+[🇮🇳 हिन्दी](manual.hi.md)
+
 ---
 
 ## 1. एप्लिकेशन इंस्टालेशन (Installation)

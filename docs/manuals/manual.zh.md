@@ -1,7 +1,19 @@
 # OutGrid Mesh 现场操作与应急求生指南 (ZH)
 **协议:** Thabot OutGrid Protocol (TOG v1.1)  
 **作者:** Thabot (<thabo47@gmail.com>)  
-**开源许可:** AGPL-3.0 人道主义非营利公共事业
+**许可证:** AGPL-3.0 Non-Profit Humanitarian Public Good
+
+[🏠 首页 (README)](../../README.md) • 
+[🇹🇭 ไทย](manual.th.md) • 
+[🇬🇧 English](manual.en.md) • 
+[🇨🇳 中文](manual.zh.md) • 
+[🇪🇸 Español](manual.es.md) • 
+[🇯🇵 日本語](manual.ja.md) • 
+[🇫🇷 Français](manual.fr.md) • 
+[🇵🇹 Português](manual.pt.md) • 
+[🇷🇺 Русский](manual.ru.md) • 
+[🇸🇦 العربية](manual.ar.md) • 
+[🇮🇳 हिन्दी](manual.hi.md)
 
 ---
 
