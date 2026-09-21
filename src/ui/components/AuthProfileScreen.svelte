@@ -9,6 +9,7 @@
   import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../../core/i18n/I18nStore';
   import { AuthManager, UserRole } from '../../core/auth/AuthManager';
 
+  const currentLocale = i18n.locale;
   const auth = new AuthManager();
   let userProfile = auth.getProfile();
   let isBackingUp = false;
@@ -59,7 +60,7 @@
         {#each SUPPORTED_LOCALES as loc}
           <button
             class="locale-btn"
-            class:active={$i18n.locale === loc.code}
+            class:active={$currentLocale === loc.code}
             on:click={() => changeLanguage(loc.code)}
           >
             <span class="flag">{loc.flag}</span>
