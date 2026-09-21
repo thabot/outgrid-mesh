@@ -62,10 +62,10 @@ Users do not need to install developer tools or compile source code. Choose your
 
 | Distribution Channel | Version | Direct Download Link | Description |
 | :--- | :---: | :---: | :--- |
-| **🚀 Production Release (Recommended)** | `v1.1.0` | [📲 **outgrid-mesh.apk**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0/outgrid-mesh.apk) | Official verified release from `main` branch |
-| **🧪 UAT Pre-Release (Bleeding-Edge)** | `v1.1.0` | [📲 **outgrid-mesh-uat.apk**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0/outgrid-mesh-uat.apk) | Latest Sprint A–H build from `uat` branch (Commit `5a3caa6`) |
-| **📦 GitHub Releases Page** | All | [📂 **All Releases & Checksums**](https://github.com/thabot/outgrid-mesh/releases) | Review release notes, changelog, and SHA-256 hashes |
-| **🌐 Web PWA / Browser App** | `v1.1.0` | [🖥️ **Web Dashboard PWA**](https://thabot.github.io/outgrid-mesh/) | Runs in any modern browser with offline service worker cache |
+| **🚀 Production Release (Recommended)** | `Latest` | [📲 **outgrid-mesh.apk**](https://github.com/thabot/outgrid-mesh/releases/latest/download/outgrid-mesh.apk) | Official verified release from `main` branch (Always Latest) |
+| **🧪 UAT Pre-Release (Bleeding-Edge)** | `Latest UAT` | [📲 **outgrid-mesh-uat.apk**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0-uat/outgrid-mesh-uat.apk) | Latest build from `uat` branch (Always Latest UAT) |
+| **📦 GitHub Releases Page** | All | [📂 **All Releases & Checksums**](https://github.com/thabot/outgrid-mesh/releases) | Review all release builds, changelog, and SHA-256 hashes |
+| **🌐 Web PWA / Browser App** | `Latest` | [🖥️ **Web Dashboard PWA**](https://thabot.github.io/outgrid-mesh/) | Runs in any modern browser with offline service worker cache |
 
 > 💡 **Offline Wi-Fi Sideloading:** In isolated disaster zones without any internet connectivity, users can connect to the local Wi-Fi hotspot of an existing OutGrid Mesh device and open `http://192.168.49.1:8080` in their browser to download and install `outgrid-mesh.apk` directly over-the-air.
 
@@ -76,7 +76,7 @@ Users do not need to install developer tools or compile source code. Choose your
 You don't need an account, phone number verification, or internet access to use OutGrid Mesh:
 
 1. **Step 1: Install & Open the APK**
-   - Download the official [**`outgrid-mesh.apk`**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0/outgrid-mesh.apk) (or [**`outgrid-mesh-uat.apk`**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0/outgrid-mesh-uat.apk) for UAT testers) and open the file on your Android device. Allow "Install from Unknown Sources" if prompted.
+   - Download the official [**`outgrid-mesh.apk`**](https://github.com/thabot/outgrid-mesh/releases/latest/download/outgrid-mesh.apk) (or [**`outgrid-mesh-uat.apk`**](https://github.com/thabot/outgrid-mesh/releases/download/v1.1.0-uat/outgrid-mesh-uat.apk) for UAT testers) and open the file on your Android device. Allow "Install from Unknown Sources" if prompted.
 2. **Step 2: Turn ON Bluetooth & Location**
    - Grant Bluetooth and Nearby Devices permissions. The app will automatically discover neighbor nodes and establish an autonomous mesh grid in the background.
 3. **Step 3: Start Chatting or Press SOS**
