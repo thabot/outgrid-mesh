@@ -98,4 +98,67 @@ describe('EpidemicRouter (Gossip & Targeted Flood Router)', () => {
     const result = router.relayPacket(expiredPacket);
     expect(result).toBeNull();
   });
+
+  it('should prioritize BLE 5.0 nodes and fallback to BT 4.2 Legacy nodes only when quota is not met', () => {
+    const filter = new BloomFilter(1000, 0.001);
+    const router = new EpidemicRouter('node-D', 0x88654c5525fffff0n, filter, {
+      maxTargetNeighbors: 3
+    });
+
+    // 2 Modern BLE nodes
+    router.updateNeighbor({ nodeId: 'ble-1', h3Index: 0n, rssi: -60, lastSeenAt: Date.now(), isLegacyBt: false });
+    router.updateNeighbor({ nodeId: 'ble-2', h3Index: 0n, rssi: -50, lastSeenAt: Date.now(), isLegacyBt: false });
+
+    // 2 Legacy BT nodes
+    router.updateNeighbor({ nodeId: 'legacy-1', h3Index: 0n, rssi: -40, lastSeenAt: Date.now(), isLegacyBt: true });
+    router.updateNeighbor({ nodeId: 'legacy-2', h3Index: 0n, rssi: -45, lastSeenAt: Date.now(), isLegacyBt: true });
+
+    // Target quota = 3 -> Should select 2 BLE nodes first, and 1 Legacy BT node to fill quota
+    const selected = router.getSelectedRoutingNeighbors();
+    expect(selected.length).toBe(3);
+    expect(selected.some((n) => n.nodeId === 'ble-1')).toBe(true);
+    expect(selected.some((n) => n.nodeId === 'ble-2')).toBe(true);
+    // Best RSSI legacy node selected as fallback
+    expect(selected.some((n) => n.nodeId === 'legacy-1')).toBe(true);
+    expect(selected.some((n) => n.nodeId === 'legacy-2')).toBe(false);
+  });
+
+  it('should strictly exclude Legacy BT nodes from candidate relays for multi-hop messages', () => {
+    const filter = new BloomFilter(1000, 0.001);
+    const router = new EpidemicRouter('node-E', 0x88654c5525fffff0n, filter, {
+      maxTargetNeighbors: 4
+    });
+
+    router.updateNeighbor({ nodeId: 'ble-node', h3Index: 0n, rssi: -70, lastSeenAt: Date.now(), isLegacyBt: false });
+    router.updateNeighbor({ nodeId: 'legacy-node', h3Index: 0n, rssi: -40, lastSeenAt: Date.now(), isLegacyBt: true });
+
+    const multiHopPacket: ITOGPacket = {
+      header: {
+        magic: TOG_MAGIC,
+        version: 1,
+        packetType: TOGPacketType.DIRECT_CHAT,
+        ttlHops: 5, // multi-hop to distant area
+        priority: TOGPriority.NORMAL,
+        flags: 0,
+        reserved: 0
+      },
+      messageId: 444555n,
+      senderPubkeyHash: new Uint8Array(8),
+      recipientHash: new Uint8Array(8),
+      targetH3Index: 0x88654c5525fffff0n,
+      payloadLength: 0,
+      payload: new Uint8Array(0)
+    };
+
+    // Relay selection for multi-hop packet: Legacy node must be EXCLUDED!
+    const relays = router.selectRelayCandidates(multiHopPacket);
+    expect(relays.length).toBe(1);
+    expect(relays[0].nodeId).toBe('ble-node');
+    expect(relays.some((r) => r.nodeId === 'legacy-node')).toBe(false);
+
+    // Direct message to legacy node: Allowed
+    const directRelays = router.selectRelayCandidates(multiHopPacket, 'legacy-node');
+    expect(directRelays.length).toBe(1);
+    expect(directRelays[0].nodeId).toBe('legacy-node');
+  });
 });
