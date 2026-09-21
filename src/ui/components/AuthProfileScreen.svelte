@@ -9,9 +9,22 @@
   import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../../core/i18n/I18nStore';
   import { AuthManager, UserRole } from '../../core/auth/AuthManager';
 
-  const currentLocale = i18n.locale;
-  const auth = new AuthManager();
-  let userProfile = auth.getProfile();
+  const localeStore = i18n.locale;
+  const t = i18n.translations;
+  let auth: AuthManager;
+  let userProfile: any;
+
+  try {
+    auth = new AuthManager();
+    userProfile = auth.getProfile();
+  } catch (err) {
+    userProfile = {
+      nodeId: 'guest-node',
+      displayName: 'Guest User',
+      role: UserRole.GUEST_VICTIM
+    };
+  }
+
   let isBackingUp = false;
   let backupStatus = '';
   let storageUsageMb = 2.4;
@@ -23,10 +36,10 @@
 
   function handleBackupContacts() {
     isBackingUp = true;
-    backupStatus = 'กำลังเข้ารหัสลับรายชื่อเพื่อนด้วย Client-Side AES-GCM...';
+    backupStatus = $t.backup_btn_running;
     setTimeout(() => {
       isBackingUp = false;
-      backupStatus = '✓ สำรองข้อมูลรายชื่อเพื่อนแบบ Zero-Knowledge Blob สำเร็จแล้ว 100%';
+      backupStatus = $t.backup_success;
     }, 1200);
   }
 </script>
@@ -39,8 +52,8 @@
         <span>👤</span>
       </div>
       <div class="profile-meta">
-        <h3>โหมดผู้ประสบภัยฉุกเฉิน (Guest Victim)</h3>
-        <span class="badge-parity">100% Full Emergency Capabilities Active</span>
+        <h3>{$t.guest_victim}</h3>
+        <span class="badge-parity">{$t.guest_parity_badge}</span>
       </div>
     </div>
 
@@ -48,19 +61,19 @@
     <div class="parity-callout">
       <span class="callout-icon">🛡️</span>
       <div class="callout-text">
-        <strong>กฎเหล็กความเท่าเทียม (Zero-Barrier Guest Parity):</strong>
-        <p>คุณสามารถกดยิง SOS, แชทกู้ภัย, ดูแผนที่ออฟไลน์, และส่งต่อวิทยุได้ 100% เต็ม โดยไม่ต้องสร้างบัญชี ไม่ต้องกรอกเบอร์โทร และไม่ถูกติดตามตัวตน</p>
+        <strong>{$t.guest_parity_title}</strong>
+        <p>{$t.guest_parity_desc}</p>
       </div>
     </div>
 
     <!-- Language Selector Bar (10 Languages) -->
     <div class="section-box">
-      <h4>🌐 ภาษาการใช้งาน (Multi-Language)</h4>
+      <h4>🌐 {$t.lang_select_title}</h4>
       <div class="locales-grid">
         {#each SUPPORTED_LOCALES as loc}
           <button
             class="locale-btn"
-            class:active={$currentLocale === loc.code}
+            class:active={$localeStore === loc.code}
             on:click={() => changeLanguage(loc.code)}
           >
             <span class="flag">{loc.flag}</span>
@@ -72,9 +85,9 @@
 
     <!-- Zero-Knowledge Contact Backup -->
     <div class="section-box">
-      <h4>🔒 สำรองรายชื่อผู้ติดต่อ (Zero-Knowledge Cloud Backup)</h4>
+      <h4>🔒 {$t.backup_contacts_title}</h4>
       <p class="desc">
-        ข้อมูลรายชื่อเพื่อนและกุญแจสาธารณะจะถูกเข้ารหัสลับในเครื่องคุณก่อนส่งขึ้นคลาวด์ แม้เซิร์ฟเวอร์แม่ข่ายก็ไม่มีทางอ่านข้อมูลได้ 100%
+        {$t.backup_contacts_desc}
       </p>
 
       <button
@@ -83,7 +96,7 @@
         disabled={isBackingUp}
         on:click={handleBackupContacts}
       >
-        {isBackingUp ? '⏳ กำลังเข้ารหัสและสำรองข้อมูล...' : '☁️ สำรองรายชื่อเพื่อนแบบ Zero-Knowledge'}
+        {isBackingUp ? $t.backup_btn_running : $t.backup_btn_idle}
       </button>
 
       {#if backupStatus}
@@ -94,7 +107,7 @@
     <!-- Storage Quota Monitor -->
     <div class="section-box">
       <div class="storage-header">
-        <h4>💾 ความจุพื้นที่ออฟไลน์ในเครื่อง (IndexedDB)</h4>
+        <h4>💾 {$t.storage_title}</h4>
         <span class="storage-value">{storageUsageMb} MB / {storageCeilingMb} MB</span>
       </div>
 
@@ -103,8 +116,8 @@
       </div>
 
       <p class="storage-note">
-        ✓ ระบบจำกัดเพดาน 50MB FIFO Pruning อัตโนมัติ ป้องกันเครื่องเต็ม<br />
-        ✓ <strong>ข้อความ SOS Beacon และข้อความปักหมุด 📌 ถูกล็อคถาวร ไม่ถูกลบเด็ดขาด 100%</strong>
+        {$t.storage_note_1}<br />
+        {$t.storage_note_2}
       </p>
     </div>
   </div>

@@ -98,52 +98,53 @@
 </script>
 
 <div class="beacon-controls-root">
-  <div class="controls-header">
-    <span class="header-title">⚡ ฮาร์ดแวร์ฉุกเฉิน (Emergency Hardware)</span>
+  <div class="controls-row">
+    <span class="header-title">⚡ ฉุกเฉิน:</span>
+
+    <div class="btn-single-row">
+      <button
+        class="btn-beacon"
+        class:active={isTorchActive}
+        on:click={toggleSosStrobe}
+        title="กะพริบไฟแฟลชหลังมือถือรหัสมอส SOS (... --- ...)"
+      >
+        <span class="icon">⚡</span>
+        <span class="text">{isTorchActive ? 'ปิดไฟฉาย' : 'ไฟฉาย SOS'}</span>
+      </button>
+
+      <button
+        class="btn-beacon"
+        class:active={isSirenActive}
+        on:click={toggleSiren}
+        title="ส่งสัญญาณหวูดไซเรนความถี่สูง 960Hz / 1440Hz ทะลุสิ่งกีดขวาง"
+      >
+        <span class="icon">📢</span>
+        <span class="text">{isSirenActive ? (isMuted ? 'หวูดปิดเสียง' : 'ปิดไซเรน') : 'หวูด 85dB'}</span>
+      </button>
+
+      {#if isSirenActive}
+        <button class="btn-mute" on:click={toggleMute} title="ปิด/เปิดเสียงหวูดชั่วคราว">
+          {isMuted ? '🔊' : '🔇'}
+        </button>
+      {/if}
+
+      <button
+        class="btn-panic"
+        on:click={triggerMasterPanic}
+        title="เปิดไฟฉาย SOS + หวูดไซเรน + สั่นรหัสมอสพร้อมกันทันที"
+      >
+        🚨 PANIC
+      </button>
+
+      {#if isTorchActive || isSirenActive}
+        <button class="btn-stop" on:click={stopAll} title="ปิดสัญญาณทั้งหมด">
+          ⏹️
+        </button>
+      {/if}
+    </div>
+
     {#if thermalWarning}
-      <span class="badge-thermal">⚠️ ตัดไฟฉายอัตโนมัติ (ครบ 5 นาทีเพื่อป้องกันความร้อน)</span>
-    {/if}
-  </div>
-
-  <div class="btn-grid">
-    <button
-      class="btn-beacon"
-      class:active={isTorchActive}
-      on:click={toggleSosStrobe}
-      title="กะพริบไฟแฟลชหลังมือถือรหัสมอส SOS (... --- ...)"
-    >
-      <span class="icon">⚡</span>
-      <span class="text">{isTorchActive ? 'ปิดไฟฉาย SOS' : 'ไฟฉาย SOS Morse'}</span>
-    </button>
-
-    <button
-      class="btn-beacon"
-      class:active={isSirenActive}
-      on:click={toggleSiren}
-      title="ส่งสัญญาณหวูดไซเรนความถี่สูง 960Hz / 1440Hz ทะลุสิ่งกีดขวาง"
-    >
-      <span class="icon">📢</span>
-      <span class="text">{isSirenActive ? (isMuted ? 'หวูดปิดเสียงอยู่' : 'ปิดหวูดไซเรน') : 'หวูดไซเรน 85dB'}</span>
-    </button>
-
-    {#if isSirenActive}
-      <button class="btn-mute" on:click={toggleMute}>
-        {isMuted ? '🔊 เปิดเสียงหวูด' : '🔇 ปิดเสียงชั่วคราว'}
-      </button>
-    {/if}
-
-    <button
-      class="btn-panic"
-      on:click={triggerMasterPanic}
-      title="เปิดไฟฉาย SOS + หวูดไซเรน + สั่นรหัสมอสพร้อมกันทันที"
-    >
-      🚨 ALL-IN PANIC
-    </button>
-
-    {#if isTorchActive || isSirenActive}
-      <button class="btn-stop" on:click={stopAll}>
-        ⏹️ ปิดสัญญาณทั้งหมด
-      </button>
+      <span class="badge-thermal" title="ตัดไฟฉายอัตโนมัติครบ 5 นาทีเพื่อป้องกันความร้อน">⚠️ ร้อน</span>
     {/if}
   </div>
 </div>
@@ -153,87 +154,97 @@
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 0.5rem;
-    padding: 0.45rem 0.75rem;
-    margin-bottom: 0.6rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
+    padding: 0.25rem 0.6rem;
+    margin-bottom: 0.5rem;
   }
-  .controls-header {
+  .controls-row {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .controls-row::-webkit-scrollbar {
+    display: none;
   }
   .header-title {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     color: #38bdf8;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-single-row {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
   }
   .badge-thermal {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     background: #7f1d1d;
     color: #fca5a5;
-    padding: 2px 6px;
+    padding: 1px 5px;
     border-radius: 9999px;
-  }
-  .btn-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    align-items: center;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .btn-beacon {
     background: #1e293b;
     color: #cbd5e1;
     border: 1px solid #334155;
-    padding: 0.25rem 0.55rem;
-    border-radius: 0.375rem;
-    font-size: 0.72rem;
+    padding: 0.18rem 0.45rem;
+    border-radius: 0.3rem;
+    font-size: 0.68rem;
     font-weight: 600;
     cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.2rem;
     transition: all 0.15s ease;
+    white-space: nowrap;
   }
   .btn-beacon.active {
     background: #f59e0b;
     color: #0f172a;
     border-color: #fbbf24;
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
   }
   .btn-mute {
     background: #334155;
     color: #f1f5f9;
     border: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.72rem;
+    padding: 0.18rem 0.35rem;
+    border-radius: 0.3rem;
+    font-size: 0.68rem;
     cursor: pointer;
+    white-space: nowrap;
   }
   .btn-panic {
     background: #dc2626;
     color: #ffffff;
     border: none;
-    padding: 0.25rem 0.65rem;
-    border-radius: 0.375rem;
-    font-size: 0.72rem;
+    padding: 0.18rem 0.5rem;
+    border-radius: 0.3rem;
+    font-size: 0.68rem;
     font-weight: 800;
     cursor: pointer;
-    box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+    box-shadow: 0 0 6px rgba(220, 38, 38, 0.4);
     animation: pulse-panic 1.5s infinite;
+    white-space: nowrap;
   }
   .btn-stop {
     background: #475569;
     color: #f8fafc;
     border: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.72rem;
+    padding: 0.18rem 0.35rem;
+    border-radius: 0.3rem;
+    font-size: 0.68rem;
     font-weight: 600;
     cursor: pointer;
+    white-space: nowrap;
   }
   @keyframes pulse-panic {
     0% { transform: scale(1); }

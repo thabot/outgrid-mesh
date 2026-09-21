@@ -13,6 +13,7 @@
   import RescueRadarHud from '../ui/components/RescueRadarHud.svelte';
   import MeshChatScreen from '../ui/components/MeshChatScreen.svelte';
   import IncomingSosBanner, { type IIncomingSosAlert } from '../ui/components/IncomingSosBanner.svelte';
+  import AuthProfileScreen from '../ui/components/AuthProfileScreen.svelte';
   import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../core/i18n/I18nStore';
 
   const currentLocaleStore = i18n.locale;
@@ -81,6 +82,15 @@
       </div>
     </div>
     <div class="header-right">
+      <button
+        class="btn-header-survival"
+        class:active={isUltraSurvival}
+        on:click={() => isUltraSurvival = !isUltraSurvival}
+        title="ขยายรอบส่งคลื่นวิทยุและลดการกินไฟหน้าจอสูงสุด"
+      >
+        {isUltraSurvival ? '🛑 ปิด Ultra' : '⚡ 1-Tap Survival'}
+      </button>
+
       <div class="header-lang-selector">
         <label for="header-lang-select" class="lang-icon">🌐</label>
         <select id="header-lang-select" value={$currentLocaleStore} on:change={handleLanguageChange} aria-label="เลือกภาษา">
@@ -92,7 +102,7 @@
       <nav class="nav-tabs">
         <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 SOS</button>
         <button class:active={activeTab === 'feed'} on:click={() => activeTab = 'feed'}>📢 Feed</button>
-        <button class:active={activeTab === 'map'} on:click={() => activeTab = 'map'}>🗺️ แผนที่</button>
+        <button class:active={activeTab === 'map'} on:click={() => activeTab = 'map'}>🗺️ {$currentLocaleStore === 'th' ? 'แผนที่' : 'Map'}</button>
         <button class:active={activeTab === 'manual'} on:click={() => activeTab = 'manual'}>📖 Manual</button>
         <button class:active={activeTab === 'donation'} on:click={() => activeTab = 'donation'}>🤝 Fund</button>
       </nav>
@@ -195,8 +205,29 @@
   .header-right {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
+  }
+  .btn-header-survival {
+    background: #1e293b;
+    color: #38bdf8;
+    border: 1px solid #0284c7;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-header-survival:hover {
+    background: #0284c7;
+    color: #ffffff;
+  }
+  .btn-header-survival.active {
+    background: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(14, 165, 233, 0.6);
   }
   .header-lang-selector {
     display: flex;
