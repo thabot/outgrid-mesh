@@ -57,63 +57,10 @@ export class PeerDiscoveryStoreManager {
   }
 
   /**
-   * Updates user's current GPS location and shifts relative peers if needed
+   * Updates user's current GPS location
    */
   public setUserLocation(lat: number, lng: number) {
     this.userLocationStore.set({ lat, lng });
-
-    // Seed realistic localized peers around user GPS if store is empty
-    this.peersStore.update((peersMap) => {
-      if (peersMap.size === 0) {
-        const initialPeers: IDiscoveredPeer[] = [
-          {
-            shortNodeId: '#4C55',
-            lat: lat + 0.00035,
-            lng: lng + 0.00028,
-            batteryBars: 5,
-            rssiTier: 3,
-            distanceMeters: 45,
-            lastSeen: Date.now(),
-            isRelay: true
-          },
-          {
-            shortNodeId: '#9B1C',
-            lat: lat - 0.00085,
-            lng: lng - 0.00045,
-            batteryBars: 4,
-            rssiTier: 2,
-            distanceMeters: 110,
-            lastSeen: Date.now() - 5000,
-            isFriend: true
-          },
-          {
-            shortNodeId: '#2E8A',
-            lat: lat + 0.0011,
-            lng: lng - 0.0007,
-            batteryBars: 3,
-            rssiTier: 2,
-            distanceMeters: 160,
-            lastSeen: Date.now() - 12000,
-            isRelay: true
-          }
-        ];
-        for (const p of initialPeers) {
-          peersMap.set(p.shortNodeId, p);
-        }
-      } else {
-        // If peers were previously seeded with default Bangkok coords and now we have real GPS
-        for (const [id, peer] of peersMap.entries()) {
-          // If distance from user GPS is > 20km, relocate peer relative to user
-          const dLat = peer.lat - lat;
-          const dLng = peer.lng - lng;
-          if (Math.abs(dLat) > 0.2 || Math.abs(dLng) > 0.2) {
-            peer.lat = lat + (Math.random() - 0.5) * 0.002;
-            peer.lng = lng + (Math.random() - 0.5) * 0.002;
-          }
-        }
-      }
-      return peersMap;
-    });
   }
 
   /**

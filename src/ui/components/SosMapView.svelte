@@ -29,13 +29,7 @@
     batteryBars: number; // 1 to 5 bars
     rssiTier: number;    // 0 to 3
     distanceMeters: number;
-  }> = [
-    { shortNodeId: '#4C55', lat: 13.7570, lng: 100.5025, batteryBars: 5, rssiTier: 3, distanceMeters: 45 },
-    { shortNodeId: '#9B1C', lat: 13.7555, lng: 100.5005, batteryBars: 4, rssiTier: 2, distanceMeters: 110 },
-    { shortNodeId: '#2E8A', lat: 13.7585, lng: 100.5040, batteryBars: 3, rssiTier: 2, distanceMeters: 230 },
-    { shortNodeId: '#7F3D', lat: 13.7540, lng: 100.4990, batteryBars: 2, rssiTier: 1, distanceMeters: 380 },
-    { shortNodeId: '#E104', lat: 13.7610, lng: 100.5080, batteryBars: 1, rssiTier: 0, distanceMeters: 520 },
-  ];
+  }> = [];
 
   export let showPeerDistance: boolean = true;
   export let showAllNodes: boolean = true;
@@ -57,26 +51,6 @@
   let basemapLayer: any = null;
   let isBasemapLoaded = false;
   let isOfflineMode = false;
-
-  // Demo seed data: 10 simulated mesh nodes in Bangkok/flood zone area
-  const DEMO_NODES: Array<{ id: string; lat: number; lng: number }> = [
-    { id: 'node-1', lat: 13.756, lng: 100.501 },
-    { id: 'node-2', lat: 13.757, lng: 100.503 },
-    { id: 'node-3', lat: 13.755, lng: 100.499 },
-    { id: 'node-4', lat: 13.760, lng: 100.510 },
-    { id: 'node-5', lat: 13.761, lng: 100.512 },
-    { id: 'node-6', lat: 13.758, lng: 100.507 },
-    { id: 'node-7', lat: 13.754, lng: 100.502 },
-    { id: 'node-8', lat: 13.752, lng: 100.498 },
-    { id: 'node-9', lat: 13.763, lng: 100.515 },
-    { id: 'node-10', lat: 13.762, lng: 100.514 },
-    // Chiangmai flood zone cluster
-    { id: 'node-11', lat: 18.789, lng: 98.986 },
-    { id: 'node-12', lat: 18.790, lng: 98.988 },
-    { id: 'node-13', lat: 18.788, lng: 98.984 },
-    { id: 'node-14', lat: 18.792, lng: 98.990 },
-    { id: 'node-15', lat: 18.787, lng: 98.983 },
-  ];
 
   // Density colour mapping
   const DENSITY_COLOR: Record<string, string> = {
@@ -125,12 +99,6 @@
 
     // Load offline World Basemap L2
     await loadWorldBasemapL2();
-
-    // Seed heatmap with demo nodes
-    for (const node of DEMO_NODES) {
-      const h3Idx = H3GridEngine.coordToH3(node.lat, node.lng, 9);
-      heatmap.registerPresence(node.id, h3Idx);
-    }
 
     renderHexHeatmap();
     renderSosTargets();

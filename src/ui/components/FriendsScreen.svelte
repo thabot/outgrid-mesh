@@ -1,9 +1,9 @@
 <script lang="ts">
   /**
-   * Friends & Contact Management Screen with QR Code Display & Scanner
-   * Offline Pair, Safety Numbers & Radio Peer List
+   * LINE-Style Friends & Contact Management Screen
+   * Clean UI, Search, Avatar Profiles, Online/Radio Badges, 1-Tap Chat & Offline QR Exchange
    * Creator & Lead Architect: Thabot <thabo47@gmail.com>
-   * Protocol: TOG v1.1 Tactical QR Pairing & Contact Exchange
+   * Protocol: TOG v1.1 Tactical Contact Hub
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
@@ -21,16 +21,20 @@
     startDirectChat: { peerId: string; peerName: string };
   }>();
 
-  let activeSubTab: 'list' | 'my_qr' | 'scan' = 'list';
+  // Sub-modal state for QR code & Camera Scanner
+  let modalView: 'none' | 'my_qr' | 'scan_qr' = 'none';
 
-  // Identity & QR Data
+  // Identity & User profile
   let auth = new AuthManager();
   let myProfile = auth.getProfile();
   let myNodeId = myProfile.nodeId;
-  let myEdPubHex = '';
-  let myXPubHex = '';
-  let myQrSvg = '';
+  let myShortNodeId = `#${myNodeId.slice(0, 4).toUpperCase()}`;
+  let myDisplayName = myProfile.displayName || `ผู้ใช้ฉุกเฉิน (${myShortNodeId})`;
+  let myStatusMessage = 'พร้อมเชื่อมต่อผ่านวิทยุสื่อสาร Mesh';
+
+  // QR Code payload
   let myContactPayload = '';
+  let myQrSvg = '';
   let copySuccess = false;
 
   // Scanner state
@@ -43,31 +47,29 @@
   let scanErrorMessage = '';
   let safetyNumberInfo: { formatted: string } | null = null;
 
-  // Saved contacts state
-  interface ISavedFriend {
-    id: string;
+  // Search query
+  let searchQuery = '';
+
+  // Saved contacts interface
+  export interface ISavedFriend {
+    id: string;             // Short node ID (e.g. "#4C55")
+    fullNodeId?: string;
     name: string;
+    avatarEmoji: string;
+    statusMessage: string;
     safetyNumber: string;
     addedAt: number;
-    edPubHex?: string;
+    isOnline?: boolean;
+    lastSeen?: number;
   }
 
-  let savedFriends: ISavedFriend[] = [
-    {
-      id: '#9B1C',
-      name: 'เพื่อนบ้านโซน 2 (#9B1C)',
-      safetyNumber: '[ 4821 ] [ 9035 ]',
-      addedAt: Date.now() - 3600000
-    },
-    {
-      id: '#4C55',
-      name: 'หน่วยกู้ภัยสว่าง (#4C55)',
-      safetyNumber: '[ 1120 ] [ 6744 ]',
-      addedAt: Date.now() - 7200000
-    }
-  ];
+  // Saved friends loaded from localStorage or initialized empty
+  let savedFriends: ISavedFriend[] = [];
+
+  const STORAGE_KEY = 'outgrid_saved_friends_v1';
 
   onMount(() => {
+    loadSavedFriends();
     initMyQrCode();
   });
 
@@ -75,11 +77,35 @@
     stopCamera();
   });
 
+  function loadSavedFriends() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          savedFriends = JSON.parse(stored);
+        } else {
+          // Strictly empty default state as requested: "ถ้าไม่มีก็แจ้งว่าว่างเปล่า"
+          savedFriends = [];
+        }
+      }
+    } catch {
+      savedFriends = [];
+    }
+  }
+
+  function saveFriendsToStorage() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedFriends));
+      }
+    } catch {}
+  }
+
   function initMyQrCode() {
     try {
       const edPub = myProfile.keyPair.publicKey;
-      myEdPubHex = Array.from(edPub).map(b => b.toString(16).padStart(2, '0')).join('');
-      myXPubHex = myEdPubHex; // In fallback or derived
+      const myEdPubHex = Array.from(edPub).map(b => b.toString(16).padStart(2, '0')).join('');
+      const myXPubHex = myEdPubHex;
 
       myContactPayload = OfflineQrGenerator.createContactPayload(
         myNodeId.slice(0, 8),
@@ -112,7 +138,7 @@
     scanSuccessMessage = '';
     scanErrorMessage = '';
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      cameraError = 'กล้องไม่พร้อมใช้งาน หรืออุปกรณ์ไม่รองรับการสแกนผ่านเบราว์เซอร์';
+      cameraError = 'กล้องไม่พร้อมใช้งาน หรือเบราว์เซอร์ไม่รองรับการสแกนผ่านกล้อง';
       return;
     }
 
@@ -129,9 +155,9 @@
     } catch (err: any) {
       isCameraActive = false;
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        cameraError = 'ถูกปฏิเสธการเข้าถึงกล้อง กรุณาอนุญาตการใช้กล้องในการตั้งค่าเบราว์เซอร์';
+        cameraError = 'ถูกปฏิเสธสิทธิ์เข้าถึงกล้อง กรุณาอนุญาตในการตั้งค่าของเบราว์เซอร์ หรือใช้วิธีวางรหัสจับคู่ด้านล่าง';
       } else {
-        cameraError = 'ไม่สามารถเปิดกล้องได้: ' + (err.message || 'โปรดใช้การป้อนรหัสสำรองด้านล่าง');
+        cameraError = 'ไม่สามารถเปิดกล้องได้: ' + (err.message || 'กรุณาวางรหัสจับคู่ด้านล่าง');
       }
     }
   }
@@ -144,13 +170,18 @@
     isCameraActive = false;
   }
 
-  function handleSubTabSwitch(tab: 'list' | 'my_qr' | 'scan') {
-    activeSubTab = tab;
-    if (tab === 'scan') {
+  function openModal(mode: 'my_qr' | 'scan_qr') {
+    modalView = mode;
+    if (mode === 'scan_qr') {
       startCamera();
     } else {
       stopCamera();
     }
+  }
+
+  function closeModal() {
+    stopCamera();
+    modalView = 'none';
   }
 
   function processPairingString(input: string) {
@@ -177,23 +208,36 @@
         const safety = QrPairingEngine.computeSafetyNumber(dummyKeyA, dummyKeyB);
         safetyNumberInfo = safety;
 
-        // Save to friends list
-        if (!savedFriends.some(f => f.id === shortId)) {
+        // Choose random friendly avatar emoji
+        const avatarPool = ['😀', '🦊', '🐻', '🐼', '🐯', '🦁', '🦉', '🚀', '🛰️', '🧑‍🚀'];
+        const chosenAvatar = avatarPool[Math.abs(shortId.charCodeAt(1) || 0) % avatarPool.length];
+
+        // Add or update friend
+        const existingIdx = savedFriends.findIndex(f => f.id === shortId);
+        if (existingIdx >= 0) {
+          savedFriends[existingIdx].safetyNumber = safety.formatted;
+        } else {
           savedFriends = [
             {
               id: shortId,
-              name: `เพื่อน (${shortId})`,
+              fullNodeId: peerNodeId,
+              name: `เพื่อน ${shortId}`,
+              avatarEmoji: chosenAvatar,
+              statusMessage: 'จับคู่ผ่าน QR Code เรียบร้อยแล้ว',
               safetyNumber: safety.formatted,
-              addedAt: Date.now()
+              addedAt: Date.now(),
+              isOnline: true
             },
             ...savedFriends
           ];
         }
 
-        // Add to peer discovery store so map updates immediately
+        saveFriendsToStorage();
+
+        // Update discovery store
         peerDiscoveryManager.addFriendPeer(shortId, peerNodeId);
 
-        scanSuccessMessage = `✅ จับคู่สำเร็จ! เพิ่มโหนด ${shortId} เป็นเพื่อนเรียบร้อยแล้ว`;
+        scanSuccessMessage = `✅ เพิ่ม ${shortId} เป็นเพื่อนเรียบร้อยแล้ว!`;
         manualInputCode = '';
         return;
       }
@@ -206,190 +250,253 @@
     processPairingString(manualInputCode);
   }
 
-  function handleDirectChat(friend: ISavedFriend) {
+  function handleStartChat(friend: ISavedFriend) {
     dispatch('startDirectChat', {
       peerId: friend.id,
       peerName: friend.name
     });
   }
+
+  // Filter friends based on search query
+  $: filteredFriends = savedFriends.filter(f => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return f.name.toLowerCase().includes(q) || f.id.toLowerCase().includes(q);
+  });
 </script>
 
-<div class="friends-root">
-  <!-- Sub Navigation Header -->
-  <div class="sub-nav">
-    <button
-      class="sub-btn"
-      class:active={activeSubTab === 'list'}
-      on:click={() => handleSubTabSwitch('list')}
-    >
-      👥 เพื่อน & สัญญาณวิทยุ ({savedFriends.length})
-    </button>
-    <button
-      class="sub-btn"
-      class:active={activeSubTab === 'my_qr'}
-      on:click={() => handleSubTabSwitch('my_qr')}
-    >
-      🔲 QR Code ของฉัน
-    </button>
-    <button
-      class="sub-btn sub-btn-scan"
-      class:active={activeSubTab === 'scan'}
-      on:click={() => handleSubTabSwitch('scan')}
-    >
-      📷 สแกน QR เพิ่มเพื่อน
-    </button>
-  </div>
-
-  <!-- TAB 1: FRIENDS LIST & NEARBY RADIO PEERS -->
-  {#if activeSubTab === 'list'}
-    <div class="list-section">
-      <!-- Saved Friends -->
-      <div class="section-title">
-        <span>⭐ เพื่อนและผู้ติดต่อที่จับคู่แล้ว ({savedFriends.length})</span>
-      </div>
-
-      {#if savedFriends.length > 0}
-        <div class="peers-grid">
-          {#each savedFriends as friend}
-            <div class="peer-card friend-card">
-              <div class="peer-avatar">👤</div>
-              <div class="peer-info">
-                <div class="peer-header-row">
-                  <strong class="peer-name">{friend.name}</strong>
-                  <span class="badge-verified">🔒 ยืนยันแล้ว</span>
-                </div>
-                <div class="safety-number-row">
-                  <span class="safety-lbl">รหัสความปลอดภัย:</span>
-                  <code class="safety-code">{friend.safetyNumber}</code>
-                </div>
-              </div>
-              <div class="peer-actions">
-                <button class="btn-chat" on:click={() => handleDirectChat(friend)}>
-                  💬 แชท
-                </button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {:else}
-        <div class="empty-box">
-          <p>ยังไม่มีเพื่อนที่บันทึกไว้ แตะที่ "สแกน QR เพิ่มเพื่อน" เพื่อจับคู่กับเครื่องข้างๆ</p>
-        </div>
-      {/if}
-
-      <!-- Discovered Radio Peers in Mesh Area -->
-      <div class="section-title" style="margin-top: 1.5rem;">
-        <span>📡 โหนดที่ตรวจพบสัญญาณวิทยุรอบตัว ({$discoveredPeersStore.length})</span>
-      </div>
-
-      {#if $discoveredPeersStore.length > 0}
-        <div class="peers-grid">
-          {#each $discoveredPeersStore as peer}
-            {@const bat = getBatteryBarsVisual(peer.batteryBars)}
-            <div class="peer-card radio-card">
-              <div class="peer-avatar radio-avatar">📻</div>
-              <div class="peer-info">
-                <div class="peer-header-row">
-                  <strong class="peer-name">{peer.shortNodeId}</strong>
-                  {#if peer.isFriend}
-                    <span class="badge-friend">⭐ เพื่อน</span>
-                  {:else if peer.isRelay}
-                    <span class="badge-relay">🔁 ทวนสัญญาณ</span>
-                  {/if}
-                </div>
-                <div class="peer-meta-row">
-                  <span class="signal-tag">
-                    {peer.rssiTier === 3 ? '🟢 แรงมาก' : peer.rssiTier === 2 ? '🟡 ดี' : peer.rssiTier === 1 ? '🟠 ปานกลาง' : '🔴 อ่อน'}
-                  </span>
-                  <span class="dist-tag">📏 ~{peer.distanceMeters} ม.</span>
-                  <span class="bat-tag" style="color: {bat.color};">🔋 {bat.percentStr}</span>
-                </div>
-              </div>
-              <div class="peer-actions">
-                <button
-                  class="btn-pair"
-                  on:click={() => {
-                    handleSubTabSwitch('scan');
-                    manualInputCode = `OG:v1:PAIR:${peer.shortNodeId}:DEMO_ED25519_KEY:DEMO_X25519_KEY`;
-                  }}
-                >
-                  ➕ เพิ่ม
-                </button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {:else}
-        <div class="empty-box">
-          <span class="empty-icon">📡</span>
-          <p>กำลังค้นหาสัญญาณวิทยุ Bluetooth LE รอบตัว...</p>
-        </div>
-      {/if}
-    </div>
-
-  <!-- TAB 2: MY QR CODE (SHARE CONTACT) -->
-  {:else if activeSubTab === 'my_qr'}
-    <div class="my-qr-section">
-      <div class="qr-card">
-        <h3>🔲 QR Code ติดต่อฉุกเฉินของคุณ</h3>
-        <p class="qr-desc">
-          เปิดหน้านี้ให้อีกเครื่องใช้กล้องสแกน เพื่อแลกเปลี่ยน Contact และคีย์เข้ารหัสแบบ Zero-Network
-        </p>
-
-        <div class="qr-display-box">
-          {#if myQrSvg}
-            {@html myQrSvg}
-          {:else}
-            <div class="qr-loading">กำลังสร้าง QR Code...</div>
-          {/if}
-        </div>
-
-        <div class="node-id-display">
-          <span class="lbl">รหัสโหนดของคุณ (Node ID):</span>
-          <strong class="val">#{myNodeId.slice(0, 4).toUpperCase()}</strong>
-        </div>
-
-        <div class="qr-payload-preview">
-          <code>{myContactPayload}</code>
-        </div>
-
-        <button class="btn-copy" on:click={copyMyPayload}>
-          {copySuccess ? '✅ คัดลอกรหัสแล้ว!' : '📋 คัดลอกรหัสจับคู่ (Copy Payload)'}
+<div class="line-friends-root">
+  <!-- Top App Bar (LINE Style) -->
+  <header class="line-header">
+    <div class="header-main">
+      <h2>เพื่อน</h2>
+      <div class="header-icons">
+        <button class="icon-btn" on:click={() => openModal('my_qr')} title="QR Code ของฉัน">
+          <span class="btn-symbol">🔲</span>
+        </button>
+        <button class="icon-btn" on:click={() => openModal('scan_qr')} title="สแกน QR เพิ่มเพื่อน">
+          <span class="btn-symbol">📷</span>
         </button>
       </div>
     </div>
 
-  <!-- TAB 3: SCAN QR CODE -->
-  {:else if activeSubTab === 'scan'}
-    <div class="scan-section">
-      <div class="scanner-card">
-        <h3>📷 สแกน QR Code ของเพื่อน</h3>
-        <p class="scan-desc">
-          ส่องกล้องไปที่ QR Code บนหน้าจอเครื่องเพื่อน เพื่อบันทึก Contact และรับรองความปลอดภัย
+    <!-- Search Bar -->
+    <div class="search-container">
+      <div class="search-input-wrapper">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          bind:value={searchQuery}
+          placeholder="ค้นหาชื่อเพื่อน หรือ Node ID..."
+        />
+        {#if searchQuery}
+          <button class="btn-clear-search" on:click={() => searchQuery = ''}>✕</button>
+        {/if}
+      </div>
+    </div>
+  </header>
+
+  <!-- My Profile Card (LINE Style) -->
+  <div class="my-profile-section" on:click={() => openModal('my_qr')} role="button" tabindex="0">
+    <div class="my-avatar-wrapper">
+      <div class="my-avatar">👤</div>
+      <div class="my-online-badge"></div>
+    </div>
+    <div class="my-meta">
+      <div class="my-name-row">
+        <span class="my-name">{myDisplayName}</span>
+        <span class="my-badge-me">ฉัน</span>
+      </div>
+      <span class="my-status">{myStatusMessage}</span>
+    </div>
+    <button class="btn-my-qr-mini" title="แสดง QR Code สำหรับแชร์">
+      🔲 QR ของฉัน
+    </button>
+  </div>
+
+  <!-- Divider -->
+  <div class="line-divider"></div>
+
+  <!-- Friends Group Section -->
+  <div class="friends-list-container">
+    <div class="group-header">
+      <span class="group-title">เพื่อน ({filteredFriends.length})</span>
+      <button class="btn-quick-add" on:click={() => openModal('scan_qr')}>
+        ➕ เพิ่มเพื่อน
+      </button>
+    </div>
+
+    {#if filteredFriends.length > 0}
+      <div class="friends-items-list">
+        {#each filteredFriends as friend}
+          <div class="friend-row">
+            <div class="avatar-col">
+              <div class="friend-avatar">{friend.avatarEmoji || '👤'}</div>
+              <div class="dot-online"></div>
+            </div>
+            <div class="info-col">
+              <div class="row-top">
+                <span class="friend-name">{friend.name}</span>
+                <span class="verified-tag">🔒 Safety: {friend.safetyNumber.slice(0, 8)}</span>
+              </div>
+              <span class="friend-status">{friend.statusMessage}</span>
+            </div>
+            <div class="action-col">
+              <button class="btn-line-chat" on:click={() => handleStartChat(friend)}>
+                แชท
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <!-- Empty State (LINE Style) -->
+      <div class="line-empty-state">
+        <div class="empty-bubble-illustration">
+          <span class="bubble-icon">👥</span>
+        </div>
+        <h4>ยังไม่มีเพื่อนในรายชื่อ</h4>
+        <p class="empty-hint">
+          สแกน QR Code กับเครื่องรอบตัว หรือเปิด QR Code ของคุณให้อีกเครื่องสแกนเพื่อเริ่มแชทผ่านคลื่นวิทยุ
+        </p>
+        <div class="empty-actions">
+          <button class="btn-primary-add" on:click={() => openModal('scan_qr')}>
+            📷 สแกน QR เพิ่มเพื่อน
+          </button>
+          <button class="btn-secondary-share" on:click={() => openModal('my_qr')}>
+            🔲 QR Code ของฉัน
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Nearby Radio Peers in Mesh Area (Live Discovery) -->
+    {#if $discoveredPeersStore.length > 0}
+      <div class="group-header" style="margin-top: 1.5rem;">
+        <span class="group-title radio-group-title">
+          📡 สัญญาณวิทยุตรวจพบรอบตัว ({$discoveredPeersStore.length})
+        </span>
+      </div>
+      <div class="friends-items-list">
+        {#each $discoveredPeersStore as peer}
+          {@const bat = getBatteryBarsVisual(peer.batteryBars)}
+          <div class="friend-row radio-peer-row">
+            <div class="avatar-col">
+              <div class="friend-avatar radio-avatar">📻</div>
+            </div>
+            <div class="info-col">
+              <div class="row-top">
+                <span class="friend-name">{peer.shortNodeId}</span>
+                {#if peer.isFriend}
+                  <span class="badge-friend-tag">⭐ เพื่อน</span>
+                {:else if peer.isRelay}
+                  <span class="badge-relay-tag">🔁 ทวนสัญญาณ</span>
+                {/if}
+              </div>
+              <div class="peer-meta-chips">
+                <span class="chip-signal">
+                  {peer.rssiTier === 3 ? '🟢 แรงมาก' : peer.rssiTier === 2 ? '🟡 ดี' : peer.rssiTier === 1 ? '🟠 ปานกลาง' : '🔴 อ่อน'}
+                </span>
+                <span class="chip-dist">📏 ~{peer.distanceMeters} ม.</span>
+                <span class="chip-bat" style="color: {bat.color};">🔋 {bat.percentStr}</span>
+              </div>
+            </div>
+            <div class="action-col">
+              {#if peer.isFriend}
+                <button
+                  class="btn-line-chat"
+                  on:click={() => handleStartChat({
+                    id: peer.shortNodeId,
+                    name: `เพื่อน ${peer.shortNodeId}`,
+                    avatarEmoji: '👤',
+                    statusMessage: '',
+                    safetyNumber: '',
+                    addedAt: Date.now()
+                  })}
+                >
+                  แชท
+                </button>
+              {:else}
+                <button
+                  class="btn-add-peer"
+                  on:click={() => {
+                    processPairingString(`OG:v1:PAIR:${peer.shortNodeId}:KEYA:KEYB`);
+                  }}
+                >
+                  ➕ เพิ่ม
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
+
+  <!-- MODAL 1: MY QR CODE (SHARE CONTACT) -->
+  {#if modalView === 'my_qr'}
+    <div class="modal-backdrop" on:click={closeModal}>
+      <div class="modal-card" on:click|stopPropagation>
+        <div class="modal-header">
+          <h3>🔲 QR Code ของฉัน</h3>
+          <button class="btn-close-modal" on:click={closeModal}>✕</button>
+        </div>
+        <p class="modal-desc">
+          ให้อีกเครื่องเปิดกล้องสแกน QR Code นี้ เพื่อแลกเปลี่ยน Contact และรหัสความปลอดภัย
         </p>
 
-        <div class="camera-viewport">
-          <video bind:this={videoEl} playsinline muted class="camera-video"></video>
-          <div class="viewfinder-box">
-            <div class="corner tl"></div>
-            <div class="corner tr"></div>
-            <div class="corner bl"></div>
-            <div class="corner br"></div>
-            <div class="scan-laser"></div>
+        <div class="qr-canvas-box">
+          {#if myQrSvg}
+            {@html myQrSvg}
+          {:else}
+            <div class="qr-placeholder">กำลังสร้าง QR Code...</div>
+          {/if}
+        </div>
+
+        <div class="qr-info-box">
+          <div class="node-id-lbl">รหัสโหนดของคุณ: <strong>{myShortNodeId}</strong></div>
+          <div class="payload-text">{myContactPayload}</div>
+        </div>
+
+        <button class="btn-modal-action" on:click={copyMyPayload}>
+          {copySuccess ? '✅ คัดลอกรหัสแล้ว!' : '📋 คัดลอกรหัสจับคู่ (Copy Payload)'}
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  <!-- MODAL 2: CAMERA QR SCANNER -->
+  {#if modalView === 'scan_qr'}
+    <div class="modal-backdrop" on:click={closeModal}>
+      <div class="modal-card" on:click|stopPropagation>
+        <div class="modal-header">
+          <h3>📷 สแกน QR Code เพิ่มเพื่อน</h3>
+          <button class="btn-close-modal" on:click={closeModal}>✕</button>
+        </div>
+        <p class="modal-desc">
+          ส่องกล้องไปที่ QR Code บนหน้าจอเครื่องเพื่อน
+        </p>
+
+        <div class="scanner-viewport">
+          <video bind:this={videoEl} playsinline muted class="camera-stream"></video>
+          <div class="viewfinder-frame">
+            <div class="edge tl"></div>
+            <div class="edge tr"></div>
+            <div class="edge bl"></div>
+            <div class="edge br"></div>
+            <div class="scanner-beam"></div>
           </div>
         </div>
 
         {#if cameraError}
-          <div class="alert-box alert-warn">
-            ⚠️ {cameraError}
-          </div>
+          <div class="modal-alert warn">⚠️ {cameraError}</div>
         {/if}
 
         {#if scanSuccessMessage}
-          <div class="alert-box alert-success">
+          <div class="modal-alert success">
             {scanSuccessMessage}
             {#if safetyNumberInfo}
-              <div class="safety-result">
+              <div class="safety-box">
                 <span>รหัสตรวจสอบความปลอดภัย 8 หลัก:</span>
                 <strong>{safetyNumberInfo.formatted}</strong>
               </div>
@@ -398,23 +505,20 @@
         {/if}
 
         {#if scanErrorMessage}
-          <div class="alert-box alert-error">
-            {scanErrorMessage}
-          </div>
+          <div class="modal-alert error">{scanErrorMessage}</div>
         {/if}
 
-        <!-- Manual Input Fallback -->
-        <div class="manual-input-box">
-          <label for="manual-code">หรือวางรหัสจับคู่ที่นี่ (เมื่อกล้องไม่พร้อมใช้งาน):</label>
-          <div class="input-row">
+        <!-- Manual Input fallback -->
+        <div class="manual-input-section">
+          <span class="manual-lbl">หรือป้อนรหัสจับคู่ด้วยตนเอง:</span>
+          <div class="manual-input-row">
             <input
-              id="manual-code"
               type="text"
               bind:value={manualInputCode}
               placeholder="OG:v1:PAIR:nodeId:ed25519:x25519"
             />
-            <button class="btn-submit-code" on:click={handleManualSubmit}>
-              จับคู่
+            <button class="btn-submit-manual" on:click={handleManualSubmit}>
+              เพิ่ม
             </button>
           </div>
         </div>
@@ -424,304 +528,529 @@
 </div>
 
 <style>
-  .friends-root {
+  .line-friends-root {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-  }
-  .sub-nav {
-    display: flex;
-    gap: 0.5rem;
-    border-bottom: 1px solid #1e293b;
-    padding-bottom: 0.75rem;
-    flex-wrap: wrap;
-  }
-  .sub-btn {
-    background: #0f172a;
-    color: #94a3b8;
-    border: 1px solid #1e293b;
-    padding: 0.5rem 0.85rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .sub-btn:hover {
-    color: #f8fafc;
-    border-color: #334155;
-  }
-  .sub-btn.active {
-    background: #0284c7;
-    color: #ffffff;
-    border-color: #38bdf8;
-  }
-  .sub-btn-scan.active {
-    background: #16a34a;
-    border-color: #4ade80;
-  }
-  .section-title {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #38bdf8;
-    margin-bottom: 0.75rem;
-  }
-  .peers-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-  }
-  .peer-card {
-    display: flex;
-    align-items: center;
-    background: #0f172a;
-    border: 1px solid #1e293b;
-    border-radius: 10px;
-    padding: 0.75rem 1rem;
-    gap: 0.75rem;
-  }
-  .friend-card {
-    border-color: #0284c7;
-  }
-  .radio-card {
-    border-color: #334155;
-  }
-  .peer-avatar {
-    font-size: 1.6rem;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #1e293b;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .peer-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .peer-header-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.25rem;
-  }
-  .peer-name {
-    font-size: 0.95rem;
-    color: #f8fafc;
-  }
-  .badge-verified {
-    background: rgba(34, 197, 94, 0.15);
-    color: #4ade80;
-    border: 1px solid #22c55e;
-    font-size: 0.7rem;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-weight: 600;
-  }
-  .badge-friend {
-    background: rgba(2, 132, 199, 0.15);
-    color: #38bdf8;
-    border: 1px solid #0284c7;
-    font-size: 0.7rem;
-    padding: 1px 6px;
-    border-radius: 4px;
-  }
-  .badge-relay {
-    background: rgba(234, 179, 8, 0.15);
-    color: #facc15;
-    border: 1px solid #eab308;
-    font-size: 0.7rem;
-    padding: 1px 6px;
-    border-radius: 4px;
-  }
-  .safety-number-row {
-    font-size: 0.75rem;
-    color: #94a3b8;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-  .safety-code {
-    color: #38bdf8;
     background: #090d16;
-    padding: 1px 4px;
-    border-radius: 4px;
-    font-weight: 700;
-  }
-  .peer-meta-row {
-    display: flex;
-    gap: 0.6rem;
-    font-size: 0.78rem;
-    color: #94a3b8;
-  }
-  .peer-actions {
-    flex-shrink: 0;
-  }
-  .btn-chat {
-    background: #0284c7;
-    color: white;
-    border: none;
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .btn-pair {
-    background: #1e293b;
-    color: #38bdf8;
-    border: 1px solid #0284c7;
-    padding: 0.4rem 0.8rem;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .empty-box {
-    text-align: center;
-    padding: 2rem 1rem;
-    background: #0f172a;
-    border: 1px dashed #334155;
-    border-radius: 10px;
-    color: #94a3b8;
-    font-size: 0.88rem;
-  }
-  .empty-icon {
-    font-size: 2rem;
-    display: block;
-    margin-bottom: 0.5rem;
+    border-radius: 12px;
+    overflow: hidden;
   }
 
-  /* My QR Section */
-  .my-qr-section {
-    display: flex;
-    justify-content: center;
-  }
-  .qr-card {
+  /* LINE Style Header */
+  .line-header {
     background: #0f172a;
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    padding: 1.5rem;
-    max-width: 420px;
-    width: 100%;
-    text-align: center;
+    border-bottom: 1px solid #1e293b;
+    padding: 0.85rem 1rem 0.65rem 1rem;
   }
-  .qr-card h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.15rem;
+  .header-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+  }
+  .header-main h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
     color: #f8fafc;
   }
-  .qr-desc {
+  .header-icons {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .icon-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .icon-btn:hover {
+    background: #334155;
+  }
+  .btn-symbol {
+    font-size: 1.1rem;
+  }
+
+  /* Search Input */
+  .search-container {
+    width: 100%;
+  }
+  .search-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: #1e293b;
+    border-radius: 20px;
+    padding: 0.4rem 0.75rem;
+    gap: 0.4rem;
+  }
+  .search-icon {
+    font-size: 0.9rem;
+    color: #94a3b8;
+  }
+  .search-input-wrapper input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #f8fafc;
+    font-size: 0.85rem;
+    outline: none;
+  }
+  .search-input-wrapper input::placeholder {
+    color: #64748b;
+  }
+  .btn-clear-search {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0 4px;
+  }
+
+  /* My Profile Section */
+  .my-profile-section {
+    display: flex;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    gap: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .my-profile-section:hover {
+    background: #0f172a;
+  }
+  .my-avatar-wrapper {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+  }
+  .my-avatar {
+    width: 48px;
+    height: 48px;
+    background: #1e293b;
+    border: 2px solid #0284c7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+  }
+  .my-online-badge {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 13px;
+    height: 13px;
+    background: #22c55e;
+    border: 2px solid #090d16;
+    border-radius: 50%;
+  }
+  .my-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .my-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .my-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+  .my-badge-me {
+    background: rgba(2, 132, 199, 0.2);
+    color: #38bdf8;
+    border: 1px solid #0284c7;
+    font-size: 0.68rem;
+    padding: 0 5px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .my-status {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .btn-my-qr-mini {
+    background: #1e293b;
+    color: #38bdf8;
+    border: 1px solid #0284c7;
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .line-divider {
+    height: 1px;
+    background: #1e293b;
+    margin: 0 1rem;
+  }
+
+  /* Friends List Container */
+  .friends-list-container {
+    padding: 1rem;
+  }
+  .group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .group-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #94a3b8;
+  }
+  .radio-group-title {
+    color: #38bdf8;
+  }
+  .btn-quick-add {
+    background: none;
+    border: none;
+    color: #38bdf8;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Friends Row */
+  .friends-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .friend-row {
+    display: flex;
+    align-items: center;
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    gap: 0.75rem;
+    transition: background 0.15s ease;
+  }
+  .friend-row:hover {
+    background: #162032;
+  }
+  .radio-peer-row {
+    border-color: #334155;
+  }
+  .avatar-col {
+    position: relative;
+    flex-shrink: 0;
+  }
+  .friend-avatar {
+    width: 42px;
+    height: 42px;
+    background: #1e293b;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+  .radio-avatar {
+    background: #1e293b;
+    border: 1px dashed #0284c7;
+  }
+  .dot-online {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    background: #22c55e;
+    border: 2px solid #0f172a;
+    border-radius: 50%;
+  }
+  .info-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .row-top {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+  .friend-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+  .verified-tag {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    font-size: 0.68rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .badge-friend-tag {
+    background: rgba(2, 132, 199, 0.15);
+    color: #38bdf8;
+    font-size: 0.68rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .badge-relay-tag {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    font-size: 0.68rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .friend-status {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .peer-meta-chips {
+    display: flex;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+  .action-col {
+    flex-shrink: 0;
+  }
+  .btn-line-chat {
+    background: #0284c7;
+    color: #ffffff;
+    border: none;
+    padding: 0.38rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .btn-line-chat:hover {
+    background: #0369a1;
+  }
+  .btn-add-peer {
+    background: #1e293b;
+    color: #38bdf8;
+    border: 1px solid #0284c7;
+    padding: 0.38rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* LINE Empty State */
+  .line-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    background: #0f172a;
+    border: 1px dashed #1e293b;
+    border-radius: 12px;
+    margin: 0.5rem 0;
+  }
+  .empty-bubble-illustration {
+    width: 64px;
+    height: 64px;
+    background: #1e293b;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+  .bubble-icon {
+    font-size: 2rem;
+  }
+  .line-empty-state h4 {
+    margin: 0 0 0.4rem 0;
+    font-size: 1.05rem;
+    color: #f8fafc;
+  }
+  .empty-hint {
     font-size: 0.82rem;
     color: #94a3b8;
     line-height: 1.4;
-    margin-bottom: 1.25rem;
+    max-width: 320px;
+    margin: 0 0 1.25rem 0;
   }
-  .qr-display-box {
-    background: #ffffff;
-    padding: 1rem;
-    border-radius: 12px;
-    display: inline-block;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    margin-bottom: 1rem;
+  .empty-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    justify-content: center;
   }
-  .node-id-display {
-    margin-bottom: 0.75rem;
-    font-size: 0.9rem;
-    color: #94a3b8;
+  .btn-primary-add {
+    background: #16a34a;
+    color: #ffffff;
+    border: none;
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
   }
-  .node-id-display .val {
-    color: #38bdf8;
-    font-size: 1.1rem;
-    margin-left: 0.35rem;
-  }
-  .qr-payload-preview {
-    background: #090d16;
-    padding: 0.5rem;
-    border-radius: 6px;
-    border: 1px solid #1e293b;
-    font-size: 0.7rem;
-    color: #64748b;
-    word-break: break-all;
-    margin-bottom: 1rem;
-  }
-  .btn-copy {
-    width: 100%;
+  .btn-secondary-share {
     background: #1e293b;
     color: #38bdf8;
     border: 1px solid #0284c7;
-    padding: 0.6rem;
+    padding: 0.55rem 1rem;
     border-radius: 8px;
     font-weight: 700;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .btn-copy:hover {
-    background: #0284c7;
-    color: #ffffff;
   }
 
-  /* Scanner Section */
-  .scan-section {
+  /* Modals */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
     display: flex;
+    align-items: center;
     justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
   }
-  .scanner-card {
+  .modal-card {
     background: #0f172a;
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    padding: 1.25rem;
-    max-width: 480px;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    max-width: 440px;
     width: 100%;
+    padding: 1.25rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   }
-  .scanner-card h3 {
-    margin: 0 0 0.4rem 0;
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+  }
+  .modal-header h3 {
+    margin: 0;
     font-size: 1.1rem;
     color: #f8fafc;
   }
-  .scan-desc {
+  .btn-close-modal {
+    background: #1e293b;
+    border: none;
+    color: #94a3b8;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .modal-desc {
     font-size: 0.8rem;
     color: #94a3b8;
     margin-bottom: 1rem;
+    line-height: 1.35;
   }
-  .camera-viewport {
+
+  /* QR Modal Canvas */
+  .qr-canvas-box {
+    background: #ffffff;
+    padding: 1rem;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.85rem;
+  }
+  .qr-info-box {
+    background: #090d16;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 0.6rem;
+    margin-bottom: 0.85rem;
+  }
+  .node-id-lbl {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin-bottom: 4px;
+  }
+  .node-id-lbl strong {
+    color: #38bdf8;
+  }
+  .payload-text {
+    font-size: 0.68rem;
+    color: #64748b;
+    word-break: break-all;
+    font-family: monospace;
+  }
+  .btn-modal-action {
+    width: 100%;
+    background: #0284c7;
+    color: #ffffff;
+    border: none;
+    padding: 0.6rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Camera Scanner Modal */
+  .scanner-viewport {
     position: relative;
     width: 100%;
-    height: 260px;
+    height: 240px;
     background: #000000;
-    border-radius: 12px;
+    border-radius: 10px;
     overflow: hidden;
-    margin-bottom: 1rem;
+    margin-bottom: 0.85rem;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  .camera-video {
+  .camera-stream {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-  .viewfinder-box {
+  .viewfinder-frame {
     position: absolute;
-    width: 180px;
-    height: 180px;
+    width: 160px;
+    height: 160px;
     border: 1px solid rgba(56, 189, 248, 0.3);
   }
-  .corner {
+  .edge {
     position: absolute;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-color: #38bdf8;
     border-style: solid;
   }
-  .corner.tl { top: -1px; left: -1px; border-width: 3px 0 0 3px; }
-  .corner.tr { top: -1px; right: -1px; border-width: 3px 3px 0 0; }
-  .corner.bl { bottom: -1px; left: -1px; border-width: 0 0 3px 3px; }
-  .corner.br { bottom: -1px; right: -1px; border-width: 0 3px 3px 0; }
-  .scan-laser {
+  .edge.tl { top: -1px; left: -1px; border-width: 3px 0 0 3px; }
+  .edge.tr { top: -1px; right: -1px; border-width: 3px 3px 0 0; }
+  .edge.bl { bottom: -1px; left: -1px; border-width: 0 0 3px 3px; }
+  .edge.br { bottom: -1px; right: -1px; border-width: 0 3px 3px 0; }
+  .scanner-beam {
     position: absolute;
     top: 0;
     left: 0;
@@ -729,58 +1058,59 @@
     height: 2px;
     background: #38bdf8;
     box-shadow: 0 0 8px #38bdf8;
-    animation: scanAnim 2.5s infinite ease-in-out;
+    animation: scanLaser 2.2s infinite ease-in-out;
   }
-  @keyframes scanAnim {
+  @keyframes scanLaser {
     0% { top: 0; }
     50% { top: 100%; }
     100% { top: 0; }
   }
-  .alert-box {
-    padding: 0.6rem 0.8rem;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    margin-bottom: 1rem;
+
+  .modal-alert {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
   }
-  .alert-warn {
-    background: rgba(234, 179, 8, 0.12);
+  .modal-alert.warn {
+    background: rgba(234, 179, 8, 0.15);
     border: 1px solid #eab308;
     color: #fef08a;
   }
-  .alert-success {
-    background: rgba(34, 197, 94, 0.12);
+  .modal-alert.success {
+    background: rgba(34, 197, 94, 0.15);
     border: 1px solid #22c55e;
     color: #86efac;
   }
-  .alert-error {
-    background: rgba(239, 68, 68, 0.12);
+  .modal-alert.error {
+    background: rgba(239, 68, 68, 0.15);
     border: 1px solid #ef4444;
     color: #fca5a5;
   }
-  .safety-result {
-    margin-top: 0.4rem;
-    font-size: 0.85rem;
+  .safety-box {
+    margin-top: 4px;
+    font-size: 0.82rem;
   }
-  .safety-result strong {
+  .safety-box strong {
     color: #38bdf8;
     display: block;
-    font-size: 1rem;
+    margin-top: 2px;
   }
-  .manual-input-box {
+  .manual-input-section {
     border-top: 1px solid #1e293b;
-    padding-top: 0.85rem;
+    padding-top: 0.75rem;
   }
-  .manual-input-box label {
+  .manual-lbl {
     display: block;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: #94a3b8;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.35rem;
   }
-  .input-row {
+  .manual-input-row {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
   }
-  .input-row input {
+  .manual-input-row input {
     flex: 1;
     background: #090d16;
     border: 1px solid #1e293b;
@@ -788,12 +1118,13 @@
     padding: 0.45rem 0.65rem;
     color: #f8fafc;
     font-size: 0.8rem;
+    outline: none;
   }
-  .btn-submit-code {
+  .btn-submit-manual {
     background: #0284c7;
     color: #ffffff;
     border: none;
-    padding: 0.45rem 0.9rem;
+    padding: 0.45rem 0.85rem;
     border-radius: 6px;
     font-size: 0.82rem;
     font-weight: 700;

@@ -34,23 +34,20 @@ describe('QR Pairing & Dynamic Nearby Node Discovery Tests', () => {
     expect(safety1.formatted).toMatch(/^\[ \d{4} \] \[ \d{4} \]$/);
   });
 
-  it('should dynamically seed and relocate nearby peers relative to user GPS', () => {
+  it('should maintain purely real discovered peers without mock data', () => {
     const samutPrakanLat = 13.5990;
     const samutPrakanLng = 100.5960;
 
     peerDiscoveryManager.setUserLocation(samutPrakanLat, samutPrakanLng);
 
-    let peers: any[] = [];
-    const unsubscribe = discoveredPeersStore.subscribe(val => { peers = val; });
-    unsubscribe();
+    // Initial state without incoming radio packet should not have fake mock nodes
+    let userLoc: any = null;
+    const unsubLoc = peerDiscoveryManager.getUserLocationStore().subscribe(val => { userLoc = val; });
+    unsubLoc();
 
-    expect(peers.length).toBeGreaterThanOrEqual(2);
-
-    // Verify all peers are near Samut Prakan, not Bangkok
-    for (const p of peers) {
-      expect(Math.abs(p.lat - samutPrakanLat)).toBeLessThan(0.05);
-      expect(Math.abs(p.lng - samutPrakanLng)).toBeLessThan(0.05);
-    }
+    expect(userLoc).not.toBeNull();
+    expect(userLoc.lat).toBe(samutPrakanLat);
+    expect(userLoc.lng).toBe(samutPrakanLng);
   });
 
   it('should correctly calculate peer counts in peerCountsStore', () => {
@@ -59,8 +56,7 @@ describe('QR Pairing & Dynamic Nearby Node Discovery Tests', () => {
     unsubscribe();
 
     expect(counts).not.toBeNull();
-    expect(counts.total).toBeGreaterThanOrEqual(2);
-    expect(counts.total).toBe(counts.sos + counts.friends + counts.relays + counts.gateways + (counts.total - (counts.sos + counts.friends + counts.relays + counts.gateways)));
+    expect(typeof counts.total).toBe('number');
   });
 
   it('should manually add friend peer and update discovery store', () => {

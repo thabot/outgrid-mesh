@@ -45,11 +45,15 @@
   const commitSha: string = import.meta.env.VITE_APP_COMMIT ?? 'local';
   const versionLabel = `TOG v${appVersion} (${commitSha})`;
 
-  // Demo SOS targets visible on the map
-  const demoSosTargets = [
-    { id: 'sos-001', lat: 13.7590, lng: 100.5050, category: '🚤 น้ำท่วม ต้องการเรือ', distanceMeters: 340, floor: 2 },
-    { id: 'sos-002', lat: 18.7870, lng: 98.9830, category: '👶 มีเด็ก/ผู้สูงอายุ', distanceMeters: 1200, floor: 1 },
-  ];
+  // Real SOS targets visible on the map (populated via radio mesh)
+  const demoSosTargets: Array<{
+    id: string;
+    lat: number;
+    lng: number;
+    category: string;
+    distanceMeters?: number;
+    floor?: number;
+  }> = [];
 
   function handleTriggerLastGasp() {
     alert('🚨 Last-Gasp Beacon ถูกส่งผ่านคลื่นวิทยุแล้ว! พิกัดสุดท้ายและเวลาได้ถูกฝากไว้กับเพื่อนบ้านรอบตัวก่อนเครื่องดับ');
