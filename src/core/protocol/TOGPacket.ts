@@ -79,12 +79,25 @@ export enum H3Direction {
 }
 
 /**
+ * Presence Chirp Status Flags (Upper 4 bits of Byte 4)
+ */
+export enum PresenceStatusFlags {
+  NONE = 0x0,
+  BT_LEGACY_LEAF = 1 << 0,      // 0x1: Leaf node (BT 4.0 - 4.2 / Legacy 1M PHY, excluded from multi-hop relay)
+  BLE_CODED_CAPABLE = 1 << 1,   // 0x2: Node supports BLE 5.0+ Coded PHY Long Range S=8
+  RESERVED_FLAG_2 = 1 << 2,     // 0x4
+  RESERVED_FLAG_3 = 1 << 3      // 0x8
+}
+
+/**
  * Radio & Node Capabilities Bitmask (Byte 9 of Presence Chirp)
  */
 export enum RadioCapabilitiesBitmask {
   STATIONARY_NODE = 1 << 0,     // 0x01: Fixed node (tower/rooftop)
   POWER_TIER_MASK = 0x06,       // Bits 1-2: 00=Normal, 01=Critical<20%, 10=Charging, 11=Permanent
-  BLE_ACTIVE = 1 << 3,          // 0x08: Bluetooth LE Active (100-300m)
+  BLE_ACTIVE = 1 << 3,          // 0x08: Bluetooth LE Active
+  BT_LEGACY_ONLY = 1 << 3,      // 0x08: Legacy Bluetooth (BT 4.0-4.2 / 1M PHY / Leaf node only)
+  BLE_CODED_LONG_RANGE = (1 << 3) | 0x02, // 0x0A: Modern BLE 5.0+ Coded PHY Long Range (Relay capable)
   LORA_BRIDGE_ACTIVE = 1 << 4,  // 0x10: LoRa Bridge Active (15-20km)
   WIFI_STANDARD_READY = 1 << 5, // 0x20: Wi-Fi Direct ready for APK Sideload (50-100m)
   WIFI_HALOW_ACTIVE = 1 << 6,   // 0x40: Wi-Fi HaLow 802.11ah Sub-1GHz Active (1-3km)
