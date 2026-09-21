@@ -152,50 +152,50 @@
   .beacon-controls-root {
     background: #0f172a;
     border: 1px solid #1e293b;
-    border-radius: 0.75rem;
-    padding: 0.85rem 1rem;
-    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    margin-bottom: 0.6rem;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.4rem;
   }
   .controls-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.35rem;
   }
   .header-title {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: #38bdf8;
   }
   .badge-thermal {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     background: #7f1d1d;
     color: #fca5a5;
-    padding: 2px 8px;
+    padding: 2px 6px;
     border-radius: 9999px;
   }
   .btn-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.35rem;
     align-items: center;
   }
   .btn-beacon {
     background: #1e293b;
     color: #cbd5e1;
     border: 1px solid #334155;
-    padding: 0.45rem 0.85rem;
-    border-radius: 0.5rem;
-    font-size: 0.8rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 0.375rem;
+    font-size: 0.72rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.25rem;
     transition: all 0.15s ease;
   }
   .btn-beacon.active {
@@ -208,30 +208,30 @@
     background: #334155;
     color: #f1f5f9;
     border: none;
-    padding: 0.45rem 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.72rem;
     cursor: pointer;
   }
   .btn-panic {
     background: #dc2626;
     color: #ffffff;
     border: none;
-    padding: 0.45rem 1rem;
-    border-radius: 0.5rem;
-    font-size: 0.85rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 0.375rem;
+    font-size: 0.72rem;
     font-weight: 800;
     cursor: pointer;
-    box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
     animation: pulse-panic 1.5s infinite;
   }
   .btn-stop {
     background: #475569;
     color: #f8fafc;
     border: none;
-    padding: 0.45rem 0.75rem;
-    border-radius: 0.5rem;
-    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.72rem;
     font-weight: 600;
     cursor: pointer;
   }

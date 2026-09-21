@@ -269,10 +269,10 @@
     align-items: center;
     background: #090f1d;
     border: 1px solid #1e293b;
-    border-radius: 8px;
-    padding: 6px 12px;
-    margin-bottom: 10px;
-    font-size: 0.8rem;
+    border-radius: 6px;
+    padding: 4px 10px;
+    margin-bottom: 6px;
+    font-size: 0.75rem;
     color: #e2e8f0;
     transition: all 0.3s ease;
   }

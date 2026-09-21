@@ -13,7 +13,16 @@
   import RescueRadarHud from '../ui/components/RescueRadarHud.svelte';
   import MeshChatScreen from '../ui/components/MeshChatScreen.svelte';
   import IncomingSosBanner, { type IIncomingSosAlert } from '../ui/components/IncomingSosBanner.svelte';
-  import AuthProfileScreen from '../ui/components/AuthProfileScreen.svelte';
+  import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../core/i18n/I18nStore';
+
+  const currentLocaleStore = i18n.locale;
+
+  function handleLanguageChange(e: Event) {
+    const target = e.target as HTMLSelectElement;
+    if (target) {
+      i18n.setLocale(target.value as SupportedLocale);
+    }
+  }
 
   let activeTab: 'sos' | 'feed' | 'map' | 'manual' | 'donation' | 'friends' | 'profile' | 'chat' = 'sos';
   let isUltraSurvival = false;
@@ -69,16 +78,25 @@
         <img src="/logo.png" alt="OutGrid Mesh Logo" class="brand-logo-img" />
         <span class="pulse-indicator"></span>
         <h1>OutGrid Mesh</h1>
-        <span class="version-tag">{versionLabel}</span>
       </div>
     </div>
-    <nav class="nav-tabs">
-      <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 SOS Beacon</button>
-      <button class:active={activeTab === 'feed'} on:click={() => activeTab = 'feed'}>📢 Crisis Feed</button>
-      <button class:active={activeTab === 'map'} on:click={() => activeTab = 'map'}>🗺️ แผนที่กู้ภัย</button>
-      <button class:active={activeTab === 'manual'} on:click={() => activeTab = 'manual'}>📖 Field Manual</button>
-      <button class:active={activeTab === 'donation'} on:click={() => activeTab = 'donation'}>🤝 Community Fund</button>
-    </nav>
+    <div class="header-right">
+      <div class="header-lang-selector">
+        <label for="header-lang-select" class="lang-icon">🌐</label>
+        <select id="header-lang-select" value={$currentLocaleStore} on:change={handleLanguageChange} aria-label="เลือกภาษา">
+          {#each SUPPORTED_LOCALES as loc}
+            <option value={loc.code}>{loc.flag} {loc.name}</option>
+          {/each}
+        </select>
+      </div>
+      <nav class="nav-tabs">
+        <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 SOS</button>
+        <button class:active={activeTab === 'feed'} on:click={() => activeTab = 'feed'}>📢 Feed</button>
+        <button class:active={activeTab === 'map'} on:click={() => activeTab = 'map'}>🗺️ แผนที่</button>
+        <button class:active={activeTab === 'manual'} on:click={() => activeTab = 'manual'}>📖 Manual</button>
+        <button class:active={activeTab === 'donation'} on:click={() => activeTab = 'donation'}>🤝 Fund</button>
+      </nav>
+    </div>
   </header>
 
   <!-- Incoming SOS Floating Banner (Sprint E Task E.3) -->
@@ -169,10 +187,42 @@
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #1e293b;
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.75rem;
     flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.75rem;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .header-lang-selector {
+    display: flex;
+    align-items: center;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 3px 6px;
+    gap: 4px;
+  }
+  .header-lang-selector .lang-icon {
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .header-lang-selector select {
+    background: transparent;
+    color: #cbd5e1;
+    border: none;
+    font-size: 0.8rem;
+    cursor: pointer;
+    outline: none;
+    padding: 2px 4px;
+  }
+  .header-lang-selector select option {
+    background: #0f172a;
+    color: #f1f5f9;
   }
   .logo {
     display: flex;

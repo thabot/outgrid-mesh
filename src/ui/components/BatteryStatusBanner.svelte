@@ -120,11 +120,11 @@
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 0.5rem;
-    padding: 0.5rem 0.85rem;
-    font-size: 0.82rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
     color: #e2e8f0;
-    margin-bottom: 0.75rem;
-    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+    gap: 0.4rem;
     flex-wrap: wrap;
     transition: all 0.2s ease;
   }
