@@ -11,6 +11,7 @@
   import { KAnonymityHeatmap } from '../../core/spatial/KAnonymityHeatmap';
   import { H3GridEngine } from '../../core/spatial/H3GridEngine';
   import { ODBL_ATTRIBUTION } from '../../core/spatial/TileProxyClient';
+  import { peerDiscoveryManager } from '../../core/state/PeerDiscoveryStore';
 
   // --------------- Props ---------------
   export let sosTargets: Array<{
@@ -309,6 +310,9 @@
         const h3Idx = H3GridEngine.coordToH3(myPos.lat, myPos.lng, 9);
         heatmap.registerPresence('self', h3Idx);
         renderHexHeatmap();
+
+        // Update central PeerDiscoveryStore with real user GPS coordinates
+        peerDiscoveryManager.setUserLocation(myPos.lat, myPos.lng);
 
         map!.flyTo([myPos.lat, myPos.lng], 15, { animate: true, duration: 1.5 });
 

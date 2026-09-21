@@ -12,10 +12,17 @@
   import BottomNavigationBar from '../ui/components/BottomNavigationBar.svelte';
   import HamburgerDrawer from '../ui/components/HamburgerDrawer.svelte';
   import RescueRadarHud from '../ui/components/RescueRadarHud.svelte';
+  import { onMount, onDestroy } from 'svelte';
   import MeshChatScreen from '../ui/components/MeshChatScreen.svelte';
+  import FriendsScreen from '../ui/components/FriendsScreen.svelte';
   import IncomingSosBanner, { type IIncomingSosAlert } from '../ui/components/IncomingSosBanner.svelte';
   import AuthProfileScreen from '../ui/components/AuthProfileScreen.svelte';
   import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../core/i18n/I18nStore';
+  import {
+    discoveredPeersStore,
+    peerCountsStore,
+    peerDiscoveryManager
+  } from '../core/state/PeerDiscoveryStore';
 
   const currentLocaleStore = i18n.locale;
   const translations = i18n.translations;
@@ -48,14 +55,27 @@
     alert('🚨 Last-Gasp Beacon ถูกส่งผ่านคลื่นวิทยุแล้ว! พิกัดสุดท้ายและเวลาได้ถูกฝากไว้กับเพื่อนบ้านรอบตัวก่อนเครื่องดับ');
   }
 
+  function openRadarForTarget(target: any) {
+    activeRadarTarget = target;
+  }
+
   function handleBottomTabChange(e: CustomEvent<{ tab: 'map' | 'chat' | 'sos' | 'friends' | 'profile' }>) {
     const tab = e.detail.tab;
     activeTab = tab;
   }
 
-  function openRadarForTarget(target: any) {
-    activeRadarTarget = target;
+  function handleStartDirectChat(e: CustomEvent<{ peerId: string; peerName: string }>) {
+    activeTab = 'chat';
   }
+
+  onMount(() => {
+    // Automatically start periodic BLE Presence broadcasting on launch
+    peerDiscoveryManager.startPresenceBroadcaster();
+  });
+
+  onDestroy(() => {
+    peerDiscoveryManager.stopPresenceBroadcaster();
+  });
 </script>
 
 <svelte:head>
@@ -118,7 +138,7 @@
   />
 
   <!-- Network Status Bar (Sprint D Task D.1) -->
-  <NetworkStatusBar />
+  <NetworkStatusBar peerCounts={$peerCountsStore} />
 
   <BeaconControlsBar />
 
@@ -133,6 +153,7 @@
       <div class="card card-map">
         <SosMapView
           sosTargets={demoSosTargets}
+          peerNodes={$discoveredPeersStore}
           on:openRadar={(e) => openRadarForTarget(e.detail.target)}
         />
       </div>
@@ -142,14 +163,7 @@
       <div class="card"><DonationDashboard /></div>
     {:else if activeTab === 'friends'}
       <div class="card friends-card">
-        <div class="tab-inner-header">
-          <h3>👥 เพื่อนและผู้ติดต่อรอบตัว</h3>
-          <p class="tab-subtitle">รายชื่อและสถานะสัญญาณวิทยุของโหนดที่บันทึกไว้ในรัศมี Mesh</p>
-        </div>
-        <div class="empty-state">
-          <span class="empty-icon">📡</span>
-          <p>เปิดสแกนหาเพื่อนในระยะวิทยุ หรือสแกน QR Code เพื่อเพิ่มเพื่อน</p>
-        </div>
+        <FriendsScreen on:startDirectChat={handleStartDirectChat} />
       </div>
     {:else if activeTab === 'profile'}
       <div class="card profile-card">
