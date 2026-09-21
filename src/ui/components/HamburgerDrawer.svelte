@@ -7,6 +7,7 @@
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
   import { createEventDispatcher } from 'svelte';
+  import { base } from '$app/paths';
   import HelpManualScreen from './HelpManualScreen.svelte';
   import DonationDashboard from './DonationDashboard.svelte';
   import BeaconControlsBar from './BeaconControlsBar.svelte';
@@ -59,7 +60,7 @@
     >
       <div class="drawer-header">
         <div class="drawer-brand">
-          <img src="/logo.png" alt="OutGrid Logo" class="brand-img" />
+          <img src="{base}/logo.png" alt="OutGrid Logo" class="brand-img" />
           <div>
             <h3>OutGrid Mesh</h3>
             <span class="version-tag">TOG v{appVersion} ({commitSha})</span>

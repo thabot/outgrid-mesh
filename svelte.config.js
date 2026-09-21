@@ -14,8 +14,8 @@ const config = {
 			strict: true
 		}),
 		paths: {
-			base: '',
-			relative: true
+			base: process.env.BASE_PATH ?? '',
+			relative: process.env.BASE_PATH ? false : true
 		}
 	}
 };

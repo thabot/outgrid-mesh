@@ -6,6 +6,9 @@ const buildDir = path.resolve('build');
 function processHtmlFile(filePath) {
   if (!fs.existsSync(filePath)) return;
 
+  // If BASE_PATH is set (e.g. GitHub Pages build), do not convert to relative ./app/
+  if (process.env.BASE_PATH) return;
+
   let content = fs.readFileSync(filePath, 'utf-8');
   let modified = false;
 
@@ -28,3 +31,12 @@ const targetFiles = ['index.html', '200.html', '404.html'];
 for (const file of targetFiles) {
   processHtmlFile(path.join(buildDir, file));
 }
+
+// Ensure 404.html exists for GitHub Pages SPA routing fallback
+const indexPath = path.join(buildDir, 'index.html');
+const notFoundPath = path.join(buildDir, '404.html');
+if (fs.existsSync(indexPath) && !fs.existsSync(notFoundPath)) {
+  fs.copyFileSync(indexPath, notFoundPath);
+  console.log('[postbuild] Created 404.html from index.html for SPA routing fallback');
+}
+

@@ -6,6 +6,7 @@
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
   import { onMount, onDestroy } from 'svelte';
+  import { base } from '$app/paths';
   import type { Map as LeafletMap, LatLng } from 'leaflet';
   import { KAnonymityHeatmap } from '../../core/spatial/KAnonymityHeatmap';
   import { H3GridEngine } from '../../core/spatial/H3GridEngine';
@@ -137,7 +138,7 @@
   async function loadWorldBasemapL2() {
     if (!map || !L) return;
     try {
-      const resp = await fetch('/data/world_basemap_l2.json');
+      const resp = await fetch(`${base}/data/world_basemap_l2.json`);
       if (!resp.ok) return;
       const geoJson = await resp.json();
 

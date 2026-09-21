@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from '$app/paths';
   import 'leaflet/dist/leaflet.css';
   import OneTapSos from '../ui/components/OneTapSos.svelte';
   import CrisisFeed from '../ui/components/CrisisFeed.svelte';
@@ -77,7 +78,7 @@
         <span class="hamburger-bar"></span>
       </button>
       <div class="logo">
-        <img src="/logo.png" alt="OutGrid Mesh Logo" class="brand-logo-img" />
+        <img src="{base}/logo.png" alt="OutGrid Mesh Logo" class="brand-logo-img" />
         <span class="pulse-indicator"></span>
         <h1>OutGrid Mesh</h1>
       </div>
