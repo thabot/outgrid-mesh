@@ -36,7 +36,11 @@ capacitor.settings.json
 # Temporary and Internal Plan Docs
 scratch/
 implementation_plan.md
-TASK_LIST.md
-ROADMAP.md
+DocPlan/
+*DocPlan*
+TASK_LIST*
+ROADMAP*
+*PLAN*
+PLAN_ANDROID*
 MASTER_PROJECT_PLAN*
 
