@@ -54,4 +54,41 @@ describe('BleAdvertiser (BLE Advertising Engine)', () => {
     expect(legacyMfg?.isLegacy).toBe(true);
     expect(legacyMfg?.data.length).toBeLessThanOrEqual(24);
   });
+
+  it('should accurately interleave Coded PHY and Legacy 1M slots according to dualModeRatio (3:1)', () => {
+    const dualAdv = new BleAdvertiser({
+      useExtendedAdv: true,
+      dualMode: true,
+      dualModeRatio: 3
+    });
+
+    const packet = new Uint8Array(80);
+    dualAdv.startAdvertising(packet);
+
+    // Slot 0 -> Coded (Extended)
+    const slot0 = dualAdv.getNextBroadcastSlot();
+    expect(slot0?.phyMode).toBe('CODED');
+    expect(slot0?.isLegacy).toBe(false);
+
+    // Slot 1 -> Coded (Extended)
+    const slot1 = dualAdv.getNextBroadcastSlot();
+    expect(slot1?.phyMode).toBe('CODED');
+    expect(slot1?.isLegacy).toBe(false);
+
+    // Slot 2 -> Coded (Extended)
+    const slot2 = dualAdv.getNextBroadcastSlot();
+    expect(slot2?.phyMode).toBe('CODED');
+    expect(slot2?.isLegacy).toBe(false);
+
+    // Slot 3 -> Legacy 1M (31B Beacon for BT 4.2 Newland MT65)
+    const slot3 = dualAdv.getNextBroadcastSlot();
+    expect(slot3?.phyMode).toBe('1M');
+    expect(slot3?.isLegacy).toBe(true);
+    expect(slot3?.payload.data.length).toBeLessThanOrEqual(24);
+
+    // Slot 4 -> Cycle resets back to Coded (Extended)
+    const slot4 = dualAdv.getNextBroadcastSlot();
+    expect(slot4?.phyMode).toBe('CODED');
+    expect(slot4?.isLegacy).toBe(false);
+  });
 });
