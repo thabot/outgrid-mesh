@@ -90,7 +90,167 @@ export enum PresenceStatusFlags {
 }
 
 /**
- * Radio & Node Capabilities Bitmask (Byte 9 of Presence Chirp)
+ * 3-Bit Header Flags inside Byte 4 of Main TOG Packet Header
+ */
+export enum TOGHeaderFlags {
+  NONE = 0x0,
+  IS_COMPRESSED = 1 << 0,     // 0x1: Payload compressed with Deflate (Level 6)
+  IS_DIRECT_LEAF = 1 << 1,    // 0x2: Target recipient is leaf node (BT 4.2)
+  RESERVED_CRYPTO = 1 << 2    // 0x4: Reserved for Ratchet E2EE Flag
+}
+
+/**
+ * 32 Technical Combination Codes for Byte 9 (Bits 3-7)
+ */
+export enum RadioCombinationCode {
+  STANDBY_ALL_OFF = 0,         // ปิดวิทยุเสริมทั้งหมด (สแตนด์บายประหยัดพลังงาน)
+  BT_LEGACY_ONLY = 1,          // เปิดเฉพาะ BT 4.2 Legacy (10–30m) (เช่น Newland MT65)
+  BLE_CODED_ONLY = 2,          // เปิดเฉพาะ BLE 5.0 Long Range (100–300m)
+  DUAL_BT_ONLY = 3,            // เปิด Bluetooth 2 ท่อคู่ขนาน (สลับยิง Coded + Legacy)
+  LORA_BRIDGE_ONLY = 4,        // โหนด LoRa Bridge เดี่ยว (Repeater ทวนสัญญาณยอดเขา 15–20km)
+  GATEWAY_ONLY = 5,            // โหนดที่มีสัญญาณเน็ตเดี่ยวๆ (เราเตอร์ 4G/5G หรือ Starlink)
+  BT_LEGACY_LORA = 6,          // Newland MT65 ต่อกล่อง LoRa
+  BT_LEGACY_GATEWAY = 7,       // Newland MT65 ใส่ซิม 4G ทำหน้าที่เป็น Gateway
+  BT_LEGACY_WIFI = 8,          // Newland MT65 เปิด Wi-Fi Direct
+  BLE_CODED_LORA = 9,          // มือถือรุ่นใหม่ + กล่อง LoRa พกพา (ชุดมาตรฐานทีมกู้ภัย)
+  BLE_CODED_GATEWAY = 10,      // มือถือรุ่นใหม่มีเน็ต 4G/5G/Satellite
+  BLE_CODED_WIFI_DIRECT = 11,  // มือถือรุ่นใหม่เปิด Wi-Fi Direct ส่งไฟล์/APK
+  BLE_CODED_WIFI_HALOW = 12,   // มือถือรุ่นใหม่รับภาพ/โดรนผ่าน Wi-Fi HaLow Sub-1GHz
+  BLE_CODED_LORA_GATEWAY = 13, // มือถือรุ่นใหม่มีเน็ต + LoRa
+  DUAL_BT_LORA = 14,           // ยิงบลูทูธ 2 ท่อคู่ขนาน + LoRa 15–20km
+  DUAL_BT_GATEWAY = 15,        // ยิงบลูทูธ 2 ท่อ + ดึงข้อมูลออกเน็ต
+  DUAL_BT_WIFI = 16,           // ยิงบลูทูธ 2 ท่อ + Wi-Fi ส่งไฟล์
+  DUAL_BT_LORA_GATEWAY = 17,   // บลูทูธ 2 ท่อ + LoRa + เน็ต 4G/ดาวเทียม
+  DUAL_BT_LORA_WIFI = 18,      // บลูทูธ 2 ท่อ + LoRa + Wi-Fi
+  FULL_BACKBONE_HALOW = 19,    // BLE_CODED + LORA + WIFI_HALOW + GATEWAY (เสาโดรน)
+  FULL_BACKBONE_DUAL_BT = 20,  // DUAL_BT + LORA + WIFI_HALOW + GATEWAY (เสาศูนย์อพยพ)
+  EMERGENCY_ALL_ACTIVE = 21,   // เปิดทุกระบบวิทยุพร้อมกัน 100%
+  RESERVED_SATELLITE = 22,     // สำรอง: Direct-to-Cell Satellite Radio
+  RESERVED_DMR_RADIO = 23,     // สำรอง: ดิจิทัล ว. วิทยุสื่อสาร (DMR)
+  RESERVED_BT6_CS_1 = 24,      // สำรอง: Bluetooth 6.0 Channel Sounding
+  RESERVED_FUTURE_2 = 25,
+  RESERVED_FUTURE_3 = 26,
+  RESERVED_FUTURE_4 = 27,
+  RESERVED_FUTURE_5 = 28,
+  RESERVED_FUTURE_6 = 29,
+  RESERVED_FUTURE_7 = 30,
+  RESERVED_FUTURE_8 = 31
+}
+
+export interface IRadioCapabilityUnpacked {
+  isStationary: boolean;
+  powerTier: number;
+  comboCode: RadioCombinationCode;
+  isLegacyBt: boolean;
+  isRelayCapable: boolean;
+  hasLoRa: boolean;
+  hasInternetGateway: boolean;
+}
+
+export class RadioCapabilityHelper {
+  /**
+   * รวมสถานะโหนดเข้าเป็น Byte 9 (1 Byte uint8)
+   */
+  public static packRadioByte(
+    isStationary: boolean,
+    powerTier: number, // 0 - 3 (2 bits)
+    comboCode: RadioCombinationCode // 0 - 31 (5 bits)
+  ): number {
+    const bit0 = isStationary ? 0x01 : 0x00;
+    const bits12 = (Math.min(3, Math.max(0, powerTier)) & 0x03) << 1;
+    const clampedCombo = Math.min(31, Math.max(0, comboCode));
+    const bits37 = (clampedCombo & 0x1f) << 3;
+    return bit0 | bits12 | bits37;
+  }
+
+  /**
+   * ถอดรหัส Byte 9 ออกเป็นสถานะทางเทคนิคพร้อมบทบาทในเครือข่าย
+   */
+  public static unpackRadioByte(byte9: number): IRadioCapabilityUnpacked {
+    const isStationary = (byte9 & 0x01) !== 0;
+    const powerTier = (byte9 >> 1) & 0x03;
+    let comboCode = ((byte9 >> 3) & 0x1f) as RadioCombinationCode;
+
+    // Backward compatibility fallback for TOG v1.0 sparse masks
+    if (byte9 === 0x08) {
+      comboCode = RadioCombinationCode.BT_LEGACY_ONLY;
+    } else if (byte9 === 0x0a) {
+      comboCode = RadioCombinationCode.BLE_CODED_ONLY;
+    } else if (comboCode < 0 || comboCode > 31) {
+      comboCode = RadioCombinationCode.STANDBY_ALL_OFF;
+    }
+
+    const isLegacyBt = (
+      comboCode === RadioCombinationCode.BT_LEGACY_ONLY ||
+      comboCode === RadioCombinationCode.BT_LEGACY_LORA ||
+      comboCode === RadioCombinationCode.BT_LEGACY_GATEWAY ||
+      comboCode === RadioCombinationCode.BT_LEGACY_WIFI
+    );
+
+    const hasLoRa = (
+      comboCode === RadioCombinationCode.LORA_BRIDGE_ONLY ||
+      comboCode === RadioCombinationCode.BT_LEGACY_LORA ||
+      comboCode === RadioCombinationCode.BLE_CODED_LORA ||
+      comboCode === RadioCombinationCode.BLE_CODED_LORA_GATEWAY ||
+      comboCode === RadioCombinationCode.DUAL_BT_LORA ||
+      comboCode === RadioCombinationCode.DUAL_BT_LORA_GATEWAY ||
+      comboCode === RadioCombinationCode.DUAL_BT_LORA_WIFI ||
+      comboCode === RadioCombinationCode.FULL_BACKBONE_HALOW ||
+      comboCode === RadioCombinationCode.FULL_BACKBONE_DUAL_BT ||
+      comboCode === RadioCombinationCode.EMERGENCY_ALL_ACTIVE
+    );
+
+    const hasInternetGateway = (
+      comboCode === RadioCombinationCode.GATEWAY_ONLY ||
+      comboCode === RadioCombinationCode.BT_LEGACY_GATEWAY ||
+      comboCode === RadioCombinationCode.BLE_CODED_GATEWAY ||
+      comboCode === RadioCombinationCode.BLE_CODED_LORA_GATEWAY ||
+      comboCode === RadioCombinationCode.DUAL_BT_GATEWAY ||
+      comboCode === RadioCombinationCode.DUAL_BT_LORA_GATEWAY ||
+      comboCode === RadioCombinationCode.FULL_BACKBONE_HALOW ||
+      comboCode === RadioCombinationCode.FULL_BACKBONE_DUAL_BT ||
+      comboCode === RadioCombinationCode.EMERGENCY_ALL_ACTIVE
+    );
+
+    const isRelayCapable = !isLegacyBt || hasLoRa;
+
+    return {
+      isStationary,
+      powerTier,
+      comboCode,
+      isLegacyBt,
+      isRelayCapable,
+      hasLoRa,
+      hasInternetGateway
+    };
+  }
+}
+
+/**
+ * Compact SOS Beacon (21 Bytes Wire Format)
+ */
+export interface ICompactSOSBeacon {
+  seqId: number;         // uint8 (0 - 255)
+  h3Index: bigint;       // uint64 (Uber H3 Index Res 9)
+  deltaX: number;        // int16 (-1500m ถึง +1500m จากจุดกึ่งกลาง Hexagon)
+  deltaY: number;        // int16 (-1500m ถึง +1500m จากจุดกึ่งกลาง Hexagon)
+  batteryPct: number;    // uint8 (0 - 100%)
+  statusFlags: number;   // uint8 (บิต 0=Trapped, 1=Medical, 2=Fire, 3=Child, 4=Water)
+}
+
+/**
+ * Compact Direct Chat (<= 28 Bytes Wire Format for BT 4.2 Adv)
+ */
+export interface ICompactDirectChat {
+  senderShortId: number;    // uint16 (0 - 65,535)
+  recipientShortId: number; // uint16 (0 - 65,535)
+  truncatedMsgId: number;   // uint32 (4 Bytes)
+  h3LowerRes9: number;      // uint16 (2 Bytes)
+  textPayload: string;      // UTF-8 string สูงสุด 14 ไบต์
+}
+
+/**
+ * Radio & Node Capabilities Bitmask (Byte 9 of Presence Chirp - Legacy compat)
  */
 export enum RadioCapabilitiesBitmask {
   STATIONARY_NODE = 1 << 0,     // 0x01: Fixed node (tower/rooftop)
@@ -125,8 +285,10 @@ export interface IPresenceChirp {
   isCharging: boolean;       // 1 bit
   statusFlags: number;       // 4 bits
   ourH3Index: number;        // 32 bits (Uber H3 Res 9)
-  radioCapabilities: number; // 8 bits (RadioCapabilitiesBitmask)
+  radioCapabilities: number; // 8 bits (Byte 9)
   neighbors: IPresenceNeighbor[]; // 0 to 5 neighbors (each 3 Bytes)
   crc16: number;             // 16 bits (CRC-16-CCITT)
+  radioComboCode?: RadioCombinationCode; // Decoded combo code
+  isLegacyBt?: boolean;      // True if leaf node
 }
 

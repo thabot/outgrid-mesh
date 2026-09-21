@@ -11,10 +11,13 @@ import {
   TOGPacketType,
   TOGPriority,
   H3Direction,
+  RadioCapabilityHelper,
   type ITOGHeader,
   type ITOGPacket,
   type IPresenceChirp,
-  type IPresenceNeighbor
+  type IPresenceNeighbor,
+  type ICompactSOSBeacon,
+  type ICompactDirectChat
 } from './TOGPacket';
 import { CRC16 } from './CRC16';
 
@@ -353,6 +356,7 @@ export class PacketSerializer {
 
     // Byte 9: Radio Capabilities
     const radioCapabilities = view.getUint8(9);
+    const unpackedRadio = RadioCapabilityHelper.unpackRadioByte(radioCapabilities);
 
     // Byte 10-24: 5 Neighbors
     const neighbors: IPresenceNeighbor[] = [];
@@ -381,7 +385,134 @@ export class PacketSerializer {
       ourH3Index,
       radioCapabilities,
       neighbors,
-      crc16: expectedCrc
+      crc16: expectedCrc,
+      radioComboCode: unpackedRadio.comboCode,
+      isLegacyBt: unpackedRadio.isLegacyBt
+    };
+  }
+
+  /**
+   * Serializes a Compact SOS Beacon (21 Bytes Wire Format)
+   */
+  public static serializeCompactSOS(beacon: ICompactSOSBeacon): Uint8Array {
+    return this.serializeCompactSosBeacon(
+      beacon.seqId,
+      beacon.h3Index,
+      beacon.deltaX,
+      beacon.deltaY,
+      beacon.batteryPct,
+      beacon.statusFlags
+    );
+  }
+
+  /**
+   * Deserializes a Compact SOS Beacon (21 Bytes Wire Format)
+   */
+  public static deserializeCompactSOS(buffer: Uint8Array): ICompactSOSBeacon {
+    if (buffer.length < 21) {
+      throw new Error(`Compact SOS buffer too short: ${buffer.length} < 21 bytes`);
+    }
+
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    // Verify Magic (2B)
+    const magic = view.getUint16(0, false);
+    if (magic !== TOG_MAGIC) {
+      throw new Error(`Invalid TOG Magic for Compact SOS: 0x${magic.toString(16)}`);
+    }
+
+    // Verify CRC16 (Bytes 19-20)
+    const expectedCrc = view.getUint16(19, false);
+    const computedCrc = CRC16.compute(buffer, 0, 19);
+    if (expectedCrc !== computedCrc) {
+      throw new Error(`CRC-16 mismatch for Compact SOS: 0x${expectedCrc.toString(16)} !== 0x${computedCrc.toString(16)}`);
+    }
+
+    const seqId = view.getUint8(4);
+    const h3Index = view.getBigUint64(5, false);
+    const deltaX = view.getInt16(13, false);
+    const deltaY = view.getInt16(15, false);
+    const batteryPct = view.getUint8(17);
+    const statusFlags = view.getUint8(18);
+
+    return {
+      seqId,
+      h3Index,
+      deltaX,
+      deltaY,
+      batteryPct,
+      statusFlags
+    };
+  }
+
+  /**
+   * Serializes a Compact Direct Chat Message (<= 28 Bytes Wire Format for BT 4.2 Adv)
+   * [0-1] Magic: 0x544F (2B)
+   * [2] Type/Ver: 0x02 | Ver 1 (1B)
+   * [3] TTL: uint8 (1B)
+   * [4-5] Sender ShortId: uint16 (2B)
+   * [6-7] Recipient ShortId: uint16 (2B)
+   * [8-11] Truncated MsgId: uint32 (4B)
+   * [12-13] H3 Lower Res9: uint16 (2B)
+   * [14-27] Text Payload: UTF-8 string (up to 14B)
+   */
+  public static serializeCompactDirectChat(msg: ICompactDirectChat): Uint8Array {
+    const encoder = new TextEncoder();
+    const textBytes = encoder.encode(msg.textPayload);
+    const safeTextBytes = textBytes.subarray(0, 14); // Max 14 Bytes for 28B total
+
+    const totalLen = 14 + safeTextBytes.length;
+    const buf = new Uint8Array(totalLen);
+    const view = new DataView(buf.buffer);
+
+    view.setUint16(0, TOG_MAGIC, false);
+    view.setUint8(2, ((TOG_VERSION & 0x07) << 5) | (TOGPacketType.DIRECT_CHAT & 0x1f));
+    view.setUint8(3, 4); // Default 4 hops for compact direct chat
+    view.setUint16(4, msg.senderShortId & 0xffff, false);
+    view.setUint16(6, msg.recipientShortId & 0xffff, false);
+    view.setUint32(8, msg.truncatedMsgId >>> 0, false);
+    view.setUint16(12, msg.h3LowerRes9 & 0xffff, false);
+    buf.set(safeTextBytes, 14);
+
+    return buf;
+  }
+
+  /**
+   * Deserializes a Compact Direct Chat Message (<= 28 Bytes Wire Format)
+   */
+  public static deserializeCompactDirectChat(buffer: Uint8Array): ICompactDirectChat {
+    if (buffer.length < 14) {
+      throw new Error(`Compact Direct Chat buffer too short: ${buffer.length} < 14 bytes`);
+    }
+
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    const magic = view.getUint16(0, false);
+    if (magic !== TOG_MAGIC) {
+      throw new Error(`Invalid TOG Magic for Compact Direct Chat: 0x${magic.toString(16)}`);
+    }
+
+    const b2 = view.getUint8(2);
+    const packetType = (b2 & 0x1f) as TOGPacketType;
+    if (packetType !== TOGPacketType.DIRECT_CHAT) {
+      throw new Error(`Invalid packet type for Compact Direct Chat: ${packetType}`);
+    }
+
+    const senderShortId = view.getUint16(4, false);
+    const recipientShortId = view.getUint16(6, false);
+    const truncatedMsgId = view.getUint32(8, false);
+    const h3LowerRes9 = view.getUint16(12, false);
+
+    const textBytes = buffer.subarray(14, Math.min(buffer.length, 28));
+    const decoder = new TextDecoder('utf-8');
+    const textPayload = decoder.decode(textBytes);
+
+    return {
+      senderShortId,
+      recipientShortId,
+      truncatedMsgId,
+      h3LowerRes9,
+      textPayload
     };
   }
 }

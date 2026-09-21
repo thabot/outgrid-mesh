@@ -26,6 +26,8 @@ export interface IBroadcastSlot {
   isLegacy: boolean;
   phyMode: 'CODED' | '1M';
   payload: IBleAdvPayload;
+  recommendedTxPowerDbm: number;
+  nextSlotDelayMs: number;
 }
 
 export class BleAdvertiser {
@@ -33,6 +35,7 @@ export class BleAdvertiser {
   private currentPayload: Uint8Array | null = null;
   private settings: IBleAdvSettings;
   private broadcastCycleCounter: number = 0;
+  private isEmergencySOS: boolean = false;
 
   constructor(settings: Partial<IBleAdvSettings> = {}) {
     this.settings = {
@@ -42,6 +45,23 @@ export class BleAdvertiser {
       txPowerDbm: settings.txPowerDbm ?? 8,
       intervalMs: settings.intervalMs ?? 200
     };
+  }
+
+  public setEmergencySOS(enabled: boolean): void {
+    this.isEmergencySOS = enabled;
+  }
+
+  public getEmergencySOS(): boolean {
+    return this.isEmergencySOS;
+  }
+
+  /**
+   * Calculates slot delay with anti-collision jitter:
+   * T_delay = T_interval + Random(20ms, 50ms)
+   */
+  public calculateJitterDelay(baseIntervalMs = this.settings.intervalMs): number {
+    const jitter = Math.floor(Math.random() * 31) + 20; // 20ms to 50ms
+    return baseIntervalMs + jitter;
   }
 
   /**
@@ -102,18 +122,19 @@ export class BleAdvertiser {
   /**
    * Interleaved Dual-Broadcasting Engine:
    * Selects the transmission slot (Extended vs Legacy 1M) based on current cycle counter.
-   * If dualMode is enabled:
-   * Cycles 0..(ratio-1) => Extended Coded PHY (Long Range Trunk)
-   * Cycle ratio         => Legacy 1M PHY (31B Beacon for BT 4.2 devices like Newland MT65)
+   * In Normal Mode: Ratio 3:1 (3 Extended Coded : 1 Legacy 1M)
+   * In Emergency SOS: Ratio 1:1 (1 Extended Coded : 1 Legacy 1M) with Tx Power +20dBm
    */
   public getNextBroadcastSlot(): IBroadcastSlot | null {
     if (!this.isAdvertising || !this.currentPayload) return null;
 
     const currentSlot = this.broadcastCycleCounter;
     this.broadcastCycleCounter++;
+    const nextSlotDelayMs = this.calculateJitterDelay();
 
     if (this.settings.dualMode && this.settings.useExtendedAdv) {
-      const ratio = this.settings.dualModeRatio ?? 3;
+      // If emergency SOS active, force 1:1 ratio
+      const ratio = this.isEmergencySOS ? 1 : (this.settings.dualModeRatio ?? 3);
       const period = ratio + 1;
       const cycleInPeriod = currentSlot % period;
 
@@ -123,7 +144,9 @@ export class BleAdvertiser {
           slotIndex: currentSlot,
           isLegacy: true,
           phyMode: '1M',
-          payload: this.getLegacyManufacturerData()!
+          payload: this.getLegacyManufacturerData()!,
+          recommendedTxPowerDbm: this.isEmergencySOS ? 8 : 4,
+          nextSlotDelayMs
         };
       } else {
         // Extended Coded slot for modern peers
@@ -131,7 +154,9 @@ export class BleAdvertiser {
           slotIndex: currentSlot,
           isLegacy: false,
           phyMode: 'CODED',
-          payload: this.getManufacturerData()!
+          payload: this.getManufacturerData()!,
+          recommendedTxPowerDbm: this.isEmergencySOS ? 20 : this.settings.txPowerDbm,
+          nextSlotDelayMs
         };
       }
     }
@@ -141,7 +166,9 @@ export class BleAdvertiser {
       slotIndex: currentSlot,
       isLegacy: !this.settings.useExtendedAdv,
       phyMode: this.settings.useExtendedAdv ? 'CODED' : '1M',
-      payload: this.getManufacturerData()!
+      payload: this.getManufacturerData()!,
+      recommendedTxPowerDbm: this.settings.txPowerDbm,
+      nextSlotDelayMs
     };
   }
 
