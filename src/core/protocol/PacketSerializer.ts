@@ -17,7 +17,10 @@ import {
   type IPresenceChirp,
   type IPresenceNeighbor,
   type ICompactSOSBeacon,
-  type ICompactDirectChat
+  type ICompactDirectChat,
+  CannedEmergencyCode,
+  type ICannedEmergencyPacket,
+  type IUltraCompactSOSBeacon
 } from './TOGPacket';
 import { CRC16 } from './CRC16';
 
@@ -258,7 +261,8 @@ export class PacketSerializer {
    * Strictly formatted for BLE Legacy 31-byte limit with 4-byte Apple Find My style headroom.
    */
   public static serializePresenceChirp(
-    chirp: Omit<IPresenceChirp, 'packetType' | 'crc16'>
+    chirp: Omit<IPresenceChirp, 'packetType' | 'crc16'>,
+    trimDynamic: boolean = true
   ): Uint8Array {
     // 27 Bytes total:
     // [0] Type (5b: 0x07) | Hop (3b: 0-7) - 1B
@@ -266,9 +270,13 @@ export class PacketSerializer {
     // [4] Bat 5 Tiers (3b) | Charging (1b) | Status Flags (4b) - 1B
     // [5-8] Our H3 Cell Res 9 Index (32 bits) - 4B
     // [9] Radio Capabilities (1B)
-    // [10-24] 5 Neighbors (5 * 3B = 15B)
-    // [25-26] CRC-16-CCITT (2B)
-    const buf = new Uint8Array(27);
+    // [10..] Dynamic Neighbors (N * 3B)
+    // Dynamic Tail: CRC-16-CCITT (2B)
+    const validNeighbors = (chirp.neighbors || []).filter(n => n.shortNodeId !== 0);
+    const neighborCount = trimDynamic ? validNeighbors.length : Math.min(5, chirp.neighbors?.length || 0);
+    const totalSlots = trimDynamic ? neighborCount : 5;
+    const totalLength = 10 + (totalSlots * 3) + 2; // 12B to 27B
+    const buf = new Uint8Array(totalLength);
     const view = new DataView(buf.buffer);
 
     // Byte 0: Type (5b) | Hop (3b)
@@ -294,42 +302,47 @@ export class PacketSerializer {
     // Byte 9: Radio Capabilities
     view.setUint8(9, chirp.radioCapabilities & 0xff);
 
-    // Byte 10-24: Up to 5 neighbors (each 3 Bytes = 2B NodeID + 1B Fused)
-    const neighborCount = Math.min(5, chirp.neighbors.length);
-    for (let i = 0; i < 5; i++) {
+    // Byte 10+: Neighbors (each 3 Bytes = 2B NodeID + 1B Fused)
+    for (let i = 0; i < totalSlots; i++) {
       const offset = 10 + (i * 3);
-      if (i < neighborCount) {
-        const n = chirp.neighbors[i];
+      if (i < validNeighbors.length) {
+        const n = validNeighbors[i];
         view.setUint16(offset, n.shortNodeId & 0xffff, false);
         const fused = this.packNeighborFusedByte(n.direction, n.batteryLevel, n.rssiTier);
         view.setUint8(offset + 2, fused);
       } else {
-        // Pad empty slots with 0
+        // Pad empty slots with 0 for fixed 27B legacy mode
         view.setUint16(offset, 0, false);
         view.setUint8(offset + 2, 0);
       }
     }
 
-    // Byte 25-26: CRC-16-CCITT calculated over Bytes 0 to 24
-    const crc = CRC16.compute(buf, 0, 25);
-    view.setUint16(25, crc & 0xffff, false);
+    // CRC-16-CCITT calculated over Bytes 0 to tail offset
+    const crcOffset = 10 + (totalSlots * 3);
+    const crc = CRC16.compute(buf, 0, crcOffset);
+    view.setUint16(crcOffset, crc & 0xffff, false);
 
     return buf;
   }
 
   /**
-   * Deserializes a 27-Byte Presence Chirp Micro-Packet
+   * Deserializes a Presence Chirp Micro-Packet (Dynamic 12B to 31B, Legacy 27B)
    */
   public static deserializePresenceChirp(buffer: Uint8Array): IPresenceChirp {
-    if (buffer.length < 27) {
-      throw new Error(`Presence Chirp buffer too short: ${buffer.length} < 27 bytes`);
+    if (buffer.length < 12) {
+      throw new Error(`Presence Chirp buffer too short: ${buffer.length} < 12 bytes`);
     }
 
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
+    // Calculate dynamic neighbor count from buffer length
+    const neighborBytes = buffer.length - 12; // Subtract Header 10B and CRC 2B
+    const neighborSlots = Math.floor(neighborBytes / 3);
+    const crcOffset = 10 + (neighborSlots * 3);
+
     // 1. Verify CRC-16
-    const expectedCrc = view.getUint16(25, false);
-    const computedCrc = CRC16.compute(buffer, 0, 25);
+    const expectedCrc = view.getUint16(crcOffset, false);
+    const computedCrc = CRC16.compute(buffer, 0, crcOffset);
     if (expectedCrc !== computedCrc) {
       throw new Error(`CRC-16 mismatch for Presence Chirp: 0x${expectedCrc.toString(16)} !== 0x${computedCrc.toString(16)}`);
     }
@@ -358,9 +371,9 @@ export class PacketSerializer {
     const radioCapabilities = view.getUint8(9);
     const unpackedRadio = RadioCapabilityHelper.unpackRadioByte(radioCapabilities);
 
-    // Byte 10-24: 5 Neighbors
+    // Byte 10+: Dynamic Neighbors
     const neighbors: IPresenceNeighbor[] = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < neighborSlots; i++) {
       const offset = 10 + (i * 3);
       const shortNodeId = view.getUint16(offset, false);
       const fused = view.getUint8(offset + 2);
@@ -388,6 +401,138 @@ export class PacketSerializer {
       crc16: expectedCrc,
       radioComboCode: unpackedRadio.comboCode,
       isLegacyBt: unpackedRadio.isLegacyBt
+    };
+  }
+
+  /**
+   * Serializes a Canned Emergency Status Packet (Fixed 10 Bytes)
+   */
+  public static serializeCannedEmergency(packet: ICannedEmergencyPacket): Uint8Array {
+    const buf = new Uint8Array(10);
+    const view = new DataView(buf.buffer);
+
+    // Byte 0: Type (5b) | Hop (3b)
+    const pType = (packet.packetType || TOGPacketType.SOS_BEACON) & 0x1f;
+    const hop = (packet.hopCount & 0x07) << 5;
+    view.setUint8(0, hop | pType);
+
+    // Bytes 1-2: Sender ShortId
+    view.setUint16(1, packet.senderShortId & 0xffff, false);
+    // Bytes 3-4: Recipient ShortId (0xFFFF = Broadcast)
+    view.setUint16(3, (packet.recipientShortId ?? 0xffff) & 0xffff, false);
+    // Bytes 5-6: Sequence ID
+    view.setUint16(5, packet.sequenceId & 0xffff, false);
+    // Byte 7: Status Code
+    view.setUint8(7, packet.statusCode & 0xff);
+
+    // Bytes 8-9: CRC-16 calculated over Bytes 0 to 7
+    const crc = CRC16.compute(buf, 0, 8);
+    view.setUint16(8, crc & 0xffff, false);
+
+    return buf;
+  }
+
+  /**
+   * Deserializes a Canned Emergency Status Packet (Fixed 10 Bytes)
+   */
+  public static deserializeCannedEmergency(buffer: Uint8Array): ICannedEmergencyPacket {
+    if (buffer.length < 10) {
+      throw new Error(`Canned Emergency buffer too short: ${buffer.length} < 10 bytes`);
+    }
+
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    // 1. Verify CRC-16
+    const expectedCrc = view.getUint16(8, false);
+    const computedCrc = CRC16.compute(buffer, 0, 8);
+    if (expectedCrc !== computedCrc) {
+      throw new Error(`CRC-16 mismatch for Canned Emergency: 0x${expectedCrc.toString(16)} !== 0x${computedCrc.toString(16)}`);
+    }
+
+    const b0 = view.getUint8(0);
+    const packetType = (b0 & 0x1f) as TOGPacketType;
+    const hopCount = (b0 >> 5) & 0x07;
+
+    const senderShortId = view.getUint16(1, false);
+    const recipientShortId = view.getUint16(3, false);
+    const sequenceId = view.getUint16(5, false);
+    const statusCode = view.getUint8(7) as CannedEmergencyCode;
+
+    return {
+      packetType,
+      hopCount,
+      senderShortId,
+      recipientShortId,
+      sequenceId,
+      statusCode,
+      crc16: expectedCrc
+    };
+  }
+
+  /**
+   * Serializes an Ultra-Compact SOS Beacon (Fixed 13 Bytes)
+   */
+  public static serializeUltraCompactSOS(beacon: IUltraCompactSOSBeacon): Uint8Array {
+    const buf = new Uint8Array(13);
+    const view = new DataView(buf.buffer);
+
+    const pType = (beacon.packetType || TOGPacketType.SOS_BEACON) & 0x1f;
+    const hop = (beacon.hopCount & 0x07) << 5;
+    view.setUint8(0, hop | pType);
+
+    view.setUint8(1, beacon.sequenceId & 0xff);
+    view.setUint32(2, beacon.h3Index >>> 0, false);
+    view.setInt8(6, beacon.deltaX);
+    view.setInt8(7, beacon.deltaY);
+    view.setUint8(8, beacon.batteryLevel & 0xff);
+    view.setUint8(9, beacon.flags & 0xff);
+    view.setUint8(10, beacon.reserved & 0xff);
+
+    const crc = CRC16.compute(buf, 0, 11);
+    view.setUint16(11, crc & 0xffff, false);
+
+    return buf;
+  }
+
+  /**
+   * Deserializes an Ultra-Compact SOS Beacon (Fixed 13 Bytes)
+   */
+  public static deserializeUltraCompactSOS(buffer: Uint8Array): IUltraCompactSOSBeacon {
+    if (buffer.length < 13) {
+      throw new Error(`Ultra-Compact SOS buffer too short: ${buffer.length} < 13 bytes`);
+    }
+
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    const expectedCrc = view.getUint16(11, false);
+    const computedCrc = CRC16.compute(buffer, 0, 11);
+    if (expectedCrc !== computedCrc) {
+      throw new Error(`CRC-16 mismatch for Ultra-Compact SOS: 0x${expectedCrc.toString(16)} !== 0x${computedCrc.toString(16)}`);
+    }
+
+    const b0 = view.getUint8(0);
+    const packetType = (b0 & 0x1f) as TOGPacketType;
+    const hopCount = (b0 >> 5) & 0x07;
+
+    const sequenceId = view.getUint8(1);
+    const h3Index = view.getUint32(2, false);
+    const deltaX = view.getInt8(6);
+    const deltaY = view.getInt8(7);
+    const batteryLevel = view.getUint8(8);
+    const flags = view.getUint8(9);
+    const reserved = view.getUint8(10);
+
+    return {
+      packetType,
+      hopCount,
+      sequenceId,
+      h3Index,
+      deltaX,
+      deltaY,
+      batteryLevel,
+      flags,
+      reserved,
+      crc16: expectedCrc
     };
   }
 

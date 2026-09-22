@@ -79,4 +79,20 @@ export class OneTapSosEngine {
       default: return SosStatusCategory.GENERAL_EMERGENCY;
     }
   }
+
+  /**
+   * Helper for Canned Emergency Status (10 Bytes)
+   */
+  public static getCannedStatusLabel(code: number): string {
+    switch (code) {
+      case 0x01: return 'ปลอดภัยดี (Safe & Secure)';
+      case 0x02: return 'ติดอยู่ในอาคาร (Trapped / Need Extraction)';
+      case 0x03: return 'ต้องการแพทย์/ยา (Need Medical Aid)';
+      case 0x04: return 'ต้องการน้ำดื่ม/อาหาร (Need Food & Water)';
+      case 0x05: return 'ระดับน้ำกำลังเพิ่มสูง (Flood Danger)';
+      case 0x06: return 'มีเพลิงไหม้/ก๊าซพิษ (Fire / Hazardous Gas)';
+      default: return 'แจ้งเหตุฉุกเฉิน (Emergency Alert)';
+    }
+  }
 }
+

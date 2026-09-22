@@ -10,7 +10,8 @@ import { PacketSerializer } from '../../../src/core/protocol/PacketSerializer';
 import {
   TOGPacketType,
   H3Direction,
-  RadioCapabilitiesBitmask
+  RadioCapabilitiesBitmask,
+  CannedEmergencyCode
 } from '../../../src/core/protocol/TOGPacket';
 import { CRC16 } from '../../../src/core/protocol/CRC16';
 
@@ -130,14 +131,32 @@ describe('TogBridgeRelay (Cross-Radio LoRa Bridge Forwarding)', () => {
     expect(result.forwarded).toBe(true);
     expect(result.remainingHopCount).toBe(2);
 
-    // Transmitted bytes must be a valid 27-byte packet with valid CRC-16
+    // Transmitted bytes must be a valid 15-byte dynamic packet with valid CRC-16
     const transmitted = result.transmittedBytes!;
-    expect(transmitted.length).toBe(27);
+    expect(transmitted.length).toBe(15);
 
     const decoded = PacketSerializer.deserializePresenceChirp(transmitted);
     expect(decoded.hopCount).toBe(2); // Reduced by 1
     expect(decoded.ourShortNodeId).toBe(0x554433); // Unchanged!
     expect(decoded.ourH3Index).toBe(0x12345678);  // Unchanged!
     expect(decoded.batteryLevel).toBe(5);          // Unchanged!
+  });
+
+  it('should forward 10-byte Canned Emergency Status without payload corruption', () => {
+    const bridge = new TogBridgeRelay();
+    const cannedPacket = PacketSerializer.serializeCannedEmergency({
+      hopCount: 2,
+      senderShortId: 0x6543,
+      recipientShortId: 0xffff,
+      sequenceId: 101,
+      statusCode: CannedEmergencyCode.NEED_FOOD_WATER
+    });
+
+    const result = bridge.evaluateAndForward(cannedPacket);
+    expect(result.forwarded).toBe(true);
+    expect(result.transmittedBytes!.length).toBe(10);
+    const decoded = PacketSerializer.deserializeCannedEmergency(result.transmittedBytes!);
+    expect(decoded.senderShortId).toBe(0x6543);
+    expect(decoded.statusCode).toBe(CannedEmergencyCode.NEED_FOOD_WATER);
   });
 });

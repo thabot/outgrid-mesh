@@ -250,6 +250,48 @@ export interface ICompactDirectChat {
 }
 
 /**
+ * 1-Byte Canned Emergency Status Code
+ */
+export enum CannedEmergencyCode {
+  SAFE = 0x01,              // ปลอดภัยดี (Safe & Secure)
+  TRAPPED = 0x02,           // ติดอยู่ในอาคาร (Trapped in Building / Need Extraction)
+  NEED_MEDIC = 0x03,        // ต้องการแพทย์/ยา (Need Medical Aid / Severe Injury)
+  NEED_FOOD_WATER = 0x04,   // ต้องการน้ำดื่ม/อาหาร (Need Food & Water)
+  FLOOD_DANGER = 0x05,      // ระดับน้ำกำลังเพิ่มสูง (Flood Danger)
+  FIRE_HAZARD = 0x06        // มีเพลิงไหม้/ก๊าซพิษ (Fire / Hazardous Gas)
+}
+
+/**
+ * Canned Emergency Status Packet (Fixed 10 Bytes Wire Format)
+ * Fits in 1 single BLE packet without fragmentation
+ */
+export interface ICannedEmergencyPacket {
+  packetType: TOGPacketType;       // TOGPacketType.SOS_BEACON (0x01)
+  hopCount: number;          // 3 bits (0 - 7)
+  senderShortId: number;     // uint16 (2 Bytes)
+  recipientShortId: number;  // uint16 (2 Bytes, 0xFFFF = Broadcast)
+  sequenceId: number;        // uint16 (2 Bytes)
+  statusCode: CannedEmergencyCode; // uint8 (1 Byte)
+  crc16: number;             // uint16 (2 Bytes, CRC-16-CCITT)
+}
+
+/**
+ * Ultra-Compact SOS Beacon (Fixed 13 Bytes Wire Format)
+ */
+export interface IUltraCompactSOSBeacon {
+  packetType: TOGPacketType;       // TOGPacketType.SOS_BEACON (0x01)
+  hopCount: number;          // 3 bits (0 - 7)
+  sequenceId: number;        // uint8 (1 Byte)
+  h3Index: number;           // uint32 (4 Bytes - Local H3 Res 9)
+  deltaX: number;            // int8 (1 Byte - ระยะแกน X ในหน่วย 1 เมตร)
+  deltaY: number;            // int8 (1 Byte - ระยะแกน Y ในหน่วย 1 เมตร)
+  batteryLevel: number;      // uint8 (1 Byte - แบตเตอรี่ 0-100%)
+  flags: number;             // uint8 (1 Byte)
+  reserved: number;          // uint8 (1 Byte)
+  crc16: number;             // uint16 (2 Bytes)
+}
+
+/**
  * Radio & Node Capabilities Bitmask (Byte 9 of Presence Chirp - Legacy compat)
  */
 export enum RadioCapabilitiesBitmask {
