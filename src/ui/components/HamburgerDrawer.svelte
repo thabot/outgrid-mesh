@@ -7,15 +7,27 @@
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
   import { createEventDispatcher } from 'svelte';
+  import { base } from '$app/paths';
   import HelpManualScreen from './HelpManualScreen.svelte';
   import DonationDashboard from './DonationDashboard.svelte';
   import BeaconControlsBar from './BeaconControlsBar.svelte';
   import ApkShareScreen from './ApkShareScreen.svelte';
   import AcousticBeaconPanel from './AcousticBeaconPanel.svelte';
+  import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../../core/i18n/I18nStore';
 
   export let isOpen = false;
   export let appVersion = '1.1.0';
   export let commitSha = 'local';
+
+  const currentLocaleStore = i18n.locale;
+  const translations = i18n.translations;
+
+  function handleLanguageChange(e: Event) {
+    const target = e.target as HTMLSelectElement;
+    if (target) {
+      i18n.setLocale(target.value as SupportedLocale);
+    }
+  }
 
   type DrawerSection = 'menu' | 'manual' | 'share_apk' | 'beacon' | 'fund' | 'system';
   let currentSection: DrawerSection = 'menu';
@@ -59,7 +71,7 @@
     >
       <div class="drawer-header">
         <div class="drawer-brand">
-          <img src="/logo.png" alt="OutGrid Logo" class="brand-img" />
+          <img src="{base}/logo.png" alt="OutGrid Logo" class="brand-img" />
           <div>
             <h3>OutGrid Mesh</h3>
             <span class="version-tag">TOG v{appVersion} ({commitSha})</span>
@@ -78,6 +90,18 @@
 
       <div class="drawer-body">
         {#if currentSection === 'menu'}
+          <div class="drawer-lang-card">
+            <div class="drawer-lang-label">
+              <span class="lang-globe">🌐</span>
+              <strong>{$translations.lang_select_title || 'ภาษา / Language'}</strong>
+            </div>
+            <select class="drawer-lang-select" value={$currentLocaleStore} on:change={handleLanguageChange} aria-label="เลือกภาษา">
+              {#each SUPPORTED_LOCALES as loc}
+                <option value={loc.code}>{loc.flag} {loc.name}</option>
+              {/each}
+            </select>
+          </div>
+
           <nav class="drawer-menu-list">
             <button class="menu-entry" on:click={() => currentSection = 'manual'}>
               <span class="menu-icon">📖</span>
@@ -245,7 +269,43 @@
   .drawer-body {
     flex: 1;
     overflow-y: auto;
-    padding: 12px;
+    padding: 16px;
+  }
+
+  .drawer-lang-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .drawer-lang-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: #f1f5f9;
+  }
+
+  .lang-globe {
+    font-size: 1.1rem;
+  }
+
+  .drawer-lang-select {
+    background: #0f172a;
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
   }
 
   .drawer-menu-list {

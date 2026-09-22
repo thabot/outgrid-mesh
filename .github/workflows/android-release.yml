@@ -32,7 +32,7 @@ jobs:
             echo "apk_name=outgrid-mesh-uat.apk" >> $GITHUB_OUTPUT
             echo "release_tag=${UAT_VERSION}" >> $GITHUB_OUTPUT
             echo "release_title=OutGrid Mesh ${UAT_VERSION} (UAT Build ${{ github.run_number }})" >> $GITHUB_OUTPUT
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Set up Java 17
@@ -98,7 +98,7 @@ jobs:
       - name: Build Android APK with Gradle
         run: |
           cd android
-          gradle assembleDebug --no-daemon --stacktrace
+          gradle assembleDebug -PcustomVersionCode=${{ github.run_number }} --no-daemon --stacktrace
           mkdir -p ../dist-apk
           cp app/build/outputs/apk/debug/app-debug.apk ../dist-apk/${{ steps.meta.outputs.apk_name }}
 
@@ -109,7 +109,7 @@ jobs:
           path: dist-apk/${{ steps.meta.outputs.apk_name }}
           retention-days: 30
 
-      - name: Create or Update GitHub Release
+      - name: Create or Update Specific Build GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.release_tag }}
@@ -129,5 +129,27 @@ jobs:
             > ⚠️ **ข้อควรระวัง:** ไฟล์นี้ไม่ได้อยู่ในโค้ดของ Repository — ต้องดาวน์โหลดผ่านลิงก์ด้านบน หรือจากแท็บ **Releases** เท่านั้น
           files: dist-apk/${{ steps.meta.outputs.apk_name }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Permanent Latest UAT Release (v1.1.0-uat)
+        if: steps.meta.outputs.env_name == 'uat'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.1.0-uat
+          name: OutGrid Mesh v1.1.0-uat (Latest UAT Bleeding-Edge Build)
+          body: |
+            ## 🧪 OutGrid Mesh Latest UAT Build (Bleeding-Edge)
+            - **Protocol:** Thabot OutGrid Protocol (TOG v1.1)
+            - **Channel:** `uat`
+            - **Permanent Direct Download:** ลิงก์ดาวน์โหลดถาวรสำหรับ APK ตัวล่าสุดจาก branch `uat`
+            - **Source Run:** Build #${{ github.run_number }} (${{ steps.meta.outputs.release_tag }})
+
+            ### 📥 ดาวน์โหลด APK ล่าสุด (Permanent Link):
+            **[outgrid-mesh-uat.apk](https://github.com/${{ github.repository }}/releases/download/v1.1.0-uat/outgrid-mesh-uat.apk)**
+          files: dist-apk/${{ steps.meta.outputs.apk_name }}
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

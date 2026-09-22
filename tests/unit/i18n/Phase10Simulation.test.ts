@@ -16,7 +16,7 @@ import { OneTapSosEngine, SosStatusCategory } from '../../../src/core/state/OneT
 
 describe('Phase 10: Multiplatform UI/UX, 10 Global Languages & Disaster Drills', () => {
   describe('Task 10.1: Universal 10-Language Embedded i18n Engine & Key Parity', () => {
-    const languages = ['th', 'en', 'my', 'lo', 'km', 'vi', 'ms', 'zh', 'ja', 'es'];
+    const languages = ['en', 'th', 'zh', 'es', 'ja', 'hi', 'ar', 'fr', 'ru', 'pt'];
     const requiredKeys = [
       'app_name',
       'one_tap_sos',

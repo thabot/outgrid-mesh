@@ -11,6 +11,7 @@
   import { i18n } from '../../core/i18n/I18nStore';
 
   export let myNodeId: string = 'node-self-47';
+  export let targetContact: { peerId: string; peerName: string } | null = null;
 
   const translations = i18n.translations;
 
@@ -23,6 +24,30 @@
   let inputText = '';
   let isSendingMedia = false;
   let mediaProgress = 0;
+
+  // Reactively activate direct chat if targetContact is passed from Friends screen
+  $: if (targetContact && targetContact.peerId) {
+    activeChatType = 'direct';
+    directChatView = 'chat';
+    selectedRecipient = targetContact.peerId;
+    selectedRecipientName = targetContact.peerName || targetContact.peerId;
+    const existing = contacts.find(c => c.id === targetContact?.peerId);
+    if (!existing) {
+      contacts = [
+        {
+          id: targetContact.peerId,
+          name: targetContact.peerName || `เพื่อน ${targetContact.peerId}`,
+          avatar: '🧑‍🚀',
+          status: 'เพื่อนที่เชื่อมต่อแล้ว',
+          lastMessage: '🔒 การเชื่อมต่อแบบ 1:1 เข้ารหัส E2EE พร้อมส่งข้อความ',
+          lastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          unreadCount: 0,
+          isOnline: true
+        },
+        ...contacts
+      ];
+    }
+  }
 
   interface IContactPeer {
     id: string;
@@ -375,11 +400,20 @@
   .chat-screen {
     display: flex;
     flex-direction: column;
-    height: 600px;
+    height: calc(100vh - 170px);
+    min-height: 480px;
+    max-height: 800px;
     background: #090f1d;
     border-radius: 8px;
     overflow: hidden;
     color: #f1f5f9;
+  }
+
+  @media (max-width: 640px) {
+    .chat-screen {
+      height: calc(100vh - 160px);
+      min-height: 400px;
+    }
   }
 
   .chat-header {

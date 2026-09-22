@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from '$app/paths';
   import 'leaflet/dist/leaflet.css';
   import OneTapSos from '../ui/components/OneTapSos.svelte';
   import CrisisFeed from '../ui/components/CrisisFeed.svelte';
@@ -11,10 +12,17 @@
   import BottomNavigationBar from '../ui/components/BottomNavigationBar.svelte';
   import HamburgerDrawer from '../ui/components/HamburgerDrawer.svelte';
   import RescueRadarHud from '../ui/components/RescueRadarHud.svelte';
+  import { onMount, onDestroy } from 'svelte';
   import MeshChatScreen from '../ui/components/MeshChatScreen.svelte';
+  import FriendsScreen from '../ui/components/FriendsScreen.svelte';
   import IncomingSosBanner, { type IIncomingSosAlert } from '../ui/components/IncomingSosBanner.svelte';
   import AuthProfileScreen from '../ui/components/AuthProfileScreen.svelte';
   import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../core/i18n/I18nStore';
+  import {
+    discoveredPeersStore,
+    peerCountsStore,
+    peerDiscoveryManager
+  } from '../core/state/PeerDiscoveryStore';
 
   const currentLocaleStore = i18n.locale;
   const translations = i18n.translations;
@@ -37,14 +45,22 @@
   const commitSha: string = import.meta.env.VITE_APP_COMMIT ?? 'local';
   const versionLabel = `TOG v${appVersion} (${commitSha})`;
 
-  // Demo SOS targets visible on the map
-  const demoSosTargets = [
-    { id: 'sos-001', lat: 13.7590, lng: 100.5050, category: '🚤 น้ำท่วม ต้องการเรือ', distanceMeters: 340, floor: 2 },
-    { id: 'sos-002', lat: 18.7870, lng: 98.9830, category: '👶 มีเด็ก/ผู้สูงอายุ', distanceMeters: 1200, floor: 1 },
-  ];
+  // Real SOS targets visible on the map (populated via radio mesh)
+  const demoSosTargets: Array<{
+    id: string;
+    lat: number;
+    lng: number;
+    category: string;
+    distanceMeters?: number;
+    floor?: number;
+  }> = [];
 
   function handleTriggerLastGasp() {
     alert('🚨 Last-Gasp Beacon ถูกส่งผ่านคลื่นวิทยุแล้ว! พิกัดสุดท้ายและเวลาได้ถูกฝากไว้กับเพื่อนบ้านรอบตัวก่อนเครื่องดับ');
+  }
+
+  function openRadarForTarget(target: any) {
+    activeRadarTarget = target;
   }
 
   function handleBottomTabChange(e: CustomEvent<{ tab: 'map' | 'chat' | 'sos' | 'friends' | 'profile' }>) {
@@ -52,9 +68,168 @@
     activeTab = tab;
   }
 
-  function openRadarForTarget(target: any) {
-    activeRadarTarget = target;
+  import { AuthManager } from '../core/auth/AuthManager';
+  import { OneTapSosEngine, SosStatusCategory } from '../core/state/OneTapSosEngine';
+  import { NativeBridgeDispatcher } from '../core/native/NativeBridgeDispatcher';
+  import { PacketSerializer } from '../core/protocol/PacketSerializer';
+  import { TOGPacketType } from '../core/protocol/TOGPacket';
+  import { H3DeltaCompressor } from '../core/spatial/H3DeltaCompressor';
+
+  let auth = new AuthManager();
+  let myProfile = auth.getProfile();
+  let targetChatPeer: { peerId: string; peerName: string } | null = null;
+  let isSosDispatching = false;
+  let unsubscribeRadioSos: (() => void) | null = null;
+
+  function handleStartDirectChat(e: CustomEvent<{ peerId: string; peerName: string }>) {
+    targetChatPeer = { peerId: e.detail.peerId, peerName: e.detail.peerName };
+    activeTab = 'chat';
   }
+
+  function handleIncomingSosRadio(bytes: Uint8Array, rssi: number) {
+    if (bytes.length < 5) return;
+    // Check Magic 0x544F
+    if (bytes[0] === 0x54 && bytes[1] === 0x4F) {
+      const pType = bytes[2] & 0x1f;
+      if (pType === TOGPacketType.SOS_BEACON) {
+        try {
+          const packet = PacketSerializer.deserialize(bytes);
+          let senderHex = Array.from(packet.senderPubkeyHash).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
+          if (!senderHex) senderHex = 'NODE';
+          const senderNodeId = `#${senderHex}`;
+
+          // Don't alert for our own SOS
+          const myPubHex = Array.from(myProfile.keyPair.publicKey).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
+          if (senderHex === myPubHex) return;
+
+          // Parse Payload
+          let lat = 13.7563;
+          let lng = 100.5018;
+          let cat = 'เหตุฉุกเฉินทั่วไป';
+
+          if (packet.payload.length >= 6) {
+            const view = new DataView(packet.payload.buffer, packet.payload.byteOffset, packet.payload.byteLength);
+            const deltaX = view.getInt16(0, false);
+            const deltaY = view.getInt16(2, false);
+            const decomp = H3DeltaCompressor.decompress(packet.targetH3Index, { deltaX, deltaY });
+            lat = decomp.lat;
+            lng = decomp.lng;
+            const catEnum = OneTapSosEngine.decodeCategory(packet.payload[5]);
+            cat = catEnum;
+          }
+
+          const measuredPower = -59;
+          const n = 2.5;
+          let dist = Math.round(Math.pow(10, (measuredPower - rssi) / (10 * n)));
+          dist = Math.max(5, Math.min(2500, dist));
+
+          const alertObj: IIncomingSosAlert = {
+            id: `sos-${packet.messageId.toString()}`,
+            senderNodeId,
+            lat,
+            lng,
+            distanceMeters: dist,
+            category: cat,
+            timestamp: Date.now()
+          };
+
+          // Trigger floating alert banner
+          incomingSosBannerRef?.handleIncomingSosPacket(alertObj);
+
+          // Add to map SOS targets
+          const existingIdx = demoSosTargets.findIndex(t => t.id === alertObj.id);
+          if (existingIdx >= 0) {
+            demoSosTargets[existingIdx] = { ...alertObj };
+          } else {
+            demoSosTargets.push({ ...alertObj });
+          }
+        } catch (err) {
+          console.warn('Failed to parse incoming SOS packet:', err);
+        }
+      }
+    }
+  }
+
+  function handleTriggerSos(category: SosStatusCategory) {
+    if (isSosDispatching) return;
+    isSosDispatching = true;
+
+    try {
+      let currentLat = 13.7563;
+      let currentLng = 100.5018;
+
+      // Load last known GPS or default
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const savedLoc = window.localStorage.getItem('outgrid_last_gps_location');
+          if (savedLoc) {
+            const parsed = JSON.parse(savedLoc);
+            if (parsed.lat && parsed.lng) {
+              currentLat = parsed.lat;
+              currentLng = parsed.lng;
+            }
+          }
+        }
+      } catch {}
+
+      const senderPubkeyHash = myProfile.keyPair.publicKey.slice(0, 8);
+      const sosPacket = OneTapSosEngine.createSosBeacon({
+        lat: currentLat,
+        lng: currentLng,
+        batteryLevel: 95,
+        category,
+        senderPubkeyHash
+      });
+
+      // Serialize complete wire-spec TOG packet (Magic 0x544F + Header + Payload)
+      const wireBytes = PacketSerializer.serialize(sosPacket);
+
+      // Transmit SOS over BLE Coded PHY Radio at High Power
+      const dispatcher = NativeBridgeDispatcher.getInstance();
+      dispatcher.transmitRadioPacket(wireBytes, true);
+      // Double burst to guarantee penetration across mesh
+      setTimeout(() => {
+        dispatcher.transmitRadioPacket(wireBytes, true);
+      }, 350);
+
+      dispatcher.startSosStrobe();
+      dispatcher.vibrateSosPattern();
+
+      alert(`🚨 สัญญาณ SOS หมวด [${category}] ถูกกระจายผ่านคลื่นวิทยุ BLE เรียบร้อยแล้ว! รัศมี 300ม. - 5กม.`);
+    } catch (err: any) {
+      alert(`⚠️ เกิดข้อผิดพลาดในการยิงวิทยุ: ${err.message}`);
+    } finally {
+      setTimeout(() => { isSosDispatching = false; }, 2000);
+    }
+  }
+
+  onMount(() => {
+    myProfile = auth.getProfile();
+    // Derive unique 16-bit short numeric node ID from our own unique nodeId
+    let numericNodeId = 0x47A1;
+    try {
+      const parsed = parseInt(myProfile.nodeId.slice(0, 4), 16);
+      if (!isNaN(parsed) && parsed > 0) {
+        numericNodeId = parsed;
+      }
+    } catch {}
+
+    // Automatically start periodic BLE Presence broadcasting with unique node ID on launch
+    peerDiscoveryManager.startPresenceBroadcaster(numericNodeId);
+
+    // Subscribe to incoming BLE radio packets for emergency SOS reception
+    unsubscribeRadioSos = NativeBridgeDispatcher.getInstance().subscribeToPackets((event) => {
+      handleIncomingSosRadio(event.bytes, event.rssi);
+    });
+  });
+
+  onDestroy(() => {
+    peerDiscoveryManager.stopPresenceBroadcaster();
+    if (unsubscribeRadioSos) {
+      unsubscribeRadioSos();
+      unsubscribeRadioSos = null;
+    }
+  });
 </script>
 
 <svelte:head>
@@ -77,7 +252,7 @@
         <span class="hamburger-bar"></span>
       </button>
       <div class="logo">
-        <img src="/logo.png" alt="OutGrid Mesh Logo" class="brand-logo-img" />
+        <img src="{base}/logo.png" alt="OutGrid Mesh Logo" class="brand-logo-img" />
         <span class="pulse-indicator"></span>
         <h1>OutGrid Mesh</h1>
       </div>
@@ -92,14 +267,6 @@
         {isUltraSurvival ? ($translations.survival_btn_off || '🛑 Exit Ultra') : ($translations.survival_btn_on || '⚡ 1-Tap Survival')}
       </button>
 
-      <div class="header-lang-selector">
-        <label for="header-lang-select" class="lang-icon">🌐</label>
-        <select id="header-lang-select" value={$currentLocaleStore} on:change={handleLanguageChange} aria-label="เลือกภาษา">
-          {#each SUPPORTED_LOCALES as loc}
-            <option value={loc.code}>{loc.flag} {loc.name}</option>
-          {/each}
-        </select>
-      </div>
       <nav class="nav-tabs">
         <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 {$translations.sos || 'SOS'}</button>
         <button class:active={activeTab === 'feed'} on:click={() => activeTab = 'feed'}>📢 {$translations.feed || 'Feed'}</button>
@@ -117,21 +284,22 @@
   />
 
   <!-- Network Status Bar (Sprint D Task D.1) -->
-  <NetworkStatusBar />
+  <NetworkStatusBar peerCounts={$peerCountsStore} />
 
   <BeaconControlsBar />
 
   <section class="content-area">
     {#if activeTab === 'sos'}
-      <div class="card"><OneTapSos /></div>
+      <div class="card"><OneTapSos onTriggerSos={handleTriggerSos} isDispatching={isSosDispatching} /></div>
     {:else if activeTab === 'feed'}
       <div class="card"><CrisisFeed /></div>
     {:else if activeTab === 'chat'}
-      <div class="card"><MeshChatScreen /></div>
+      <div class="card"><MeshChatScreen targetContact={targetChatPeer} myNodeId={myProfile.nodeId} /></div>
     {:else if activeTab === 'map'}
       <div class="card card-map">
         <SosMapView
           sosTargets={demoSosTargets}
+          peerNodes={$discoveredPeersStore}
           on:openRadar={(e) => openRadarForTarget(e.detail.target)}
         />
       </div>
@@ -141,14 +309,7 @@
       <div class="card"><DonationDashboard /></div>
     {:else if activeTab === 'friends'}
       <div class="card friends-card">
-        <div class="tab-inner-header">
-          <h3>👥 เพื่อนและผู้ติดต่อรอบตัว</h3>
-          <p class="tab-subtitle">รายชื่อและสถานะสัญญาณวิทยุของโหนดที่บันทึกไว้ในรัศมี Mesh</p>
-        </div>
-        <div class="empty-state">
-          <span class="empty-icon">📡</span>
-          <p>เปิดสแกนหาเพื่อนในระยะวิทยุ หรือสแกน QR Code เพื่อเพิ่มเพื่อน</p>
-        </div>
+        <FriendsScreen on:startDirectChat={handleStartDirectChat} />
       </div>
     {:else if activeTab === 'profile'}
       <div class="card profile-card">

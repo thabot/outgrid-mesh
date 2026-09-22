@@ -5,7 +5,7 @@
   License: AGPL-3.0 + Commercial Rights Reserved to Thabot
 -->
 <script lang="ts">
-  import type { SupportedLocale } from '../../core/i18n/I18nEngine';
+  import type { SupportedLocale } from '../../core/i18n/I18nStore';
 
   export let currentLanguage: SupportedLocale = 'th';
 
