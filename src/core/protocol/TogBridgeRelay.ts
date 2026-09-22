@@ -110,7 +110,7 @@ export class TogBridgeRelay {
 
     // 4. Rate-Limiting for Presence Chirp (0x07): max 1 chirp per 60s per H3 Cell
     if (packetType === TOGPacketType.PRESENCE_CHIRP) {
-      if (rawBleBuffer.length >= 27) {
+      if (rawBleBuffer.length >= 12) {
         const view = new DataView(rawBleBuffer.buffer, rawBleBuffer.byteOffset, rawBleBuffer.byteLength);
         const cellH3 = view.getUint32(5, false);
         const lastCellChirp = this.cellChirpTimestamps.get(cellH3);
@@ -122,7 +122,7 @@ export class TogBridgeRelay {
     }
 
     // 5. Hop Limit (TTL) check
-    if (hopCount === 0 && packetType === TOGPacketType.PRESENCE_CHIRP) {
+    if (hopCount === 0) {
       return { forwarded: false, reason: 'DROPPED_TTL_EXPIRED' };
     }
 
@@ -132,11 +132,24 @@ export class TogBridgeRelay {
     let remainingHop = hopCount;
     if (remainingHop > 0) {
       remainingHop -= 1;
-      if (packetType === TOGPacketType.PRESENCE_CHIRP && forwardBuffer.length >= 27) {
+      if (packetType === TOGPacketType.PRESENCE_CHIRP && forwardBuffer.length >= 12) {
         forwardBuffer[0] = (remainingHop << 5) | (packetType & 0x1f);
-        const newCrc = CRC16.compute(forwardBuffer, 0, 25);
+        const crcOffset = forwardBuffer.length - 2;
+        const newCrc = CRC16.compute(forwardBuffer, 0, crcOffset);
         const fView = new DataView(forwardBuffer.buffer, forwardBuffer.byteOffset, forwardBuffer.byteLength);
-        fView.setUint16(25, newCrc & 0xffff, false);
+        fView.setUint16(crcOffset, newCrc & 0xffff, false);
+      } else if (forwardBuffer.length === 10) {
+        // Canned Emergency Packet 10B
+        forwardBuffer[0] = (remainingHop << 5) | (packetType & 0x1f);
+        const newCrc = CRC16.compute(forwardBuffer, 0, 8);
+        const fView = new DataView(forwardBuffer.buffer, forwardBuffer.byteOffset, forwardBuffer.byteLength);
+        fView.setUint16(8, newCrc & 0xffff, false);
+      } else if (forwardBuffer.length === 13) {
+        // Ultra-Compact SOS Beacon 13B
+        forwardBuffer[0] = (remainingHop << 5) | (packetType & 0x1f);
+        const newCrc = CRC16.compute(forwardBuffer, 0, 11);
+        const fView = new DataView(forwardBuffer.buffer, forwardBuffer.byteOffset, forwardBuffer.byteLength);
+        fView.setUint16(11, newCrc & 0xffff, false);
       }
     }
 

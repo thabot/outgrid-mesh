@@ -147,6 +147,40 @@
           console.warn('Failed to parse incoming SOS packet:', err);
         }
       }
+    } else if (bytes.length === 10) {
+      // Single-Packet 10B Canned Emergency Packet
+      try {
+        const canned = PacketSerializer.deserializeCannedEmergency(bytes);
+        const senderHex = canned.senderShortId.toString(16).padStart(4, '0').toUpperCase();
+        const senderNodeId = `#${senderHex}`;
+        const catLabel = OneTapSosEngine.getCannedStatusLabel(canned.statusCode);
+
+        const measuredPower = -59;
+        const n = 2.5;
+        let dist = Math.round(Math.pow(10, (measuredPower - rssi) / (10 * n)));
+        dist = Math.max(5, Math.min(2500, dist));
+
+        const alertObj: IIncomingSosAlert = {
+          id: `canned-${canned.senderShortId}-${canned.sequenceId}`,
+          senderNodeId,
+          lat: 13.7563,
+          lng: 100.5018,
+          distanceMeters: dist,
+          category: catLabel,
+          timestamp: Date.now()
+        };
+
+        incomingSosBannerRef?.handleIncomingSosPacket(alertObj);
+
+        const existingIdx = demoSosTargets.findIndex(t => t.id === alertObj.id);
+        if (existingIdx >= 0) {
+          demoSosTargets[existingIdx] = { ...alertObj };
+        } else {
+          demoSosTargets.push({ ...alertObj });
+        }
+      } catch (err) {
+        console.warn('Failed to parse incoming Canned Emergency packet:', err);
+      }
     }
   }
 

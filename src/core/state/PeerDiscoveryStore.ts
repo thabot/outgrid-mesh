@@ -85,8 +85,8 @@ export class PeerDiscoveryStoreManager {
       }
     }
 
-    // Direct 27-byte Presence Chirp
-    if (bytes.length >= 27) {
+    // Direct Presence Chirp (Dynamic 12B to 31B)
+    if (bytes.length >= 12) {
       try {
         const chirp = PacketSerializer.deserializePresenceChirp(bytes);
         this.handlePresenceChirp(chirp, rssiDbm);
