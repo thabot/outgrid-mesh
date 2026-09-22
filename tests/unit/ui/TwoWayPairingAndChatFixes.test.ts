@@ -6,6 +6,7 @@ import {
 } from '../../../src/core/state/PeerDiscoveryStore';
 import { NativeBridgeDispatcher } from '../../../src/core/native/NativeBridgeDispatcher';
 import { OneTapSosEngine, SosStatusCategory } from '../../../src/core/state/OneTapSosEngine';
+import { PacketSerializer } from '../../../src/core/protocol/PacketSerializer';
 
 describe('Deep Dive Bug Fixes & Handshake Integration Tests', () => {
   it('should maintain deterministic and persistent Node ID across multiple AuthManager instances', () => {
@@ -78,8 +79,19 @@ describe('Deep Dive Bug Fixes & Handshake Integration Tests', () => {
     expect(sosBeacon).toBeDefined();
     expect(sosBeacon.payload.length).toBe(6);
 
+    // Verify wire serialization
+    const wireBytes = PacketSerializer.serialize(sosBeacon);
+    expect(wireBytes.length).toBe(45); // 39B fixed metadata + 6B payload
+    expect(wireBytes[0]).toBe(0x54); // 'T'
+    expect(wireBytes[1]).toBe(0x4F); // 'O'
+
+    // Verify deserialization by nearby receiving node
+    const decoded = PacketSerializer.deserialize(wireBytes);
+    expect(decoded.header.packetType).toBe(1); // SOS_BEACON
+    expect(decoded.payload.length).toBe(6);
+
     const dispatcher = NativeBridgeDispatcher.getInstance();
-    const txSuccess = dispatcher.transmitRadioPacket(sosBeacon.payload, true);
+    const txSuccess = dispatcher.transmitRadioPacket(wireBytes, true);
     expect(txSuccess).toBe(true);
   });
 

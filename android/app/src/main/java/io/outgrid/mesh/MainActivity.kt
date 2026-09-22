@@ -36,6 +36,9 @@ class MainActivity : AppCompatActivity() {
     ) { permissions ->
         val grantedCount = permissions.values.count { it }
         android.util.Log.i("OutGridMesh", "Runtime permissions granted: $grantedCount / ${permissions.size}")
+        // Immediately start or restart BLE Radio Scanner once permissions are granted
+        BleRadioNativeDriver.initialize(applicationContext)
+        BleRadioNativeDriver.startScanning()
     }
 
     @SuppressLint("SetJavaScriptEnabled", "SourceLockedOrientationActivity")
@@ -50,6 +53,10 @@ class MainActivity : AppCompatActivity() {
         // Initialize WebView for OutGrid Rescue UI
         webView = findViewById(R.id.webView)
         configureWebView()
+
+        // Initialize and start Native BLE Radio Driver immediately
+        BleRadioNativeDriver.initialize(applicationContext)
+        BleRadioNativeDriver.startScanning()
 
         // Wire BLE Radio incoming packets directly into JavaScript bridge
         BleRadioNativeDriver.setPacketListener { bytes, rssi ->

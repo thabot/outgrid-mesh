@@ -71,15 +71,83 @@
   import { AuthManager } from '../core/auth/AuthManager';
   import { OneTapSosEngine, SosStatusCategory } from '../core/state/OneTapSosEngine';
   import { NativeBridgeDispatcher } from '../core/native/NativeBridgeDispatcher';
+  import { PacketSerializer } from '../core/protocol/PacketSerializer';
+  import { TOGPacketType } from '../core/protocol/TOGPacket';
+  import { H3DeltaCompressor } from '../core/spatial/H3DeltaCompressor';
 
   let auth = new AuthManager();
   let myProfile = auth.getProfile();
   let targetChatPeer: { peerId: string; peerName: string } | null = null;
   let isSosDispatching = false;
+  let unsubscribeRadioSos: (() => void) | null = null;
 
   function handleStartDirectChat(e: CustomEvent<{ peerId: string; peerName: string }>) {
     targetChatPeer = { peerId: e.detail.peerId, peerName: e.detail.peerName };
     activeTab = 'chat';
+  }
+
+  function handleIncomingSosRadio(bytes: Uint8Array, rssi: number) {
+    if (bytes.length < 5) return;
+    // Check Magic 0x544F
+    if (bytes[0] === 0x54 && bytes[1] === 0x4F) {
+      const pType = bytes[2] & 0x1f;
+      if (pType === TOGPacketType.SOS_BEACON) {
+        try {
+          const packet = PacketSerializer.deserialize(bytes);
+          let senderHex = Array.from(packet.senderPubkeyHash).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
+          if (!senderHex) senderHex = 'NODE';
+          const senderNodeId = `#${senderHex}`;
+
+          // Don't alert for our own SOS
+          const myPubHex = Array.from(myProfile.keyPair.publicKey).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
+          if (senderHex === myPubHex) return;
+
+          // Parse Payload
+          let lat = 13.7563;
+          let lng = 100.5018;
+          let cat = 'เหตุฉุกเฉินทั่วไป';
+
+          if (packet.payload.length >= 6) {
+            const view = new DataView(packet.payload.buffer, packet.payload.byteOffset, packet.payload.byteLength);
+            const deltaX = view.getInt16(0, false);
+            const deltaY = view.getInt16(2, false);
+            const decomp = H3DeltaCompressor.decompress(packet.targetH3Index, { deltaX, deltaY });
+            lat = decomp.lat;
+            lng = decomp.lng;
+            const catEnum = OneTapSosEngine.decodeCategory(packet.payload[5]);
+            cat = catEnum;
+          }
+
+          const measuredPower = -59;
+          const n = 2.5;
+          let dist = Math.round(Math.pow(10, (measuredPower - rssi) / (10 * n)));
+          dist = Math.max(5, Math.min(2500, dist));
+
+          const alertObj: IIncomingSosAlert = {
+            id: `sos-${packet.messageId.toString()}`,
+            senderNodeId,
+            lat,
+            lng,
+            distanceMeters: dist,
+            category: cat,
+            timestamp: Date.now()
+          };
+
+          // Trigger floating alert banner
+          incomingSosBannerRef?.handleIncomingSosPacket(alertObj);
+
+          // Add to map SOS targets
+          const existingIdx = demoSosTargets.findIndex(t => t.id === alertObj.id);
+          if (existingIdx >= 0) {
+            demoSosTargets[existingIdx] = { ...alertObj };
+          } else {
+            demoSosTargets.push({ ...alertObj });
+          }
+        } catch (err) {
+          console.warn('Failed to parse incoming SOS packet:', err);
+        }
+      }
+    }
   }
 
   function handleTriggerSos(category: SosStatusCategory) {
@@ -113,9 +181,17 @@
         senderPubkeyHash
       });
 
+      // Serialize complete wire-spec TOG packet (Magic 0x544F + Header + Payload)
+      const wireBytes = PacketSerializer.serialize(sosPacket);
+
       // Transmit SOS over BLE Coded PHY Radio at High Power
       const dispatcher = NativeBridgeDispatcher.getInstance();
-      dispatcher.transmitRadioPacket(sosPacket.payload, true);
+      dispatcher.transmitRadioPacket(wireBytes, true);
+      // Double burst to guarantee penetration across mesh
+      setTimeout(() => {
+        dispatcher.transmitRadioPacket(wireBytes, true);
+      }, 350);
+
       dispatcher.startSosStrobe();
       dispatcher.vibrateSosPattern();
 
@@ -140,10 +216,19 @@
 
     // Automatically start periodic BLE Presence broadcasting with unique node ID on launch
     peerDiscoveryManager.startPresenceBroadcaster(numericNodeId);
+
+    // Subscribe to incoming BLE radio packets for emergency SOS reception
+    unsubscribeRadioSos = NativeBridgeDispatcher.getInstance().subscribeToPackets((event) => {
+      handleIncomingSosRadio(event.bytes, event.rssi);
+    });
   });
 
   onDestroy(() => {
     peerDiscoveryManager.stopPresenceBroadcaster();
+    if (unsubscribeRadioSos) {
+      unsubscribeRadioSos();
+      unsubscribeRadioSos = null;
+    }
   });
 </script>
 
@@ -182,14 +267,6 @@
         {isUltraSurvival ? ($translations.survival_btn_off || '🛑 Exit Ultra') : ($translations.survival_btn_on || '⚡ 1-Tap Survival')}
       </button>
 
-      <div class="header-lang-selector">
-        <label for="header-lang-select" class="lang-icon">🌐</label>
-        <select id="header-lang-select" value={$currentLocaleStore} on:change={handleLanguageChange} aria-label="เลือกภาษา">
-          {#each SUPPORTED_LOCALES as loc}
-            <option value={loc.code}>{loc.flag} {loc.name}</option>
-          {/each}
-        </select>
-      </div>
       <nav class="nav-tabs">
         <button class:active={activeTab === 'sos'} on:click={() => activeTab = 'sos'}>🚨 {$translations.sos || 'SOS'}</button>
         <button class:active={activeTab === 'feed'} on:click={() => activeTab = 'feed'}>📢 {$translations.feed || 'Feed'}</button>
