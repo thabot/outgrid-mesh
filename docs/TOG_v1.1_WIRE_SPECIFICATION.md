@@ -239,4 +239,44 @@ Due to limited LoRa channel bandwidth (effective throughput 1–5 kbps), strict 
 
 ---
 
+## 8. ข้อกำหนดการลดขนาดข้อมูลและการส่งข้อความในแพ็กเก็ตเดียว (Ultra-Compact Single-Packet Messaging & BT Optimization)
+
+> **เป้าหมาย:** บรรจุข้อความและข้อมูลสถานะฉุกเฉินให้จบใน **1 Single BLE Packet ($\le 31$ Bytes)** โดยไม่ต้องหั่นชิ้นส่วน (Zero-Fragmentation Delivery) เพื่อลดเวลาส่งในอากาศ (Air Time on BLE Coded S=8), ขจัดปัญหาชิ้นส่วนสูญหาย 100%, และประหยัดพลังงานแบตเตอรี่สูงสุด
+
+### 8.1 ตารางเปรียบเทียบการลดขนาดแพ็กเก็ต (Packet Optimization Matrix)
+
+| ชนิดข้อมูล / แพ็กเก็ต | ขนาดเดิม (Standard) | ขนาดบีบอัดใหม่ (Ultra-Compact) | กลไกการลดขนาด (Optimization Technique) | การส่งใน 1 Packet |
+| :--- | :---: | :---: | :--- | :---: |
+| **Canned Emergency Status** | 28–45B | **10 Bytes** | รหัสสถานะ 1 ไบต์ + Header 9B (ปลอด Fragment Loss 100%) | ✅ 1 Packet (เหลือ 17B) |
+| **SOS Beacon** | 21–25B | **11–13 Bytes** | Local H3 Index (32b) + Quantized GPS Delta (1m / 2B) | ✅ 1 Packet (เหลือ 14B) |
+| **Presence Chirp** | 27B (คงที่) | **15–21 Bytes** | Dynamic Neighbor Packing (ตัด Padding ว่างเมื่อเพื่อนบ้านน้อย) | ✅ 1 Packet (เหลือ 6–12B) |
+| **Short Free-form ASCII** | 28B | **18–22 Bytes** | Minimal Header 9B + Base40/GSM 7-bit (16–21 ตัวอักษร) | ✅ 1 Packet |
+| **Short Thai Text** | 35–50B | **22–26 Bytes** | Minimal Header 9B + Thai 7-bit Indexing (12–16 ตัวอักษร) | ✅ 1 Packet |
+
+### 8.2 รายละเอียดโครงสร้างแพ็กเก็ตแบบ Single-Packet (Bitfield Layout)
+
+#### 1. ข้อความด่วนสำเร็จรูป (Canned Emergency Status - 10 Bytes):
+```text
+[ Type/Hop 1B ] + [ Sender ShortID 2B ] + [ Recipient ShortID 2B ] + [ Msg Seq 2B ] 
++ [ Emergency StatusCode 1B ] + [ CRC-16 2B ]  ==> รวม 10 ไบต์จบใน 1 Packet
+```
+- **Emergency StatusCode (1 Byte Enum):**
+  - `0x01`: *Safe & Secure (ปลอดภัยดี)*
+  - `0x02`: *Trapped in Building / Need Extraction (ติดอยู่ในอาคาร)*
+  - `0x03`: *Need Medical Aid / Severe Injury (ต้องการแพทย์/ยา)*
+  - `0x04`: *Need Food & Drinking Water (ต้องการน้ำดื่มและอาหาร)*
+  - `0x05`: *Rising Water Level / Flood Danger (ระดับน้ำกำลังเพิ่มสูง)*
+  - `0x06`: *Fire / Hazardous Gas Detected (มีเพลิงไหม้/ก๊าซพิษ)*
+
+#### 2. ข้อความสั้น Free-form ใน 1 Packet เดียว ($\le 27$ Bytes):
+```text
+[ Header 9B ] + [ Text Payload 14–18B (ASCII / Base40 / Thai 7-bit) ] + [ CRC-16 2B ]
+```
+- **ประโยชน์เชิงระบบ:**
+  - ปลายทางแสดงผลทันที **0 ms (Zero Reassembly Delay)**
+  - ประหยัด Air Time บน BLE Coded S=8 ลง **40–50%**
+  - ลดอัตราการชนกันของคลื่นในพื้นที่คนหนาแน่น (Collision Shield)
+
+---
+
 *This document constitutes the formal wire specification for Thabot OutGrid Protocol v1.1. Commercial rights reserved.*
