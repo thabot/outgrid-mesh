@@ -149,14 +149,91 @@ Each neighbor consumes exactly **3 Bytes** ($5 \times 3\text{B} = 15\text{ Bytes
 
 ---
 
-## 6. Multimedia Chunking Specification (`MEDIA_CHUNK` - 180B Chunks)
+## 6. ข้อกำหนดการหั่นไฟล์และประกอบข้อมูลชิ้นส่วนขนาดใหญ่ (File Chunking, Fragmentation & Out-of-Order Reassembly Specification)
 
-- **Damage Photographic Documentation:** Client-side compression via WebP 320x240 resulting in **5–12 KB**.
-- **Short Audio Clips:** Encoded with Opus Narrowband at 6kbps resulting in **2–3 KB** (15-second duration).
-- **Reed-Solomon Erasure Coding (8+4 Shards):**
-  - Partitioned into $K=8$ Data Shards and generating $M=4$ Parity Shards (Total 12 Shards).
-  - Receiving **any 8 of the 12 shards (tolerating up to 33.3% packet loss)** enables immediate 100% file reconstruction with **Zero-Retransmit Recovery**.
-- **Selective NACK:** If packet loss exceeds 4 shards, receiver issues a `0x06: DELIVERY_NACK` with a bitmask requesting retransmission strictly for missing shards.
+> **เป้าหมาย:** กำหนดมาตรฐานการแบ่งย่อยไฟล์มัลติมีเดีย (ภาพ WebP, เสียง Opus, ข้อมูลแผนที่ หรือไฟล์เอกสารกู้ภัย) ออกเป็นชิ้นส่วนย่อย (Chunks) เพื่อให้สามารถส่งผ่านคลื่นวิทยุที่มีข้อจำกัดด้าน MTU ได้อย่างเสถียร พร้อมกลไกการประกอบชิ้นส่วนกลับแบบสลับลำดับ (Out-of-Order Reassembly) และการกู้คืนความเสียหายด้วย Reed-Solomon Forward Error Correction (FEC)
+
+### 6.1 โครงสร้างส่วนหัวของชิ้นส่วนข้อมูล (Wire Chunk Header Format)
+
+แพ็กเก็ตชิ้นส่วนไฟล์แต่ละชิ้นจะถูกห่อหุ้มด้วย **Chunk Header ขนาด 8 ไบต์ (Extended/Legacy)** หรือ **12 ไบต์ (Full ID Mode)** ดังนี้:
+
+#### โครงสร้าง Standard Chunk Header (8 Bytes Header):
+```text
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                 Truncated Message/File ID (32 bits / 4B)      | (Bytes 0-3)
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    Total Chunks (16 bits / 2B) | Sequence Index (16 bits / 2B) | (Bytes 4-7)
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                  Chunk Data Payload (Variable ≤ 180B)         | (Bytes 8...)
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+1. **Truncated Message/File ID (4 Bytes / uint32):**
+   - คำนวณจาก `MessageID & 0xFFFFFFFF` หรือ Truncated Hash เพื่อใช้จับคู่กลุ่มชิ้นส่วนของไฟล์เดียวกัน
+2. **Total Chunks (2 Bytes / uint16, 0–65,535):**
+   - จำนวนชิ้นส่วนทั้งหมดของไฟล์ชุดนั้น เพื่อให้ผู้รับทราบว่าต้องรอรับครบกี่ชิ้นส่วน
+3. **Sequence Index (2 Bytes / uint16, 0-indexed):**
+   - ลำดับของชิ้นส่วนนี้ (ตั้งแต่ `0` ถึง `Total Chunks - 1`)
+4. **Chunk Data Payload:**
+   - เนื้อหาข้อมูลไบนารีที่ถูกตัดแบ่งออกมา
+
+---
+
+### 6.2 กลยุทธ์การหั่นไฟล์แบบ Dual-Mode (Dual-Mode Slicing Strategy)
+
+ระบบรองรับการหั่นไฟล์ 2 โหมดตามช่องทางการส่งสัญญาณวิทยุ:
+
+| โหมดการส่ง (Transport Mode) | ขนาด Payload ต่อ Chunk | ขนาดรวม Header (8B) | ช่องทางสื่อสารที่เหมาะสม |
+| :--- | :---: | :---: | :--- |
+| **Extended Chunk Mode** | **$\le 180$ Bytes** | **$188$ Bytes** | BLE 5 Extended Adv (255B), Wi-Fi Direct, Wi-Fi HaLow |
+| **Legacy Chunk Mode** | **$\le 24$ Bytes** | **$32$ Bytes** (BLE Adv Data + Service Header) | Bluetooth 4.2 Legacy Advertisement (31B limit) |
+
+- **สูตรคำนวณจำนวนชิ้นส่วน:**
+  $$\text{Total Chunks} = \left\lceil \frac{\text{Payload Length}}{\text{Chunk Size}} \right\rceil$$
+
+---
+
+### 6.3 กลไกการประกอบชิ้นส่วนกลับและการจัดการ Memory (Out-of-Order Reassembly & RAM Lifecycle)
+
+```mermaid
+flowchart TD
+    InChunk["📥 รับชิ้นส่วน Chunk [Seq: N]"] --> CheckDuplicate{"ตรวจสอบ Bitmask<br>(Bit N เป็น 1 หรือไม่?)"}
+    CheckDuplicate -- "เป็น 1 (ชิ้นเดิมซ้ำ)" --> Discard["🗑️ ตัดทิ้งทันที 0ms (O(1) Drop)"]
+    CheckDuplicate -- "เป็น 0 (ชิ้นส่วนใหม่)" --> SaveChunk["💾 บันทึก Data ลง RAM Map<br>และ Set Bit N ใน Bitmask"]
+    SaveChunk --> CheckComplete{"ได้รับครบทุกชิ้น?<br>(Received == Total)"}
+    CheckComplete -- "ยังไม่ครบ" --> WaitNext["⏳ รอรับชิ้นส่วนถัดไป<br>(ตั้ง Timeout 15–30 วิ)"]
+    CheckComplete -- "ครบสมบูรณ์ 100%" --> Assemble["🧩 เรียงลำดับ Seq 0..Total-1<br>แล้วประกอบเป็นไฟล์ต้นฉบับ"]
+    Assemble --> ReleaseRAM["🧹 ลบ Buffer ออกจาก RAM ทันที<br>และส่งไฟล์ให้ Application"]
+```
+
+1. **Bitmask Tracking Checklist (`Uint32Array`):**
+   - ผู้รับใช้ Bit Array ตรวจสอบชิ้นส่วนที่เข้ามาถึงแบบ $O(1)$
+   - รองรับการมาถึงแบบสลับลำดับ (Out-of-Order) จากเส้นทาง Multi-Hop ที่ต่างกัน
+2. **Session Eviction & Buffer Timeout:**
+   - สำหรับข้อความสั้น/แชท: ล้างทิ้งเมื่อไม่มีชิ้นส่วนใหม่เข้ามาเกิน **30 วินาที**
+   - สำหรับไฟล์มัลติมีเดียขนาดใหญ่ (ภาพ/เสียง): คง Buffer ไว้ได้สูงสุด **15 นาที** เพื่อรองรับการเดินส่งข้อมูลผ่าน Data Mule
+
+---
+
+### 6.4 การเข้ารหัสป้องกันข้อมูลสูญหาย (Reed-Solomon FEC 8+4 Shards)
+
+- **การบีบอัดไฟล์ต้นทาง:**
+  - ภาพถ่ายความเสียหาย: บีบอัดเป็น WebP (320x240) ขนาด **5–12 KB**
+  - คลิปเสียงแจ้งเหตุ: บีบอัดด้วย Opus Narrowband (6kbps) ขนาด **2–3 KB** (15 วินาที)
+- **การสร้างพาริตี้ (Erasure Coding):**
+  - แบ่งไฟล์ออกเป็น $K = 8$ Data Shards และสร้าง $M = 4$ Parity Shards (รวม 12 Shards)
+  - ผู้รับสามารถกู้คืนไฟล์ต้นฉบับได้สมบูรณ์ **100% ทันทีเมื่อได้รับ Shards ใดๆ ครบ 8 ใน 12 ชิ้น (ทนทานต่อ Packet Loss สูงถึง 33.3%)** โดยไม่ต้องร้องขอการส่งซ้ำ (Zero-Retransmit Recovery)
+
+---
+
+### 6.5 กลไก Selective NACK ซ่อมแซมเฉพาะชิ้นที่ขาดหาย (Selective Retransmission Protocol)
+
+- หากการสูญหายในอากาศสูงเกินขีดความสามารถของ FEC ($> 4$ Shards) ผู้รับจะไม่ร้องขอให้ส่งไฟล์ใหม่ทั้งหมด แต่จะส่งแพ็กเก็ต **`0x06: DELIVERY_NACK`**
+- **โครงสร้าง NACK Payload:**
+  `[ MessageID 4B ] + [ Total Chunks 2B ] + [ Missing Chunks Bitmask N Bytes ]`
+- ผู้ส่งจะกระจายส่งซ้ำ (Retransmit) **เฉพาะชิ้นส่วนที่ขาดตาม Bitmask เท่านั้น** ช่วยประหยัดแบนด์วิธและแบตเตอรี่ในโครงข่าย Mesh ได้สูงสุดถึง 85%
 
 ---
 
