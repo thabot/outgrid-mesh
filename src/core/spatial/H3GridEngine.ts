@@ -19,6 +19,16 @@ export interface IH3HierarchyBundle {
   res4: bigint; // ~22km (Inter-district / Data Mule transport)
 }
 
+export enum H3Direction {
+  SAME_CELL = 0,
+  NORTH = 1,
+  NORTH_EAST = 2,
+  SOUTH_EAST = 3,
+  SOUTH = 4,
+  SOUTH_WEST = 5,
+  NORTH_WEST = 6
+}
+
 export class H3GridEngine {
   /**
    * Converts raw GPS coordinates (lat, lng) to H3 Index at specified resolution
@@ -60,4 +70,45 @@ export class H3GridEngine {
   public static getResolution(h3Index: bigint): number {
     return getResolution(h3Index.toString(16));
   }
+
+  /**
+   * Calculates azimuth bearing in degrees (0.0 to 359.99) between two coordinates
+   */
+  public static calculateBearingDegrees(origin: IH3Coordinate, target: IH3Coordinate): number {
+    const lat1 = (origin.lat * Math.PI) / 180;
+    const lat2 = (target.lat * Math.PI) / 180;
+    const dLng = ((target.lng - origin.lng) * Math.PI) / 180;
+
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    const bearing = (Math.atan2(y, x) * 180) / Math.PI;
+    return (bearing + 360) % 360;
+  }
+
+  /**
+   * Determines the 6-sector H3 directional bucket or SAME_CELL
+   */
+  public static calculateH3Direction(
+    origin: IH3Coordinate,
+    target: IH3Coordinate,
+    originH3?: bigint,
+    targetH3?: bigint
+  ): H3Direction {
+    if (
+      (originH3 && targetH3 && originH3 === targetH3) ||
+      (Math.abs(origin.lat - target.lat) < 0.0001 && Math.abs(origin.lng - target.lng) < 0.0001)
+    ) {
+      return H3Direction.SAME_CELL;
+    }
+
+    const bearing = this.calculateBearingDegrees(origin, target);
+
+    if (bearing >= 330 || bearing < 30) return H3Direction.NORTH;
+    if (bearing >= 30 && bearing < 90) return H3Direction.NORTH_EAST;
+    if (bearing >= 90 && bearing < 150) return H3Direction.SOUTH_EAST;
+    if (bearing >= 150 && bearing < 210) return H3Direction.SOUTH;
+    if (bearing >= 210 && bearing < 270) return H3Direction.SOUTH_WEST;
+    return H3Direction.NORTH_WEST; // 270 <= bearing < 330
+  }
 }
+

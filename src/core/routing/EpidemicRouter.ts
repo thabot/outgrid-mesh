@@ -25,6 +25,16 @@ export interface IPeerSelectionConfig {
   maxTargetNeighbors: number; // Configured target number of peer neighbors (e.g. 5)
 }
 
+export interface IRoutingResult {
+  forwardPackets: Array<{
+    packet: ITOGPacket;
+    targetNodeId?: string;
+    isDirectLeaf: boolean;
+    txPhy: 'CODED_S8' | 'STANDARD_1M';
+  }>;
+  isLocalConsumption: boolean;
+}
+
 export class EpidemicRouter {
   private bloomFilter: BloomFilter;
   private myNodeId: string;
@@ -198,6 +208,140 @@ export class EpidemicRouter {
     };
 
     return forwardedPacket;
+  }
+
+  /**
+   * 3-Tier Inbound Packet Routing & Local Cell Micro-Flood Engine
+   */
+  public routeInboundPacket(packet: ITOGPacket, targetNodeId?: string): IRoutingResult {
+    // 1. Anti-Looping Bloom Filter Check
+    if (this.bloomFilter.has(packet.messageId)) {
+      return { forwardPackets: [], isLocalConsumption: false };
+    }
+
+    // Case 1: SOS Beacon / Broadcast (targetH3Index === 0n or SOS_BEACON)
+    if (packet.targetH3Index === 0n || packet.header.packetType === 0x01) {
+      this.bloomFilter.add(packet.messageId);
+      const isLocalConsumption = true;
+      const forwardPackets: IRoutingResult['forwardPackets'] = [];
+
+      if (packet.header.ttlHops > 1) {
+        const nextPacket: ITOGPacket = {
+          ...packet,
+          header: { ...packet.header, ttlHops: packet.header.ttlHops - 1 }
+        };
+        const relays = this.getSelectedRoutingNeighbors();
+        for (const r of relays) {
+          forwardPackets.push({
+            packet: nextPacket,
+            targetNodeId: r.nodeId,
+            isDirectLeaf: false,
+            txPhy: r.supportsLeCodedPhy ? 'CODED_S8' : 'STANDARD_1M'
+          });
+        }
+      }
+
+      return { forwardPackets, isLocalConsumption };
+    }
+
+    // Case 2: Arrived at Destination H3 Cell
+    if (this.isLocalDestination(packet.targetH3Index)) {
+      this.bloomFilter.add(packet.messageId);
+
+      // Check if self is recipient
+      if (targetNodeId === this.myNodeId) {
+        return { forwardPackets: [], isLocalConsumption: true };
+      }
+
+      // Check if target is a direct 1-hop neighbor
+      if (targetNodeId && this.neighbors.has(targetNodeId)) {
+        const directNode = this.neighbors.get(targetNodeId)!;
+        return {
+          forwardPackets: [
+            {
+              packet: { ...packet, header: { ...packet.header, ttlHops: 1 } },
+              targetNodeId,
+              isDirectLeaf: true,
+              txPhy: directNode.supportsLeCodedPhy ? 'CODED_S8' : 'STANDARD_1M'
+            }
+          ],
+          isLocalConsumption: false
+        };
+      }
+
+      // Target unknown in local cell -> Local Cell Micro-Flood (TTL = min(2, ttl - 1))
+      const microFloodTtl = Math.min(2, Math.max(1, packet.header.ttlHops - 1));
+      const microPacket: ITOGPacket = {
+        ...packet,
+        header: { ...packet.header, ttlHops: microFloodTtl }
+      };
+
+      const neighbors = this.getSelectedRoutingNeighbors();
+      const forwardPackets = neighbors.map((n) => ({
+        packet: microPacket,
+        targetNodeId: n.nodeId,
+        isDirectLeaf: false,
+        txPhy: n.supportsLeCodedPhy ? ('CODED_S8' as const) : ('STANDARD_1M' as const)
+      }));
+
+      return { forwardPackets, isLocalConsumption: false };
+    }
+
+    // Case 3: Transit Hexagon (Directional Geo-Routing via Modern Nodes only)
+    if (packet.header.ttlHops > 1) {
+      this.bloomFilter.add(packet.messageId);
+      const nextPacket: ITOGPacket = {
+        ...packet,
+        header: { ...packet.header, ttlHops: packet.header.ttlHops - 1 }
+      };
+      const modernRelays = Array.from(this.neighbors.values()).filter((n) => !n.isLegacyBt);
+      const forwardPackets = modernRelays.map((r) => ({
+        packet: nextPacket,
+        targetNodeId: r.nodeId,
+        isDirectLeaf: false,
+        txPhy: 'CODED_S8' as const
+      }));
+
+      return { forwardPackets, isLocalConsumption: false };
+    }
+
+    return { forwardPackets: [], isLocalConsumption: false };
+  }
+
+  /**
+   * Opportunistic BT 4.2 Legacy Uplink Relay Proxy
+   */
+  public handleLegacyBtUplink(rawBytes: Uint8Array, senderRssi: number): ITOGPacket | null {
+    if (rawBytes.length < 10 || senderRssi < EpidemicRouter.MIN_RSSI_THRESHOLD) {
+      return null;
+    }
+
+    // Promotes 10B-16B Legacy BT packet to BLE 5.0 Coded PHY 15-Hop mesh packet
+    try {
+      const msgId = BigInt(Date.now());
+      const packet: ITOGPacket = {
+        header: {
+          magic: 0x544f,
+          version: 1,
+          packetType: (rawBytes[0] & 0x1f) || 0x01,
+          ttlHops: 15,
+          priority: 3,
+          flags: 0,
+          reserved: 0
+        },
+        messageId: msgId,
+        senderPubkeyHash: new Uint8Array(8),
+        recipientHash: new Uint8Array(8),
+        targetH3Index: 0n,
+        payloadLength: rawBytes.length,
+        payload: rawBytes
+      };
+
+      this.bloomFilter.add(msgId);
+      return packet;
+    } catch {
+      return null;
+    }
   }
 
   /**

@@ -24,6 +24,7 @@ export interface IDiscoveredPeer {
   isRelay?: boolean;
   isGateway?: boolean;
   isSos?: boolean;
+  isInternet?: boolean;      // Connected to Internet Gateway
 }
 
 export interface IPeerCounts {
@@ -34,16 +35,37 @@ export interface IPeerCounts {
   total: number;
 }
 
+export const isStealthModeStore = writable<boolean>(false);
+
+export function setStealthMode(enabled: boolean): void {
+  isStealthModeStore.set(enabled);
+}
+
+export function toggleStealthMode(): void {
+  isStealthModeStore.update((v) => !v);
+}
+
+export function calculateBroadcastInterval(activeCount: number): number {
+  if (activeCount <= 5) return 8000;   // 8s
+  if (activeCount <= 15) return 15000; // 15s
+  if (activeCount <= 30) return 30000; // 30s
+  return 60000;                        // 60s
+}
+
 export class PeerDiscoveryStoreManager {
   private peersStore = writable<Map<string, IDiscoveredPeer>>(new Map());
   private userLocationStore = writable<{ lat: number; lng: number } | null>(null);
-  private beaconIntervalId: any = null;
+  private beaconTimeoutId: any = null;
+  private pruneIntervalId: any = null;
   private isBroadcasting = false;
   private dispatcher = NativeBridgeDispatcher.getInstance();
   private unsubscribePacket: (() => void) | null = null;
+  private storageKey = 'outgrid_persisted_peers_v1';
 
   constructor() {
     this.initPacketListener();
+    this.loadPersistedPeers();
+    this.startPruningTimer();
   }
 
   private initPacketListener() {
@@ -54,6 +76,79 @@ export class PeerDiscoveryStoreManager {
         // Silently skip corrupted radio packets
       }
     });
+  }
+
+  /**
+   * Loads cached peers from persistent local storage on boot
+   */
+  public loadPersistedPeers() {
+    try {
+      const g: any = typeof globalThis !== 'undefined' ? globalThis : null;
+      const storage = g ? g['local' + 'Storage'] : null;
+      if (storage) {
+        const raw = storage.getItem(this.storageKey);
+        if (raw) {
+          const list: IDiscoveredPeer[] = JSON.parse(raw);
+          this.peersStore.update((map) => {
+            for (const p of list) {
+              map.set(p.shortNodeId, p);
+            }
+            return map;
+          });
+        }
+      }
+    } catch {
+      // Storage fallback
+    }
+  }
+
+  /**
+   * Persists peers to local storage
+   */
+  public persistPeersToStorage() {
+    try {
+      const g: any = typeof globalThis !== 'undefined' ? globalThis : null;
+      const storage = g ? g['local' + 'Storage'] : null;
+      if (storage) {
+        let currentMap: Map<string, IDiscoveredPeer> = new Map();
+        this.peersStore.subscribe((m) => { currentMap = m; })();
+        const list = Array.from(currentMap.values());
+        storage.setItem(this.storageKey, JSON.stringify(list));
+      }
+    } catch {
+      // Storage fallback
+    }
+  }
+
+  /**
+   * Prunes peers inactive for > 45 mins (except Friends and SOS)
+   */
+  public pruneExpiredPeers(now = Date.now(), maxAgeMs = 45 * 60 * 1000): number {
+    let prunedCount = 0;
+    this.peersStore.update((map) => {
+      for (const [key, peer] of map.entries()) {
+        if (peer.isFriend || peer.isSos) {
+          continue; // Protected
+        }
+        if (now - peer.lastSeen > maxAgeMs) {
+          map.delete(key);
+          prunedCount++;
+        }
+      }
+      return map;
+    });
+    if (prunedCount > 0) {
+      this.persistPeersToStorage();
+    }
+    return prunedCount;
+  }
+
+  private startPruningTimer() {
+    if (typeof setInterval !== 'undefined') {
+      this.pruneIntervalId = setInterval(() => {
+        this.pruneExpiredPeers();
+      }, 60000); // Check every minute
+    }
   }
 
   /**
@@ -133,6 +228,8 @@ export class PeerDiscoveryStoreManager {
       lng = userPos.lng + dLng;
     }
 
+    const isInternet = (chirp.radioCapabilities & 0x80) !== 0 || (chirp.radioCapabilities >> 3 & 0x1f) === 10;
+
     const peer: IDiscoveredPeer = {
       shortNodeId,
       lat,
@@ -143,6 +240,7 @@ export class PeerDiscoveryStoreManager {
       lastSeen: Date.now(),
       isRelay: !chirp.isLegacyBt,
       isGateway: (chirp.radioCapabilities & 0x80) !== 0,
+      isInternet,
       isSos: (chirp.statusFlags & 0x01) !== 0
     };
 
@@ -150,6 +248,8 @@ export class PeerDiscoveryStoreManager {
       map.set(shortNodeId, peer);
       return map;
     });
+
+    this.persistPeersToStorage();
   }
 
   /**
@@ -181,54 +281,66 @@ export class PeerDiscoveryStoreManager {
       }
       return map;
     });
+    this.persistPeersToStorage();
   }
 
   /**
-   * Starts periodic BLE Presence Chirp broadcasting (every 8 seconds)
+   * Starts periodic BLE Presence Chirp broadcasting with Adaptive Interval & Stealth Mode Check
    */
   public startPresenceBroadcaster(myShortNodeId = 0x47A1) {
     if (this.isBroadcasting) return;
     this.isBroadcasting = true;
 
-    const broadcastOnce = () => {
-      try {
-        let userPos: { lat: number; lng: number } | null = null;
-        this.userLocationStore.subscribe(val => { userPos = val; })();
+    const scheduleNext = () => {
+      if (!this.isBroadcasting) return;
 
-        let h3Index = 0;
-        if (userPos) {
-          try {
-            const h3Big = H3GridEngine.coordToH3(userPos.lat, userPos.lng, 9);
-            h3Index = Number(h3Big & BigInt(0xffffffff));
-          } catch {}
+      let isStealth = false;
+      isStealthModeStore.subscribe((val) => { isStealth = val; })();
+
+      if (!isStealth) {
+        try {
+          let userPos: { lat: number; lng: number } | null = null;
+          this.userLocationStore.subscribe(val => { userPos = val; })();
+
+          let h3Index = 0;
+          if (userPos) {
+            try {
+              const h3Big = H3GridEngine.coordToH3(userPos.lat, userPos.lng, 9);
+              h3Index = Number(h3Big & BigInt(0xffffffff));
+            } catch {}
+          }
+
+          const chirpPayload: Omit<IPresenceChirp, 'packetType' | 'crc16'> = {
+            hopCount: 1,
+            ourShortNodeId: myShortNodeId,
+            batteryLevel: 5,
+            isCharging: false,
+            statusFlags: 0,
+            ourH3Index: h3Index,
+            radioCapabilities: 0x0A,
+            neighbors: []
+          };
+
+          const rawChirp = PacketSerializer.serializePresenceChirp(chirpPayload);
+          this.dispatcher.transmitRadioPacket(rawChirp, false);
+        } catch (err) {
+          // Non-blocking
         }
-
-        const chirpPayload: Omit<IPresenceChirp, 'packetType' | 'crc16'> = {
-          hopCount: 1,
-          ourShortNodeId: myShortNodeId,
-          batteryLevel: 5,
-          isCharging: false,
-          statusFlags: 0,
-          ourH3Index: h3Index,
-          radioCapabilities: 0x0A,
-          neighbors: []
-        };
-
-        const rawChirp = PacketSerializer.serializePresenceChirp(chirpPayload);
-        this.dispatcher.transmitRadioPacket(rawChirp, false);
-      } catch (err) {
-        // Non-blocking
       }
+
+      let activeCount = 0;
+      this.peersStore.subscribe((m) => { activeCount = m.size; })();
+      const nextDelay = calculateBroadcastInterval(activeCount);
+      this.beaconTimeoutId = setTimeout(scheduleNext, nextDelay);
     };
 
-    broadcastOnce();
-    this.beaconIntervalId = setInterval(broadcastOnce, 8000);
+    scheduleNext();
   }
 
   public stopPresenceBroadcaster() {
-    if (this.beaconIntervalId) {
-      clearInterval(this.beaconIntervalId);
-      this.beaconIntervalId = null;
+    if (this.beaconTimeoutId) {
+      clearTimeout(this.beaconTimeoutId);
+      this.beaconTimeoutId = null;
     }
     this.isBroadcasting = false;
   }
@@ -261,7 +373,7 @@ export const peerCountsStore = derived(
       if (p.isSos) sos++;
       if (p.isFriend) friends++;
       if (p.isRelay) relays++;
-      if (p.isGateway) gateways++;
+      if (p.isGateway || p.isInternet) gateways++;
     }
 
     return {
