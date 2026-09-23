@@ -315,7 +315,7 @@
           }}
         />
       {:else if activeTab === 'sos'}
-        <OneTapSos onTriggerSos={handleTriggerSos} isDispatching={isSosDispatching} />
+        <OneTapSos onTriggerSos={handleTriggerSos} isDispatching={isSosDispatching} on:viewBroadcast={() => activeTab = 'chat'} />
       {:else if activeTab === 'chat'}
         <MeshChatScreen targetContact={targetChatPeer} myNodeId={myProfile.nodeId} />
       {:else if activeTab === 'manual'}
