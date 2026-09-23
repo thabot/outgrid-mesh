@@ -239,10 +239,28 @@
     for (const peer of peerNodes) {
       const batVisual = getBatteryBarsVisual(peer.batteryBars);
       const distStr = showPeerDistance ? `~${peer.distanceMeters} ม.` : '';
+      const isInternet = (peer as any).isInternet || (peer as any).isGateway;
+      const isFriend = (peer as any).isFriend;
+      const isSos = (peer as any).isSos;
+
+      let borderColor = '#64748b'; // Default Bluetooth gray
+      let bgColor = '#1e293b';
+      let iconSymbol = isFriend ? '👥' : '📡';
+      let statusBadge = isInternet ? '🌐 BLE+4G' : '🔘 Bluetooth';
+
+      if (isSos) {
+        borderColor = '#ef4444';
+        bgColor = '#450a0a';
+        iconSymbol = '🚨';
+      } else if (isInternet) {
+        borderColor = '#22c55e'; // Internet connected green
+        bgColor = '#022c22';
+      }
+
       const peerHtml = `
-        <div class="peer-pin" style="border-color: ${batVisual.color};">
-          <span class="peer-dot" style="background: ${batVisual.color};"></span>
-          <span class="peer-label">${peer.shortNodeId}</span>
+        <div class="peer-pin ${isInternet ? 'peer-pin-internet' : ''} ${isSos ? 'peer-pin-sos' : ''}" style="border-color: ${borderColor}; background: ${bgColor};">
+          <span class="peer-dot" style="background: ${isInternet ? '#22c55e' : batVisual.color};"></span>
+          <span class="peer-label" style="color: ${isInternet ? '#4ade80' : '#38bdf8'};">${iconSymbol} ${peer.shortNodeId}</span>
           ${distStr ? `<span class="peer-dist">${distStr}</span>` : ''}
         </div>
       `;
@@ -250,15 +268,18 @@
       const peerIcon = L!.divIcon({
         html: peerHtml,
         className: 'peer-icon-wrapper',
-        iconSize: [80, 36],
-        iconAnchor: [40, 18],
+        iconSize: [95, 36],
+        iconAnchor: [47, 18],
       });
 
       const popupHtml = `
-        <b>📡 โหนดในรัศมีวิทยุ: ${peer.shortNodeId}</b><br>
-        <span>🔋 แบตเตอรี่: ${batVisual.text} (${batVisual.percentStr})</span><br>
-        <span>📶 สัญญาณ: ${peer.rssiTier === 3 ? '🟢 แรงมาก' : peer.rssiTier === 2 ? '🟡 ดี' : peer.rssiTier === 1 ? '🟠 ปานกลาง' : '🔴 อ่อน'}</span><br>
-        ${showPeerDistance ? `<span>📏 ระยะห่างโดยประมาณ: ~${peer.distanceMeters} เมตร</span>` : ''}
+        <div style="font-family: sans-serif; min-width: 170px;">
+          <b style="font-size: 13px; color: #f8fafc;">${iconSymbol} ${peer.shortNodeId} ${isFriend ? '(เพื่อน)' : ''}</b><br>
+          <span style="font-size: 11px; color: ${isInternet ? '#22c55e' : '#94a3b8'};">📡 เครือข่าย: ${statusBadge}</span><br>
+          <span style="font-size: 11px;">🔋 แบตเตอรี่: ${batVisual.text} (${batVisual.percentStr})</span><br>
+          <span style="font-size: 11px;">📶 สัญญาณ: ${peer.rssiTier === 3 ? '🟢 แรงมาก' : peer.rssiTier === 2 ? '🟡 ดี' : peer.rssiTier === 1 ? '🟠 ปานกลาง' : '🔴 อ่อน'}</span><br>
+          ${showPeerDistance ? `<span style="font-size: 11px;">📏 ระยะห่าง: ~${peer.distanceMeters} เมตร</span>` : ''}
+        </div>
       `;
 
       const marker = L!.marker([peer.lat, peer.lng], { icon: peerIcon })
@@ -422,11 +443,10 @@
 
   <!-- Legend -->
   <div class="map-legend">
-    <span class="legend-item"><span class="dot" style="background:#22c55e"></span> โหนดเบาบาง</span>
-    <span class="legend-item"><span class="dot" style="background:#f59e0b"></span> โหนดปานกลาง</span>
-    <span class="legend-item"><span class="dot" style="background:#ef4444"></span> โหนดหนาแน่น</span>
+    <span class="legend-item"><span class="dot" style="background:#22c55e; border: 1px solid #4ade80;"></span> 🟢 ต่อ Internet ได้ (BLE+4G)</span>
+    <span class="legend-item"><span class="dot" style="background:#64748b; border: 1px solid #94a3b8;"></span> 🔘 Bluetooth เท่านั้น</span>
     <span class="legend-item">🚨 จุด SOS</span>
-    <span class="legend-item">🔋 แบตเตอรี่เพื่อน 5 ขีด</span>
+    <span class="legend-item">👥 เพื่อน</span>
     <span class="legend-item">📍 ตำแหน่งคุณ</span>
   </div>
 

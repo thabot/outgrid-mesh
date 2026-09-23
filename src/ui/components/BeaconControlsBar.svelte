@@ -92,9 +92,10 @@
     }, 2000);
   }
 
-  onDestroy(() => {
-    if (thermalCheckInterval) clearInterval(thermalCheckInterval);
-  });
+  import { isStealthModeStore, toggleStealthMode } from '../../core/state/PeerDiscoveryStore';
+
+  let isStealth = false;
+  $: isStealth = $isStealthModeStore;
 </script>
 
 <div class="beacon-controls-root">
@@ -120,6 +121,16 @@
       >
         <span class="icon">📢</span>
         <span class="text">{isSirenActive ? (isMuted ? 'หวูดปิดเสียง' : 'ปิดไซเรน') : 'หวูด 85dB'}</span>
+      </button>
+
+      <button
+        class="btn-beacon"
+        class:stealth-active={isStealth}
+        on:click={toggleStealthMode}
+        title="โหมดซุ่มพราง: หยุดส่งสัญญาณวิทยุรอบตัว (0 mW RF) แต่ยังคงรับฟังข้อความและ SOS ได้ 100%"
+      >
+        <span class="icon">🔕</span>
+        <span class="text">{isStealth ? 'Stealth: ON' : 'Stealth'}</span>
       </button>
 
       {#if isSirenActive}
@@ -211,6 +222,12 @@
     color: #0f172a;
     border-color: #fbbf24;
     box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+  .btn-beacon.stealth-active {
+    background: #475569;
+    color: #38bdf8;
+    border-color: #0284c7;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
   }
   .btn-mute {
     background: #334155;

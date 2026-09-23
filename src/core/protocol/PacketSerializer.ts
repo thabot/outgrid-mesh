@@ -18,6 +18,7 @@ import {
   type IPresenceNeighbor,
   type ICompactSOSBeacon,
   type ICompactDirectChat,
+  type IDeliveryAckPacket,
   CannedEmergencyCode,
   type ICannedEmergencyPacket,
   type IUltraCompactSOSBeacon
@@ -658,6 +659,71 @@ export class PacketSerializer {
       truncatedMsgId,
       h3LowerRes9,
       textPayload
+    };
+  }
+
+  /**
+   * Serializes a Delivery Acknowledgment Packet (Fixed 10 Bytes Wire Format)
+   * 0x05: DELIVERY_ACK
+   * [0] Type|Hop (1B) + [1-4] MsgId (4B Uint32BE) + [5-7] RecipientId (3B Uint24BE) + [8-9] CRC16 (2B)
+   */
+  public static serializeDeliveryAck(ack: IDeliveryAckPacket): Uint8Array {
+    const buf = new Uint8Array(10);
+    const view = new DataView(buf.buffer);
+
+    const hop = (ack.hopCount & 0x07) << 5;
+    const pType = TOGPacketType.DELIVERY_ACK & 0x1f;
+    view.setUint8(0, hop | pType);
+
+    view.setUint32(1, ack.messageId >>> 0, false);
+
+    const recipient = ack.recipientShortNodeId & 0xffffff;
+    view.setUint8(5, (recipient >> 16) & 0xff);
+    view.setUint8(6, (recipient >> 8) & 0xff);
+    view.setUint8(7, recipient & 0xff);
+
+    const computedCrc = CRC16.compute(buf, 0, 8);
+    view.setUint16(8, computedCrc, false);
+
+    return buf;
+  }
+
+  /**
+   * Deserializes a Delivery Acknowledgment Packet (Fixed 10 Bytes Wire Format)
+   */
+  public static deserializeDeliveryAck(buffer: Uint8Array): IDeliveryAckPacket {
+    if (buffer.length < 10) {
+      throw new Error(`Delivery ACK buffer too short: ${buffer.length} < 10 bytes`);
+    }
+
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    const expectedCrc = view.getUint16(8, false);
+    const computedCrc = CRC16.compute(buffer, 0, 8);
+    if (expectedCrc !== computedCrc) {
+      throw new Error(`CRC-16 mismatch for Delivery ACK: 0x${expectedCrc.toString(16)} !== 0x${computedCrc.toString(16)}`);
+    }
+
+    const b0 = view.getUint8(0);
+    const packetType = (b0 & 0x1f) as TOGPacketType;
+    if (packetType !== TOGPacketType.DELIVERY_ACK) {
+      throw new Error(`Invalid packet type for Delivery ACK: ${packetType}`);
+    }
+    const hopCount = (b0 >> 5) & 0x07;
+
+    const messageId = view.getUint32(1, false);
+
+    const r0 = view.getUint8(5);
+    const r1 = view.getUint8(6);
+    const r2 = view.getUint8(7);
+    const recipientShortNodeId = (r0 << 16) | (r1 << 8) | r2;
+
+    return {
+      packetType,
+      hopCount,
+      messageId,
+      recipientShortNodeId,
+      crc16: expectedCrc
     };
   }
 }

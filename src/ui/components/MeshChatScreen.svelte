@@ -20,7 +20,7 @@
   let selectedRecipient = 'node-rescue-team';
   let selectedRecipientName = 'หน่วยกู้ภัยสว่างบริบูรณ์ (Rescue Team)';
   let contactSearchQuery = '';
-  let hopPreset: 'local' | 'community' | 'max' = 'community';
+  let hopPreset: 'local' | 'community' | 'max' = 'max';
   let inputText = '';
   let isSendingMedia = false;
   let mediaProgress = 0;
@@ -222,43 +222,14 @@
         class:active={activeChatType === 'broadcast'}
         on:click={() => { activeChatType = 'broadcast'; }}
       >
-        {$translations.chat_broadcast_tab || '📢 Broadcast'}
+        {$translations.chat_broadcast_tab || '📢 ประกาศสาธารณะ (15 Hops)'}
       </button>
       <button
         class="tab-btn"
         class:active={activeChatType === 'direct'}
         on:click={() => { activeChatType = 'direct'; }}
       >
-        {$translations.chat_direct_tab || '🔒 Direct 1:1 (E2EE)'}
-      </button>
-    </div>
-
-    <!-- Hop Preset Selector Chips (Compact single row) -->
-    <div class="hop-chips-bar">
-      <span class="hop-label">{$translations.chat_hop_radius || 'Relay Radius:'}</span>
-      <button
-        class="chip-btn"
-        class:active={hopPreset === 'local'}
-        on:click={() => hopPreset = 'local'}
-        title="3 Hops (~300m)"
-      >
-        {$translations.chat_hop_local || '🟢 Nearby (3 Hops)'}
-      </button>
-      <button
-        class="chip-btn"
-        class:active={hopPreset === 'community'}
-        on:click={() => hopPreset = 'community'}
-        title="7 Hops (~1km)"
-      >
-        {$translations.chat_hop_community || '🟡 Community (7 Hops)'}
-      </button>
-      <button
-        class="chip-btn"
-        class:active={hopPreset === 'max'}
-        on:click={() => hopPreset = 'max'}
-        title="15 Hops (~2-3km)"
-      >
-        {$translations.chat_hop_max || '🔴 Max Range (15 Hops)'}
+        {$translations.chat_direct_tab || '🔒 สนทนา 1:1 (E2EE)'}
       </button>
     </div>
   </div>

@@ -239,6 +239,19 @@ export interface ICompactSOSBeacon {
 }
 
 /**
+ * Delivery Acknowledgment Packet (Fixed 10 Bytes Wire Format)
+ * 0x05: DELIVERY_ACK
+ * [0] Type|Hop (1B) + [1-4] MsgId (4B Uint32BE) + [5-7] RecipientId (3B Uint24BE) + [8-9] CRC16 (2B)
+ */
+export interface IDeliveryAckPacket {
+  packetType: TOGPacketType;             // TOGPacketType.DELIVERY_ACK (0x05)
+  hopCount: number;                      // 3 bits (0 - 7)
+  messageId: number;                     // uint32 (4 Bytes)
+  recipientShortNodeId: number;          // 24-bit uint (3 Bytes)
+  crc16: number;                         // uint16 (2 Bytes)
+}
+
+/**
  * Compact Direct Chat (<= 28 Bytes Wire Format for BT 4.2 Adv)
  */
 export interface ICompactDirectChat {
