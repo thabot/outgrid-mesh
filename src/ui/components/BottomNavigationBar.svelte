@@ -1,7 +1,6 @@
 <script lang="ts">
   /**
-   * Bottom Navigation Bar Component (Sprint D Task D.2)
-   * 5 Primary Tabs Thumb-Zone Optimized with Elevated SOS Action Button
+   * Bottom Navigation Bar Component (Mockup UI Alignment)
    * Creator & Lead Architect: Thabot <thabo47@gmail.com>
    * Protocol: TOG v1.1 Emergency UI
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
@@ -9,161 +8,97 @@
   import { createEventDispatcher } from 'svelte';
   import { i18n } from '../../core/i18n/I18nStore';
 
-  export let activeTab: 'map' | 'chat' | 'sos' | 'friends' | 'profile' = 'sos';
+  export let activeTab: 'map' | 'chat' | 'sos' | 'manual' | 'friends' | 'profile' = 'sos';
 
   const translations = i18n.translations;
 
   const dispatch = createEventDispatcher<{
-    tabChange: { tab: 'map' | 'chat' | 'sos' | 'friends' | 'profile' };
+    tabChange: { tab: 'map' | 'chat' | 'sos' | 'manual' | 'friends' | 'profile' };
   }>();
 
-  function selectTab(tab: 'map' | 'chat' | 'sos' | 'friends' | 'profile') {
+  function selectTab(tab: 'map' | 'chat' | 'sos' | 'manual' | 'friends' | 'profile') {
     activeTab = tab;
     dispatch('tabChange', { tab });
   }
 </script>
 
-<nav class="bottom-nav-bar">
+<nav class="bottom-nav">
   <button
-    class="nav-item"
+    id="bnav-map"
     class:active={activeTab === 'map'}
     on:click={() => selectTab('map')}
     aria-label="Map"
   >
     <span class="icon">🗺️</span>
-    <span class="label">{$translations.map || 'Map'}</span>
+    <span>{$translations.map || 'แผนที่'}</span>
   </button>
 
   <button
-    class="nav-item"
-    class:active={activeTab === 'chat'}
-    on:click={() => selectTab('chat')}
-    aria-label="Chat"
-  >
-    <span class="icon">💬</span>
-    <span class="label">{$translations.chat || 'Chat'}</span>
-  </button>
-
-  <button
-    class="nav-item nav-sos"
+    id="bnav-sos"
     class:active={activeTab === 'sos'}
     on:click={() => selectTab('sos')}
     aria-label="SOS"
   >
-    <div class="sos-pill">
-      <span class="sos-icon">🚨</span>
-      <span class="sos-label">{$translations.sos || 'SOS'}</span>
-    </div>
+    <span class="icon">🚨</span>
+    <span>{$translations.sos || 'SOS'}</span>
   </button>
 
   <button
-    class="nav-item"
-    class:active={activeTab === 'friends'}
-    on:click={() => selectTab('friends')}
-    aria-label="Friends"
+    id="bnav-chat"
+    class:active={activeTab === 'chat' || activeTab === 'friends'}
+    on:click={() => selectTab('chat')}
+    aria-label="Chat"
   >
-    <span class="icon">👥</span>
-    <span class="label">{$translations.friends || 'Friends'}</span>
+    <span class="icon">💬</span>
+    <span>{$translations.chat || 'แชต & เพื่อน'}</span>
   </button>
 
   <button
-    class="nav-item"
-    class:active={activeTab === 'profile'}
-    on:click={() => selectTab('profile')}
-    aria-label="Profile"
+    id="bnav-manual"
+    class:active={activeTab === 'manual'}
+    on:click={() => selectTab('manual')}
+    aria-label="Manual"
   >
-    <span class="icon">👤</span>
-    <span class="label">{$translations.profile || 'Profile'}</span>
+    <span class="icon">📖</span>
+    <span>{$translations.manual || 'คู่มือ'}</span>
   </button>
 </nav>
 
 <style>
-  .bottom-nav-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 64px;
-    background: #090f1d;
+  .bottom-nav {
+    background: #0f172a;
+    border: 1px solid #1e293b;
     border-top: 1px solid #1e293b;
     display: flex;
     justify-content: space-around;
-    align-items: center;
-    z-index: 50;
-    max-width: 600px;
-    margin: 0 auto;
-    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding: 8px 4px;
+    margin-top: 0.75rem;
+    border-radius: 0.5rem;
   }
-
-  .nav-item {
-    background: none;
+  .bottom-nav button {
+    background: transparent;
     border: none;
-    color: #64748b;
+    color: #94a3b8;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    gap: 2px;
+    font-size: 11px;
+    font-weight: 600;
     cursor: pointer;
-    padding: 6px 0;
-    flex: 1;
-    transition: all 0.2s;
+    padding: 4px 12px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
   }
-
-  .nav-item .icon {
-    font-size: 1.25rem;
-    margin-bottom: 2px;
+  .bottom-nav button:hover {
+    color: #f1f5f9;
   }
-
-  .nav-item .label {
-    font-size: 0.7rem;
-    font-weight: 500;
-  }
-
-  .nav-item:hover {
-    color: #94a3b8;
-  }
-
-  .nav-item.active {
+  .bottom-nav button.active {
     color: #38bdf8;
-  }
-
-  .nav-item.active .label {
+    background: rgba(56, 189, 248, 0.1);
     font-weight: 700;
   }
-
-  /* Elevated Center SOS Button */
-  .nav-item.nav-sos {
-    position: relative;
-    top: -12px;
-  }
-
-  .sos-pill {
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #ef4444 0%, #b91c1c 100%);
-    border: 3px solid #fecaca;
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.5);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-
-  .nav-item.nav-sos:active .sos-pill {
-    transform: scale(0.92);
-  }
-
-  .sos-icon {
-    font-size: 1.3rem;
-    line-height: 1;
-  }
-
-  .sos-label {
-    font-size: 0.6rem;
-    font-weight: 900;
-    color: #ffffff;
-    letter-spacing: 0.5px;
+  .icon {
+    font-size: 16px;
   }
 </style>
