@@ -79,7 +79,7 @@ export class PeerDiscoveryStoreManager {
   }
 
   /**
-   * Loads cached peers from persistent local storage on boot
+   * Loads cached peers and user GPS location from persistent local storage on boot
    */
   public loadPersistedPeers() {
     try {
@@ -95,6 +95,14 @@ export class PeerDiscoveryStoreManager {
             }
             return map;
           });
+        }
+
+        const savedLoc = storage.getItem('outgrid_last_gps_location');
+        if (savedLoc) {
+          const parsed = JSON.parse(savedLoc);
+          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+            this.userLocationStore.set({ lat: parsed.lat, lng: parsed.lng });
+          }
         }
       }
     } catch {
@@ -152,10 +160,17 @@ export class PeerDiscoveryStoreManager {
   }
 
   /**
-   * Updates user's current GPS location
+   * Updates user's current GPS location and persists it
    */
   public setUserLocation(lat: number, lng: number) {
     this.userLocationStore.set({ lat, lng });
+    try {
+      const g: any = typeof globalThis !== 'undefined' ? globalThis : null;
+      const storage = g ? g['local' + 'Storage'] : null;
+      if (storage) {
+        storage.setItem('outgrid_last_gps_location', JSON.stringify({ lat, lng }));
+      }
+    } catch {}
   }
 
   /**
@@ -212,15 +227,21 @@ export class PeerDiscoveryStoreManager {
     let userPos: { lat: number; lng: number } | null = null;
     this.userLocationStore.subscribe(val => { userPos = val; })();
 
+    let hasCoords = false;
     if (chirp.ourH3Index && chirp.ourH3Index !== 0) {
       try {
         const coords = H3GridEngine.h3ToCoord(BigInt(chirp.ourH3Index));
-        lat = coords.lat;
-        lng = coords.lng;
+        if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number' && !isNaN(coords.lat)) {
+          lat = coords.lat;
+          lng = coords.lng;
+          hasCoords = true;
+        }
       } catch {
-        // Fallback
+        // Fallback to relative userPos
       }
-    } else if (userPos) {
+    }
+
+    if (!hasCoords && userPos) {
       const angle = (chirp.ourShortNodeId % 360) * (Math.PI / 180);
       const dLat = (distanceMeters * Math.cos(angle)) / 111320;
       const dLng = (distanceMeters * Math.sin(angle)) / (111320 * Math.cos((userPos.lat * Math.PI) / 180));

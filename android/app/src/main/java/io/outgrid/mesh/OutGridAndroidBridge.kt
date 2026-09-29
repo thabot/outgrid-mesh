@@ -63,6 +63,13 @@ class OutGridAndroidBridge(
     }
 
     @JavascriptInterface
+    fun stopSosStrobe(): Boolean {
+        flashlightController.stopStrobe()
+        isTorchActive = false
+        return true
+    }
+
+    @JavascriptInterface
     fun stopTorch(): Boolean {
         flashlightController.stopStrobe()
         isTorchActive = false
