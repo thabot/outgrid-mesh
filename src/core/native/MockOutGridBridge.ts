@@ -61,9 +61,23 @@ export class MockOutGridBridge {
     return true;
   }
 
+  public stopSosStrobe(): boolean {
+    this.torchEnabled = false;
+    this.sosStrobeActive = false;
+    return true;
+  }
+
   public stopTorch(): boolean {
     this.torchEnabled = false;
     this.sosStrobeActive = false;
+    return true;
+  }
+
+  public playAudibleAlarm(): boolean {
+    return true;
+  }
+
+  public stopAudibleAlarm(): boolean {
     return true;
   }
 

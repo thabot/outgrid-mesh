@@ -90,15 +90,66 @@ export class NativeBridgeDispatcher {
   }
 
   public toggleTorch(enabled: boolean): boolean {
-    return Boolean(this.bridgeImpl.toggleTorch(enabled));
+    try {
+      return Boolean(this.bridgeImpl?.toggleTorch?.(enabled));
+    } catch (err) {
+      console.warn('NativeBridge toggleTorch error:', err);
+      return false;
+    }
   }
 
   public startSosStrobe(): boolean {
-    return Boolean(this.bridgeImpl.startSosStrobe());
+    try {
+      return Boolean(this.bridgeImpl?.startSosStrobe?.());
+    } catch (err) {
+      console.warn('NativeBridge startSosStrobe error:', err);
+      return false;
+    }
+  }
+
+  public stopSosStrobe(): boolean {
+    try {
+      if (typeof this.bridgeImpl?.stopSosStrobe === 'function') {
+        return Boolean(this.bridgeImpl.stopSosStrobe());
+      }
+      return Boolean(this.bridgeImpl?.stopTorch?.());
+    } catch (err) {
+      console.warn('NativeBridge stopSosStrobe error:', err);
+      return false;
+    }
   }
 
   public stopTorch(): boolean {
-    return Boolean(this.bridgeImpl.stopTorch());
+    try {
+      return Boolean(this.bridgeImpl?.stopTorch?.());
+    } catch (err) {
+      console.warn('NativeBridge stopTorch error:', err);
+      return false;
+    }
+  }
+
+  public playAudibleAlarm(): boolean {
+    try {
+      if (typeof this.bridgeImpl?.playAudibleAlarm === 'function') {
+        return Boolean(this.bridgeImpl.playAudibleAlarm());
+      }
+      return true;
+    } catch (err) {
+      console.warn('NativeBridge playAudibleAlarm error:', err);
+      return false;
+    }
+  }
+
+  public stopAudibleAlarm(): boolean {
+    try {
+      if (typeof this.bridgeImpl?.stopAudibleAlarm === 'function') {
+        return Boolean(this.bridgeImpl.stopAudibleAlarm());
+      }
+      return true;
+    } catch (err) {
+      console.warn('NativeBridge stopAudibleAlarm error:', err);
+      return false;
+    }
   }
 
   public getBatteryInfo(): IBatteryInfoPayload {
