@@ -94,6 +94,35 @@ describe('SosMapView & Spatial Radar Integration Tests', () => {
 
     unsub();
   });
+
+  it('should re-anchor relative peers within local radio range when user location updates', () => {
+    // Add a peer with default coordinate
+    peerDiscoveryManager.getStore().update((map) => {
+      map.set('#9A12', {
+        shortNodeId: '#9A12',
+        lat: 13.7563,
+        lng: 100.5018,
+        batteryBars: 4,
+        rssiTier: 2,
+        distanceMeters: 180,
+        lastSeen: Date.now()
+      });
+      return map;
+    });
+
+    // User moves to Samut Prakan / Theparak (lat: 13.6012, lng: 100.6723)
+    peerDiscoveryManager.setUserLocation(13.6012, 100.6723);
+
+    let updatedPeer: any = null;
+    peerDiscoveryManager.getStore().subscribe((m) => {
+      updatedPeer = m.get('#9A12');
+    })();
+
+    expect(updatedPeer).not.toBeNull();
+    // Distance between new user location and re-anchored peer should be within local radio range (< 500m)
+    const dist = SosRadarEngine.calculateDistanceMeters(13.6012, 100.6723, updatedPeer.lat, updatedPeer.lng);
+    expect(dist).toBeLessThan(500);
+  });
 });
 
 describe('NativeBridgeDispatcher & Flashlight SOS Safety Tests', () => {

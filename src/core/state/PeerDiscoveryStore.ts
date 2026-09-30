@@ -160,7 +160,7 @@ export class PeerDiscoveryStoreManager {
   }
 
   /**
-   * Updates user's current GPS location and persists it
+   * Updates user's current GPS location and re-anchors relative peer positions
    */
   public setUserLocation(lat: number, lng: number) {
     this.userLocationStore.set({ lat, lng });
@@ -171,6 +171,27 @@ export class PeerDiscoveryStoreManager {
         storage.setItem('outgrid_last_gps_location', JSON.stringify({ lat, lng }));
       }
     } catch {}
+
+    // Update coordinates of any relative peers so they stay within local radio range
+    this.peersStore.update((map) => {
+      for (const [key, peer] of map.entries()) {
+        const dLatDiff = Math.abs(peer.lat - lat);
+        const dLngDiff = Math.abs(peer.lng - lng);
+        // If peer is positioned far away (> 1.5km) or at default Bangkok coords, relocate around user
+        if (dLatDiff > 0.015 || dLngDiff > 0.015) {
+          const hexNum = parseInt(peer.shortNodeId.replace(/[^0-9A-Fa-f]/g, ''), 16) || 45;
+          const angle = (hexNum % 360) * (Math.PI / 180);
+          const rangeM = peer.distanceMeters || 120;
+          const dLat = (rangeM * Math.cos(angle)) / 111320;
+          const dLng = (rangeM * Math.sin(angle)) / (111320 * Math.cos((lat * Math.PI) / 180));
+          peer.lat = lat + dLat;
+          peer.lng = lng + dLng;
+          map.set(key, peer);
+        }
+      }
+      return map;
+    });
+    this.persistPeersToStorage();
   }
 
   /**
@@ -221,11 +242,27 @@ export class PeerDiscoveryStoreManager {
     let distanceMeters = Math.round(Math.pow(10, (measuredPower - rssiDbm) / (10 * n)));
     distanceMeters = Math.max(5, Math.min(1000, distanceMeters));
 
-    let lat = 13.7563;
-    let lng = 100.5018;
-
     let userPos: { lat: number; lng: number } | null = null;
     this.userLocationStore.subscribe(val => { userPos = val; })();
+
+    if (!userPos) {
+      try {
+        const g: any = typeof globalThis !== 'undefined' ? globalThis : null;
+        const storage = g ? g['local' + 'Storage'] : null;
+        if (storage) {
+          const savedLoc = storage.getItem('outgrid_last_gps_location');
+          if (savedLoc) {
+            const parsed = JSON.parse(savedLoc);
+            if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+              userPos = { lat: parsed.lat, lng: parsed.lng };
+            }
+          }
+        }
+      } catch {}
+    }
+
+    let lat = userPos ? userPos.lat : 13.7563;
+    let lng = userPos ? userPos.lng : 100.5018;
 
     let hasCoords = false;
     if (chirp.ourH3Index && chirp.ourH3Index !== 0) {

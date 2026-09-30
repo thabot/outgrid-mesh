@@ -406,21 +406,30 @@
     margin: 0;
     padding: 0;
   }
+  :global(html, body) {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
   :global(body) {
     background: #090d16;
     color: #f1f5f9;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     display: flex;
     justify-content: center;
-    padding: 12px;
+    padding: 6px 8px;
+    box-sizing: border-box;
   }
   .app-root {
     max-width: 900px;
     width: 100%;
-    min-height: 95vh;
+    height: 100%;
+    max-height: 100dvh;
     display: flex;
     flex-direction: column;
     position: relative;
+    overflow: hidden;
   }
 
   /* App Header */
@@ -429,8 +438,9 @@
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #1e293b;
-    padding-bottom: 0.65rem;
-    margin-bottom: 0.65rem;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.45rem;
+    flex-shrink: 0;
   }
   .header-left {
     display: flex;
@@ -441,7 +451,7 @@
     background: #1e293b;
     border: 1px solid #334155;
     border-radius: 6px;
-    padding: 8px 10px;
+    padding: 6px 8px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -459,8 +469,8 @@
     gap: 0.5rem;
   }
   .brand-logo-box {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
     background: linear-gradient(135deg, #0284c7, #0369a1);
     border: 1px solid #0284c7;
@@ -469,22 +479,22 @@
     align-items: center;
     justify-content: center;
     font-weight: 900;
-    font-size: 16px;
+    font-size: 15px;
     color: #fff;
   }
   .logo h1 {
     margin: 0;
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     color: #38bdf8;
     font-weight: 800;
     letter-spacing: -0.5px;
   }
   .pulse-indicator {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: #22c55e;
-    box-shadow: 0 0 10px #22c55e;
+    box-shadow: 0 0 8px #22c55e;
   }
   .header-right {
     display: flex;
@@ -499,13 +509,14 @@
     background: rgba(120, 53, 15, 0.35);
     border: 1px solid rgba(245, 158, 11, 0.4);
     border-radius: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    margin-bottom: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    margin-bottom: 0.4rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: #fef3c7;
+    flex-shrink: 0;
   }
   .btn-exemption {
     background: #f59e0b;
@@ -521,8 +532,10 @@
   /* Content Area */
   .content-area {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
   .card {
     background: #0f172a;
@@ -530,15 +543,18 @@
     border-radius: 0.75rem;
     overflow: hidden;
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
   }
   .card-map {
-    min-height: 560px;
+    flex: 1;
+    min-height: 0;
   }
 
   .friends-card, .profile-card {
     padding: 20px;
+    overflow-y: auto;
   }
 
   /* Ultra Survival Mode (True AMOLED Black) */

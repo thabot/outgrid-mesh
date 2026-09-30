@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * SOS Map View & Tactical Disaster Radar Grid
-   * OpenStreetMap Tiles + Tactical Leaflet Native Markers + Real Peer Discovery + Compass HUD
+   * OpenStreetMap Tiles + Tactical Leaflet Native Markers + Real Peer Discovery + Compass HUD + H3 Grid
    * Creator & Lead Architect: Thabot <thabo47@gmail.com>
    * Protocol: TOG v1.1 Phase 5 & Spatial Grid
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
@@ -53,10 +53,10 @@
   let mapZoomLevel = 16;
   let isLocating = false;
 
-  // Heading & Compass State
+  // Heading & Compass State with Low-Pass Smoothing Filter
   let deviceHeading = 0;
+  let filteredHeading = 0;
   let isHeadingUpMode = false;
-  let orientationPollTimer: any = null;
 
   // Inspector Card State
   let selectedNode: {
@@ -116,20 +116,40 @@
   }
 
   function handleDeviceOrientation(e: DeviceOrientationEvent) {
-    let heading = 0;
+    let heading: number | null = null;
     if ((e as any).webkitCompassHeading !== undefined && (e as any).webkitCompassHeading !== null) {
-      // iOS WebKit
-      heading = (e as any).webkitCompassHeading;
+      // iOS WebKit Compass Heading
+      heading = Number((e as any).webkitCompassHeading);
     } else if (e.alpha !== null && e.alpha !== undefined) {
       // Android standard orientation (0 = North)
       heading = (360 - e.alpha) % 360;
     }
-    updateCompass(Math.round(heading));
+    if (heading !== null && !isNaN(heading)) {
+      updateCompass(heading);
+    }
   }
 
+  /**
+   * Smooths compass degree readings with Shortest Angular Distance Low-Pass Filter
+   * Eliminates rapid number flickering & jitter
+   */
   function updateCompass(deg: number) {
     if (isNaN(deg)) return;
-    deviceHeading = (Math.round(deg) + 360) % 360;
+    const normalized = ((deg % 360) + 360) % 360;
+
+    // Shortest angular difference (-180 to +180)
+    let diff = (normalized - filteredHeading) % 360;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+
+    // Apply smoothing alpha = 0.18
+    filteredHeading = (filteredHeading + diff * 0.18 + 360) % 360;
+    const rounded = Math.round(filteredHeading);
+
+    // Deadband threshold: update UI only on >= 1 degree difference
+    if (Math.abs(rounded - deviceHeading) >= 1) {
+      deviceHeading = rounded;
+    }
   }
 
   function toggleHeadingMode() {
@@ -138,7 +158,7 @@
 
   function getCardinalDirection(deg: number): string {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    return directions[Math.round(deg / 45) % 8];
+    return directions[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
   }
 
   function zoomIn() {
@@ -176,6 +196,29 @@
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
+  }
+
+  function focusAllNodes() {
+    if (!map || !L) return;
+    const points: Array<[number, number]> = [[myPos.lat, myPos.lng]];
+
+    for (const p of peerNodes) {
+      if (p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)) {
+        points.push([p.lat, p.lng]);
+      }
+    }
+    for (const s of sosTargets) {
+      if (s.lat && s.lng && !isNaN(s.lat) && !isNaN(s.lng)) {
+        points.push([s.lat, s.lng]);
+      }
+    }
+
+    if (points.length === 1) {
+      map.flyTo(points[0], 16, { animate: true, duration: 0.8 });
+    } else {
+      const bounds = L.latLngBounds(points);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17, animate: true });
+    }
   }
 
   function handleSelectSelf() {
@@ -217,7 +260,7 @@
       radio: '⚡ BLE 5.0 Coded PHY',
       isInternet: Boolean(peer.isInternet || peer.isGateway),
       internetStatus: (peer.isInternet || peer.isGateway) ? 'ต่อ Internet ได้ (BLE+4G/Satellite) 🟢' : 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘',
-      distance: `~${peer.distanceMeters} เมตร`,
+      distance: `~${peer.distanceMeters || 120} เมตร`,
       bearing: `${String(Math.round(bearingDeg)).padStart(3, '0')}° ${cardDir}`,
       rssi: `${peer.rssiTier === 3 ? '-68' : peer.rssiTier === 2 ? '-78' : '-88'} dBm`,
       battery: `${Math.min(100, peer.batteryBars * 20)}%`,
@@ -345,7 +388,19 @@
 
     // 3. Real Discovered Peer Markers
     for (const peer of peerNodes) {
-      if (!peer.lat || !peer.lng || isNaN(peer.lat) || isNaN(peer.lng)) continue;
+      let pLat = peer.lat;
+      let pLng = peer.lng;
+      if (!pLat || !pLng || isNaN(pLat) || isNaN(pLng)) continue;
+
+      // Distance check from myPos: If peer is within estimated radio range (<=1000m) but lat/lng is placed far away, relocate relative to myPos
+      const distFromMe = SosRadarEngine.calculateDistanceMeters(myPos.lat, myPos.lng, pLat, pLng);
+      if (distFromMe > 1500 && (peer.distanceMeters || 100) <= 1000) {
+        const hexNum = parseInt(peer.shortNodeId.replace(/[^0-9A-Fa-f]/g, ''), 16) || 45;
+        const angle = (hexNum % 360) * (Math.PI / 180);
+        const rangeM = peer.distanceMeters || 150;
+        pLat = myPos.lat + (rangeM * Math.cos(angle)) / 111320;
+        pLng = myPos.lng + (rangeM * Math.sin(angle)) / (111320 * Math.cos((myPos.lat * Math.PI) / 180));
+      }
 
       const isNet = Boolean(peer.isInternet || peer.isGateway);
       const isSos = Boolean(peer.isSos);
@@ -359,7 +414,7 @@
           <div class="tactical-marker-wrap">
             <div class="node-icon-bubble ${iconClass}">${emoji}</div>
             <span class="node-tag ${tagClass}">
-              ${peer.shortNodeId} (${peer.distanceMeters}m ${isNet ? '🌐' : '🔘'})
+              ${peer.shortNodeId} (${peer.distanceMeters || 120}m ${isNet ? '🌐' : '🔘'})
             </span>
           </div>
         `,
@@ -367,8 +422,8 @@
         iconAnchor: [50, 25]
       });
 
-      const peerMarker = L.marker([peer.lat, peer.lng], { icon: peerIcon, zIndexOffset: isSos ? 600 : 300 });
-      peerMarker.on('click', () => handleSelectPeer(peer));
+      const peerMarker = L.marker([pLat, pLng], { icon: peerIcon, zIndexOffset: isSos ? 600 : 300 });
+      peerMarker.on('click', () => handleSelectPeer({ ...peer, lat: pLat, lng: pLng }));
       peerMarker.addTo(markersLayer);
     }
 
@@ -439,7 +494,7 @@
     renderMapElements();
   }
 
-  // Reactive updater when peerNodes or sosTargets update
+  // Reactive updater when peerNodes, sosTargets or myPos update
   $: if (map && L && markersLayer && (peerNodes || sosTargets || myPos)) {
     renderMapElements();
   }
@@ -448,21 +503,11 @@
     loadPersistedMapState();
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('deviceorientationabsolute', handleDeviceOrientation as any, true);
-      window.addEventListener('deviceorientation', handleDeviceOrientation as any, true);
-
-      // Check native Android compass sensor
-      orientationPollTimer = setInterval(() => {
-        try {
-          const dispatcher = NativeBridgeDispatcher.getInstance();
-          if (dispatcher.isNative()) {
-            const comp = dispatcher.getCompassOrientation();
-            if (comp && typeof comp.azimuth === 'number') {
-              updateCompass(comp.azimuth);
-            }
-          }
-        } catch {}
-      }, 500);
+      if ('ondeviceorientationabsolute' in window) {
+        window.addEventListener('deviceorientationabsolute', handleDeviceOrientation as any, true);
+      } else {
+        window.addEventListener('deviceorientation', handleDeviceOrientation as any, true);
+      }
     }
 
     await initLeafletMap();
@@ -473,7 +518,6 @@
     if (typeof window !== 'undefined') {
       window.removeEventListener('deviceorientationabsolute', handleDeviceOrientation as any, true);
       window.removeEventListener('deviceorientation', handleDeviceOrientation as any, true);
-      if (orientationPollTimer) clearInterval(orientationPollTimer);
     }
     if (map) {
       map.remove();
@@ -495,7 +539,14 @@
         <span class="legend-bt">🔘 Bluetooth เท่านั้น</span>
       </div>
     </div>
-    <span class="top-bar-right">Geofence: ≤500m</span>
+    <div class="top-bar-right-group">
+      {#if peerNodes.length > 0}
+        <button class="btn-focus-peers" on:click={focusAllNodes} title="ซูมแสดงโหนดทั้งหมด ({peerNodes.length} โหนด)">
+          👥 {peerNodes.length} Node
+        </button>
+      {/if}
+      <span class="top-bar-geofence">Geofence: ≤500m</span>
+    </div>
   </div>
 
   <div class="map-canvas-area">
@@ -505,6 +556,17 @@
       class="leaflet-map-host"
       style="transform: rotate({-currentHeading}deg); transform-origin: 50% 50%;"
     ></div>
+
+    <!-- Subtle Tactical H3 Hexagon Grid Overlay -->
+    <svg class="h3-subtle-overlay" width="100%" height="100%">
+      <defs>
+        <pattern id="h3-hex-pattern-map" width="60" height="104" patternUnits="userSpaceOnUse">
+          <path d="M 30,0 L 60,17.3 L 60,52 L 30,69.3 L 0,52 L 0,17.3 Z" fill="none" stroke="#38bdf8" stroke-width="0.75" stroke-dasharray="2,2"/>
+          <path d="M 30,52 L 60,69.3 L 60,104 L 30,121.3 L 0,104 L 0,69.3 Z" fill="none" stroke="#38bdf8" stroke-width="0.75" stroke-dasharray="2,2"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#h3-hex-pattern-map)" />
+    </svg>
 
     <!-- Floating HUD Overlay Layer (Non-blocking) -->
     <div class="tactical-hud-overlay">
@@ -541,6 +603,11 @@
         <button class="btn-zoom btn-center" on:click={locateMe} title="ระบุตำแหน่งของฉัน" class:locating={isLocating}>
           {isLocating ? '⏳' : '🎯'}
         </button>
+        {#if peerNodes.length > 0}
+          <button class="btn-zoom btn-nodes-focus" on:click={focusAllNodes} title="จัดมุมมองให้เห็นทุกโหนด">
+            👥
+          </button>
+        {/if}
       </div>
 
       <!-- Floating Tactical Node Inspector Card -->
@@ -599,14 +666,16 @@
   .map-container {
     position: relative;
     width: 100%;
-    height: 560px;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
     background: #0b1120;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
   .map-top-bar {
-    padding: 6px 12px;
+    padding: 5px 10px;
     background: #0b1120;
     border-bottom: 1px solid #1e293b;
     display: flex;
@@ -614,6 +683,7 @@
     align-items: center;
     font-size: 11px;
     z-index: 10;
+    flex-shrink: 0;
   }
   .top-bar-left {
     display: flex;
@@ -645,12 +715,29 @@
     color: #cbd5e1;
     font-weight: 600;
   }
-  .top-bar-right {
+  .top-bar-right-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-focus-peers {
+    background: #0c4a6e;
+    border: 1px solid #0284c7;
+    color: #38bdf8;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .top-bar-geofence {
     color: #64748b;
+    font-size: 10px;
   }
   .map-canvas-area {
     position: relative;
     flex: 1;
+    min-height: 0;
     background: #060b13;
     overflow: hidden;
   }
@@ -661,6 +748,17 @@
     height: 100%;
     z-index: 1;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Subtle H3 Hexagon Grid Overlay */
+  .h3-subtle-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.28;
   }
 
   /* Non-blocking HUD Overlay */
@@ -683,8 +781,8 @@
     pointer-events: auto;
   }
   .compass-dial {
-    width: 52px;
-    height: 52px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     background: rgba(15, 23, 42, 0.88);
     border: 2px solid #38bdf8;
@@ -701,16 +799,16 @@
     font-size: 8px;
     font-weight: 900;
   }
-  .cardinal-n { top: 3px; color: #ef4444; }
-  .cardinal-s { bottom: 3px; color: #64748b; }
-  .cardinal-w { left: 4px; color: #64748b; }
-  .cardinal-e { right: 4px; color: #64748b; }
+  .cardinal-n { top: 2px; color: #ef4444; }
+  .cardinal-s { bottom: 2px; color: #64748b; }
+  .cardinal-w { left: 3px; color: #64748b; }
+  .cardinal-e { right: 3px; color: #64748b; }
   .compass-needle {
     position: absolute;
     width: 6px;
-    height: 38px;
+    height: 36px;
     top: 7px;
-    left: 23px;
+    left: 22px;
     transform-origin: 50% 50%;
     pointer-events: none;
     transition: transform 0.15s ease-out;
@@ -720,14 +818,14 @@
     height: 0;
     border-left: 3px solid transparent;
     border-right: 3px solid transparent;
-    border-bottom: 19px solid #ef4444;
+    border-bottom: 18px solid #ef4444;
   }
   .compass-needle-s {
     width: 0;
     height: 0;
     border-left: 3px solid transparent;
     border-right: 3px solid transparent;
-    border-top: 19px solid #94a3b8;
+    border-top: 18px solid #94a3b8;
   }
   .compass-degree-badge {
     background: rgba(15, 23, 42, 0.9);
@@ -795,6 +893,11 @@
   }
   .btn-center.locating {
     animation: pulse-locating 1s infinite;
+  }
+  .btn-nodes-focus {
+    font-size: 13px;
+    background: rgba(12, 74, 110, 0.9);
+    border-color: #0284c7;
   }
   @keyframes pulse-locating {
     0% { transform: scale(1); }
@@ -1008,5 +1111,6 @@
     padding: 2px 8px;
     background: #0b1120;
     text-align: right;
+    flex-shrink: 0;
   }
 </style>

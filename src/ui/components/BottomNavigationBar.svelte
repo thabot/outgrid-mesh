@@ -71,9 +71,10 @@
     border-top: 1px solid #1e293b;
     display: flex;
     justify-content: space-around;
-    padding: 8px 4px;
-    margin-top: 0.75rem;
+    padding: 6px 4px;
+    margin-top: 0.4rem;
     border-radius: 0.5rem;
+    flex-shrink: 0;
   }
   .bottom-nav button {
     background: transparent;
