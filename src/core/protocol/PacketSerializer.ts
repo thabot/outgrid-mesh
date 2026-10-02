@@ -604,8 +604,12 @@ export class PacketSerializer {
    */
   public static serializeCompactDirectChat(msg: ICompactDirectChat): Uint8Array {
     const encoder = new TextEncoder();
-    const textBytes = encoder.encode(msg.textPayload);
-    const safeTextBytes = textBytes.subarray(0, 14); // Max 14 Bytes for 28B total
+    let text = msg.textPayload;
+    let safeTextBytes = encoder.encode(text);
+    while (safeTextBytes.length > 14 && text.length > 0) {
+      text = text.slice(0, -1);
+      safeTextBytes = encoder.encode(text);
+    }
 
     const totalLen = 14 + safeTextBytes.length;
     const buf = new Uint8Array(totalLen);

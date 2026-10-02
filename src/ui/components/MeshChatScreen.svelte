@@ -6,14 +6,35 @@
    * Protocol: TOG v1.1 Tactical Chat Hub
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { MeshChatPayloadManager, type IChatMessage } from '../../core/chat/MeshChatPayload';
   import { i18n } from '../../core/i18n/I18nStore';
+  import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
+  import { PacketSerializer } from '../../core/protocol/PacketSerializer';
+  import {
+    TOGPacketType,
+    TOGPriority,
+    DEFAULT_CHAT_HOPS,
+    TOG_MAGIC,
+    type ITOGPacket,
+    type ICompactDirectChat
+  } from '../../core/protocol/TOGPacket';
+  import { AuthManager } from '../../core/auth/AuthManager';
 
   export let myNodeId: string = 'node-self-47';
   export let targetContact: { peerId: string; peerName: string } | null = null;
 
   const translations = i18n.translations;
+
+  const authManager = new AuthManager();
+  const myProfile = authManager.getProfile();
+  const myPubHex = Array.from(myProfile.keyPair.publicKey)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 4)
+    .toUpperCase();
+  const myNumericShortId = parseInt(myPubHex, 16) || 0x47a1;
+  const myDisplayName = myProfile.displayName || `ฉัน (#${myPubHex})`;
 
   let currentView: 'contacts' | 'broadcast' | 'direct' = 'contacts';
   let selectedRecipient = 'node-rescue-team';
@@ -22,6 +43,7 @@
   let contactSearchQuery = '';
   let inputText = '';
   let broadcastInputText = '';
+  let unsubscribeRadio: (() => void) | null = null;
 
   // Modals state
   let showMyQrModal = false;
@@ -111,6 +133,7 @@
     time: string;
     hops: string;
     hasPhoto?: boolean;
+    recipientId?: string;
   }> = [
     {
       id: 'd-01',
@@ -118,25 +141,57 @@
       isSelf: false,
       text: 'สวัสดีครับ ได้รับพิกัดขอความช่วยเหลือแล้ว ทีมอาสากำลังนำเรือยางเข้าไป ขอภาพถ่ายสภาพน้ำท่วมในพื้นที่เพื่อประเมินระดับน้ำครับ',
       time: '15:42',
-      hops: '1 Hop'
+      hops: '1 Hop',
+      recipientId: 'node-rescue-team'
     },
     {
       id: 'd-02',
-      sender: 'ฉัน (#47A1)',
+      sender: `ฉัน (#${myPubHex})`,
       isSelf: true,
       text: 'ระดับน้ำสูงถึงเอวแล้วครับ กำลังส่งภาพถ่ายสภาพหน้าบ้านให้ดูครับ',
       time: '15:44',
       hops: '1 Hop 🔒',
-      hasPhoto: true
+      hasPhoto: true,
+      recipientId: 'node-rescue-team'
     }
   ];
+
+  function parseRecipientShortId(idStr: string): number {
+    const hexMatch = idStr.match(/[0-9A-Fa-f]{4}/);
+    if (hexMatch) return parseInt(hexMatch[0], 16);
+    let hash = 0;
+    for (let i = 0; i < idStr.length; i++) {
+      hash = (hash * 31 + idStr.charCodeAt(i)) & 0xffff;
+    }
+    return hash || 0x4c55;
+  }
+
+  $: activeConversationMessages = directMessages.filter(msg =>
+    !msg.recipientId ||
+    msg.recipientId === selectedRecipient ||
+    selectedRecipient.includes(msg.recipientId) ||
+    msg.recipientId.includes(selectedRecipient)
+  );
 
   // Reactively open direct chat if targetContact is set
   $: if (targetContact && targetContact.peerId) {
     selectedRecipient = targetContact.peerId;
     selectedRecipientName = targetContact.peerName || targetContact.peerId;
-    const found = contacts.find(c => c.id === targetContact?.peerId);
-    selectedRecipientAvatar = found ? found.avatar : '🧑‍🚀';
+    let found = contacts.find(c => c.id === targetContact?.peerId);
+    if (!found) {
+      found = {
+        id: targetContact.peerId,
+        name: targetContact.peerName || `Node ${targetContact.peerId}`,
+        avatar: '🧑‍🚀',
+        status: 'โหนดในระยะวิทยุ',
+        lastMessage: 'เริ่มการสนทนา',
+        lastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        unreadCount: 0,
+        isOnline: true
+      };
+      contacts = [found, ...contacts];
+    }
+    selectedRecipientAvatar = found.avatar;
     currentView = 'direct';
   }
 
@@ -154,42 +209,310 @@
   }
 
   function sendBroadcastMessage() {
-    if (!broadcastInputText.trim()) return;
+    const text = broadcastInputText.trim();
+    if (!text) return;
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const msgId = `b-${Date.now()}`;
+
     broadcastMessages = [
       ...broadcastMessages,
       {
-        id: `b-${Date.now()}`,
-        sender: 'ฉัน (#47A1)',
-        text: broadcastInputText.trim(),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        id: msgId,
+        sender: `ฉัน (#${myPubHex})`,
+        text,
+        time: timeStr,
         hops: '15 Hops'
       }
     ];
+
+    try {
+      const textEncoder = new TextEncoder();
+      const payloadBytes = textEncoder.encode(text);
+
+      // 1. Transmit Full Standard TOG Packet (Broadcast)
+      const broadcastPacket: ITOGPacket = {
+        header: {
+          magic: TOG_MAGIC,
+          version: 1,
+          packetType: TOGPacketType.DIRECT_CHAT,
+          ttlHops: 15,
+          priority: TOGPriority.NORMAL,
+          flags: 0,
+          reserved: 0
+        },
+        messageId: BigInt(Date.now()),
+        senderPubkeyHash: myProfile.keyPair.publicKey.slice(0, 8),
+        recipientHash: new Uint8Array(8).fill(0xff), // 0xFF for broadcast
+        targetH3Index: 0n,
+        payloadLength: payloadBytes.length,
+        payload: payloadBytes
+      };
+
+      const wireBytes = PacketSerializer.serialize(broadcastPacket);
+      const dispatcher = NativeBridgeDispatcher.getInstance();
+      dispatcher.transmitRadioPacket(wireBytes, true);
+
+      // 2. Also transmit compact frame for BLE advertising broadcast
+      const compactMsg: ICompactDirectChat = {
+        senderShortId: myNumericShortId,
+        recipientShortId: 0xffff,
+        truncatedMsgId: (Date.now() & 0xffffffff) >>> 0,
+        h3LowerRes9: 0,
+        textPayload: text
+      };
+      const compactWire = PacketSerializer.serializeCompactDirectChat(compactMsg);
+      dispatcher.transmitRadioPacket(compactWire, true);
+    } catch (err) {
+      console.warn('Failed to transmit broadcast radio packet:', err);
+    }
+
     broadcastInputText = '';
   }
 
   function sendDirectMessage() {
-    if (!inputText.trim()) return;
+    const text = inputText.trim();
+    if (!text) return;
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const msgId = `d-${Date.now()}`;
+
     directMessages = [
       ...directMessages,
       {
-        id: `d-${Date.now()}`,
-        sender: 'ฉัน (#47A1)',
+        id: msgId,
+        sender: `ฉัน (#${myPubHex})`,
         isSelf: true,
-        text: inputText.trim(),
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        hops: '1 Hop 🔒'
+        text,
+        time: timeStr,
+        hops: '1 Hop 🔒',
+        recipientId: selectedRecipient
       }
     ];
 
     const c = contacts.find(item => item.id === selectedRecipient);
     if (c) {
-      c.lastMessage = `🔒 ${inputText.trim()}`;
-      c.lastTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      c.lastMessage = `🔒 ${text}`;
+      c.lastTime = timeStr;
       contacts = [...contacts];
     }
+
+    try {
+      const recipientShortId = parseRecipientShortId(selectedRecipient);
+      const textEncoder = new TextEncoder();
+      const payloadBytes = textEncoder.encode(text);
+
+      const recipientHash = new Uint8Array(8);
+      recipientHash[0] = (recipientShortId >> 8) & 0xff;
+      recipientHash[1] = recipientShortId & 0xff;
+
+      // 1. Full standard TOG Direct Chat Packet
+      const directPacket: ITOGPacket = {
+        header: {
+          magic: TOG_MAGIC,
+          version: 1,
+          packetType: TOGPacketType.DIRECT_CHAT,
+          ttlHops: DEFAULT_CHAT_HOPS,
+          priority: TOGPriority.NORMAL,
+          flags: 0,
+          reserved: 0
+        },
+        messageId: BigInt(Date.now()),
+        senderPubkeyHash: myProfile.keyPair.publicKey.slice(0, 8),
+        recipientHash,
+        targetH3Index: 0n,
+        payloadLength: payloadBytes.length,
+        payload: payloadBytes
+      };
+
+      const wireBytes = PacketSerializer.serialize(directPacket);
+      const dispatcher = NativeBridgeDispatcher.getInstance();
+      dispatcher.transmitRadioPacket(wireBytes, true);
+
+      // 2. Ultra-compact direct chat frame (<= 28 bytes)
+      const compactMsg: ICompactDirectChat = {
+        senderShortId: myNumericShortId,
+        recipientShortId,
+        truncatedMsgId: (Date.now() & 0xffffffff) >>> 0,
+        h3LowerRes9: 0,
+        textPayload: text
+      };
+      const compactWire = PacketSerializer.serializeCompactDirectChat(compactMsg);
+      dispatcher.transmitRadioPacket(compactWire, true);
+    } catch (err) {
+      console.warn('Failed to transmit direct chat radio packet:', err);
+    }
+
     inputText = '';
   }
+
+  function handleIncomingRadioChat(bytes: Uint8Array, rssi: number) {
+    if (bytes.length < 14) return;
+    if (bytes[0] !== 0x54 || bytes[1] !== 0x4f) return; // TOG_MAGIC 0x544F check
+
+    const pType = bytes[2] & 0x1f;
+    if (pType !== TOGPacketType.DIRECT_CHAT && pType !== TOGPacketType.GROUP_CHAT) return;
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Handle Compact Direct Chat (<= 28 bytes)
+    if (bytes.length <= 28) {
+      try {
+        const compact = PacketSerializer.deserializeCompactDirectChat(bytes);
+        if (compact.senderShortId === myNumericShortId) return; // Echo suppression
+
+        const isBroadcast = compact.recipientShortId === 0xffff;
+        const isForMe = compact.recipientShortId === myNumericShortId || isBroadcast;
+        if (!isForMe) return;
+
+        const senderHex = `#${compact.senderShortId.toString(16).padStart(4, '0').toUpperCase()}`;
+
+        if (isBroadcast) {
+          broadcastMessages = [
+            ...broadcastMessages,
+            {
+              id: `b-${compact.truncatedMsgId || Date.now()}`,
+              sender: `โหนด ${senderHex}`,
+              text: compact.textPayload,
+              time: timeStr,
+              hops: '1 Hop'
+            }
+          ];
+        } else {
+          // Direct message
+          let contact = contacts.find(c => c.id === senderHex || c.name.includes(senderHex));
+          if (!contact) {
+            contact = {
+              id: senderHex,
+              name: `โหนด ${senderHex}`,
+              avatar: '🧑‍🚀',
+              status: 'โหนดวิทยุใกล้เคียง',
+              lastMessage: `🔒 ${compact.textPayload}`,
+              lastTime: timeStr,
+              unreadCount: 1,
+              isOnline: true
+            };
+            contacts = [contact, ...contacts];
+          } else {
+            contact.lastMessage = `🔒 ${compact.textPayload}`;
+            contact.lastTime = timeStr;
+            if (currentView !== 'direct' || selectedRecipient !== contact.id) {
+              contact.unreadCount += 1;
+            }
+            contacts = [...contacts];
+          }
+
+          directMessages = [
+            ...directMessages,
+            {
+              id: `d-${compact.truncatedMsgId || Date.now()}`,
+              sender: contact.name,
+              isSelf: false,
+              text: compact.textPayload,
+              time: timeStr,
+              hops: '1 Hop 🔒',
+              recipientId: contact.id
+            }
+          ];
+        }
+      } catch (err) {
+        console.warn('Failed to deserialize compact chat frame:', err);
+      }
+      return;
+    }
+
+    // Handle Standard TOG Packet (>= 39 bytes)
+    if (bytes.length >= 39) {
+      try {
+        const packet = PacketSerializer.deserialize(bytes);
+        let senderHex = Array.from(packet.senderPubkeyHash)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('')
+          .slice(0, 4)
+          .toUpperCase();
+        if (!senderHex) senderHex = 'NODE';
+        if (senderHex === myPubHex) return; // Echo suppression
+
+        const senderNodeId = `#${senderHex}`;
+        const isBroadcast =
+          packet.recipientHash.every(b => b === 0xff || b === 0x00) ||
+          pType === TOGPacketType.GROUP_CHAT;
+
+        const recipientHex = Array.from(packet.recipientHash.subarray(0, 2))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('')
+          .toUpperCase();
+        const isForMe = isBroadcast || recipientHex === myPubHex || recipientHex === 'FFFF';
+
+        if (!isForMe) return;
+
+        const text = new TextDecoder('utf-8').decode(packet.payload);
+
+        if (isBroadcast) {
+          broadcastMessages = [
+            ...broadcastMessages,
+            {
+              id: `b-${packet.messageId.toString()}`,
+              sender: `โหนด ${senderNodeId}`,
+              text,
+              time: timeStr,
+              hops: `${packet.header.ttlHops} Hops`
+            }
+          ];
+        } else {
+          let contact = contacts.find(c => c.id === senderNodeId || c.name.includes(senderHex));
+          if (!contact) {
+            contact = {
+              id: senderNodeId,
+              name: `โหนด ${senderNodeId}`,
+              avatar: '🧑‍🚀',
+              status: 'โหนดวิทยุใกล้เคียง',
+              lastMessage: `🔒 ${text}`,
+              lastTime: timeStr,
+              unreadCount: 1,
+              isOnline: true
+            };
+            contacts = [contact, ...contacts];
+          } else {
+            contact.lastMessage = `🔒 ${text}`;
+            contact.lastTime = timeStr;
+            if (currentView !== 'direct' || selectedRecipient !== contact.id) {
+              contact.unreadCount += 1;
+            }
+            contacts = [...contacts];
+          }
+
+          directMessages = [
+            ...directMessages,
+            {
+              id: `d-${packet.messageId.toString()}`,
+              sender: contact.name,
+              isSelf: false,
+              text,
+              time: timeStr,
+              hops: '1 Hop 🔒',
+              recipientId: contact.id
+            }
+          ];
+        }
+      } catch (err) {
+        console.warn('Failed to parse incoming standard chat packet:', err);
+      }
+    }
+  }
+
+  onMount(() => {
+    unsubscribeRadio = NativeBridgeDispatcher.getInstance().subscribeToPackets(event => {
+      handleIncomingRadioChat(event.bytes, event.rssi);
+    });
+  });
+
+  onDestroy(() => {
+    if (unsubscribeRadio) {
+      unsubscribeRadio();
+      unsubscribeRadio = null;
+    }
+  });
 
   function sendQuickBroadcast(text: string) {
     broadcastInputText = text;
@@ -331,7 +654,7 @@
 
       <!-- Direct Message History -->
       <div class="chat-messages-scroll">
-        {#each directMessages as msg}
+        {#each activeConversationMessages as msg}
           <div class="bubble {msg.isSelf ? 'bubble-out' : 'bubble-in'}">
             <span class="bubble-sender">{msg.sender}:</span>
             <p>{msg.text}</p>
