@@ -49,6 +49,31 @@ export class MockOutGridBridge {
     relativeAltitudeMeters: 0.0,
   };
 
+  private broadcastChannel: any = null;
+  private static readonly CHANNEL_NAME = 'outgrid_radio_mesh_channel';
+
+  constructor() {
+    this.initBroadcastChannel();
+  }
+
+  private initBroadcastChannel() {
+    try {
+      const g = typeof window !== 'undefined' ? (window as any) : (globalThis as any);
+      if (typeof g.BroadcastChannel !== 'undefined') {
+        this.broadcastChannel = new g.BroadcastChannel(MockOutGridBridge.CHANNEL_NAME);
+        this.broadcastChannel.onmessage = (event: MessageEvent) => {
+          if (event.data && event.data.type === 'RADIO_PACKET' && event.data.base64) {
+            if (g?.OutGridMesh?.receiveNativePacket) {
+              g.OutGridMesh.receiveNativePacket(event.data.base64, event.data.rssi ?? -65);
+            }
+          }
+        };
+      }
+    } catch {
+      // Non-blocking in headless / testing environments
+    }
+  }
+
   public toggleTorch(enabled: boolean): boolean {
     this.torchEnabled = enabled;
     if (!enabled) this.sosStrobeActive = false;
@@ -142,6 +167,18 @@ export class MockOutGridBridge {
 
   public transmitRadioPacket(base64Payload: string, txPowerHigh: boolean = true): boolean {
     this.lastTransmittedPacket = { base64: base64Payload, txPowerHigh };
+    try {
+      if (this.broadcastChannel) {
+        this.broadcastChannel.postMessage({
+          type: 'RADIO_PACKET',
+          base64: base64Payload,
+          rssi: txPowerHigh ? -58 : -75,
+          timestamp: Date.now()
+        });
+      }
+    } catch {
+      // Non-blocking in headless / restricted environments
+    }
     return true;
   }
 

@@ -584,21 +584,20 @@
               </div>
             </div>
             <div class="action-col">
-              {#if peer.isFriend}
-                <button
-                  class="btn-line-chat"
-                  on:click={() => handleStartChat({
-                    id: peer.shortNodeId,
-                    name: `เพื่อน ${peer.shortNodeId}`,
-                    avatarEmoji: '👤',
-                    statusMessage: '',
-                    safetyNumber: '',
-                    addedAt: Date.now()
-                  })}
-                >
-                  แชท
-                </button>
-              {:else}
+              <button
+                class="btn-line-chat"
+                on:click={() => handleStartChat({
+                  id: peer.shortNodeId,
+                  name: peer.isFriend ? `เพื่อน ${peer.shortNodeId}` : `โหนด ${peer.shortNodeId}`,
+                  avatarEmoji: peer.isFriend ? '👤' : '📻',
+                  statusMessage: `ระยะ ~${peer.distanceMeters} ม.`,
+                  safetyNumber: '',
+                  addedAt: Date.now()
+                })}
+              >
+                แชท
+              </button>
+              {#if !peer.isFriend}
                 <button
                   class="btn-add-peer"
                   on:click={() => {

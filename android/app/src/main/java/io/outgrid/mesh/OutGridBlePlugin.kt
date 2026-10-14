@@ -31,6 +31,7 @@ class OutGridBlePlugin(private val context: Context) {
         // Service UUID: 0x544F ('TO' in ASCII)
         val TOG_SERVICE_UUID: UUID = UUID.fromString("0000544f-0000-1000-8000-00805f9b34fb")
         val TOG_PARCEL_UUID = ParcelUuid(TOG_SERVICE_UUID)
+        const val TOG_MANUFACTURER_ID = 0x544F
     }
 
     private var bluetoothAdapter: BluetoothAdapter? = null
@@ -74,9 +75,18 @@ class OutGridBlePlugin(private val context: Context) {
             .setTimeout(3000) // 3 seconds transmission burst
             .build()
 
+        // Stop previous advertising burst to prevent ALREADY_STARTED collision
+        if (isAdvertising) {
+            try {
+                advertiser?.stopAdvertising(advertiseCallback)
+            } catch (_: Exception) {}
+            isAdvertising = false
+        }
+
+        // Strictly fit within 31-byte BLE Legacy Advertising boundary
+        // Manufacturer data uses 4B overhead (0xFF + length + 2B Company ID 0x544F) + payload
         val data = AdvertiseData.Builder()
-            .addServiceUuid(TOG_PARCEL_UUID)
-            .addServiceData(TOG_PARCEL_UUID, rawBytes)
+            .addManufacturerData(TOG_MANUFACTURER_ID, rawBytes)
             .setIncludeDeviceName(false)
             .setIncludeTxPowerLevel(false)
             .build()

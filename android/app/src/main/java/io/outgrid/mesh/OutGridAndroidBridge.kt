@@ -34,6 +34,7 @@ class OutGridAndroidBridge(
     private var isTorchActive = false
     private var hotspotService = LocalHotspotSideloadService(context)
     private var flashlightController = EmergencyFlashlightController(context)
+    private val blePlugin: OutGridBlePlugin by lazy { OutGridBlePlugin(context) }
 
     init {
         try {
@@ -213,7 +214,6 @@ class OutGridAndroidBridge(
     fun transmitRadioPacket(base64Payload: String, txPowerHigh: Boolean = true): Boolean {
         return try {
             val rawBytes = Base64.decode(base64Payload, Base64.NO_WRAP)
-            val blePlugin = OutGridBlePlugin(context)
             blePlugin.transmitPacket(rawBytes, txPowerHigh)
         } catch (_: Exception) {
             false

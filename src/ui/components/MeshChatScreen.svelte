@@ -20,6 +20,12 @@
     type ICompactDirectChat
   } from '../../core/protocol/TOGPacket';
   import { AuthManager } from '../../core/auth/AuthManager';
+  import {
+    chatMessageManager,
+    directMessagesStore,
+    broadcastMessagesStore
+  } from '../../core/state/ChatMessageStore';
+  import { discoveredPeersStore } from '../../core/state/PeerDiscoveryStore';
 
   export let myNodeId: string = 'node-self-47';
   export let targetContact: { peerId: string; peerName: string } | null = null;
@@ -166,7 +172,7 @@
     return hash || 0x4c55;
   }
 
-  $: activeConversationMessages = directMessages.filter(msg =>
+  $: activeConversationMessages = $directMessagesStore.filter(msg =>
     !msg.recipientId ||
     msg.recipientId === selectedRecipient ||
     selectedRecipient.includes(msg.recipientId) ||
@@ -192,6 +198,7 @@
       contacts = [found, ...contacts];
     }
     selectedRecipientAvatar = found.avatar;
+    chatMessageManager.setActiveRecipient(selectedRecipient);
     currentView = 'direct';
   }
 
@@ -205,68 +212,22 @@
     selectedRecipientName = contact.name;
     selectedRecipientAvatar = contact.avatar;
     contact.unreadCount = 0;
+    chatMessageManager.setActiveRecipient(contact.id);
+    currentView = 'direct';
+  }
+
+  function openDirectChatWithPeer(peer: any) {
+    selectedRecipient = peer.shortNodeId;
+    selectedRecipientName = `โหนด ${peer.shortNodeId}`;
+    selectedRecipientAvatar = '📻';
+    chatMessageManager.setActiveRecipient(peer.shortNodeId);
     currentView = 'direct';
   }
 
   function sendBroadcastMessage() {
     const text = broadcastInputText.trim();
     if (!text) return;
-
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const msgId = `b-${Date.now()}`;
-
-    broadcastMessages = [
-      ...broadcastMessages,
-      {
-        id: msgId,
-        sender: `ฉัน (#${myPubHex})`,
-        text,
-        time: timeStr,
-        hops: '15 Hops'
-      }
-    ];
-
-    try {
-      const textEncoder = new TextEncoder();
-      const payloadBytes = textEncoder.encode(text);
-
-      // 1. Transmit Full Standard TOG Packet (Broadcast)
-      const broadcastPacket: ITOGPacket = {
-        header: {
-          magic: TOG_MAGIC,
-          version: 1,
-          packetType: TOGPacketType.DIRECT_CHAT,
-          ttlHops: 15,
-          priority: TOGPriority.NORMAL,
-          flags: 0,
-          reserved: 0
-        },
-        messageId: BigInt(Date.now()),
-        senderPubkeyHash: myProfile.keyPair.publicKey.slice(0, 8),
-        recipientHash: new Uint8Array(8).fill(0xff), // 0xFF for broadcast
-        targetH3Index: 0n,
-        payloadLength: payloadBytes.length,
-        payload: payloadBytes
-      };
-
-      const wireBytes = PacketSerializer.serialize(broadcastPacket);
-      const dispatcher = NativeBridgeDispatcher.getInstance();
-      dispatcher.transmitRadioPacket(wireBytes, true);
-
-      // 2. Also transmit compact frame for BLE advertising broadcast
-      const compactMsg: ICompactDirectChat = {
-        senderShortId: myNumericShortId,
-        recipientShortId: 0xffff,
-        truncatedMsgId: (Date.now() & 0xffffffff) >>> 0,
-        h3LowerRes9: 0,
-        textPayload: text
-      };
-      const compactWire = PacketSerializer.serializeCompactDirectChat(compactMsg);
-      dispatcher.transmitRadioPacket(compactWire, true);
-    } catch (err) {
-      console.warn('Failed to transmit broadcast radio packet:', err);
-    }
-
+    chatMessageManager.sendBroadcastMessage(text);
     broadcastInputText = '';
   }
 
@@ -274,22 +235,9 @@
     const text = inputText.trim();
     if (!text) return;
 
+    chatMessageManager.sendDirectMessage(selectedRecipient, text);
+
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const msgId = `d-${Date.now()}`;
-
-    directMessages = [
-      ...directMessages,
-      {
-        id: msgId,
-        sender: `ฉัน (#${myPubHex})`,
-        isSelf: true,
-        text,
-        time: timeStr,
-        hops: '1 Hop 🔒',
-        recipientId: selectedRecipient
-      }
-    ];
-
     const c = contacts.find(item => item.id === selectedRecipient);
     if (c) {
       c.lastMessage = `🔒 ${text}`;
@@ -297,221 +245,15 @@
       contacts = [...contacts];
     }
 
-    try {
-      const recipientShortId = parseRecipientShortId(selectedRecipient);
-      const textEncoder = new TextEncoder();
-      const payloadBytes = textEncoder.encode(text);
-
-      const recipientHash = new Uint8Array(8);
-      recipientHash[0] = (recipientShortId >> 8) & 0xff;
-      recipientHash[1] = recipientShortId & 0xff;
-
-      // 1. Full standard TOG Direct Chat Packet
-      const directPacket: ITOGPacket = {
-        header: {
-          magic: TOG_MAGIC,
-          version: 1,
-          packetType: TOGPacketType.DIRECT_CHAT,
-          ttlHops: DEFAULT_CHAT_HOPS,
-          priority: TOGPriority.NORMAL,
-          flags: 0,
-          reserved: 0
-        },
-        messageId: BigInt(Date.now()),
-        senderPubkeyHash: myProfile.keyPair.publicKey.slice(0, 8),
-        recipientHash,
-        targetH3Index: 0n,
-        payloadLength: payloadBytes.length,
-        payload: payloadBytes
-      };
-
-      const wireBytes = PacketSerializer.serialize(directPacket);
-      const dispatcher = NativeBridgeDispatcher.getInstance();
-      dispatcher.transmitRadioPacket(wireBytes, true);
-
-      // 2. Ultra-compact direct chat frame (<= 28 bytes)
-      const compactMsg: ICompactDirectChat = {
-        senderShortId: myNumericShortId,
-        recipientShortId,
-        truncatedMsgId: (Date.now() & 0xffffffff) >>> 0,
-        h3LowerRes9: 0,
-        textPayload: text
-      };
-      const compactWire = PacketSerializer.serializeCompactDirectChat(compactMsg);
-      dispatcher.transmitRadioPacket(compactWire, true);
-    } catch (err) {
-      console.warn('Failed to transmit direct chat radio packet:', err);
-    }
-
     inputText = '';
   }
 
-  function handleIncomingRadioChat(bytes: Uint8Array, rssi: number) {
-    if (bytes.length < 14) return;
-    if (bytes[0] !== 0x54 || bytes[1] !== 0x4f) return; // TOG_MAGIC 0x544F check
-
-    const pType = bytes[2] & 0x1f;
-    if (pType !== TOGPacketType.DIRECT_CHAT && pType !== TOGPacketType.GROUP_CHAT) return;
-
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    // Handle Compact Direct Chat (<= 28 bytes)
-    if (bytes.length <= 28) {
-      try {
-        const compact = PacketSerializer.deserializeCompactDirectChat(bytes);
-        if (compact.senderShortId === myNumericShortId) return; // Echo suppression
-
-        const isBroadcast = compact.recipientShortId === 0xffff;
-        const isForMe = compact.recipientShortId === myNumericShortId || isBroadcast;
-        if (!isForMe) return;
-
-        const senderHex = `#${compact.senderShortId.toString(16).padStart(4, '0').toUpperCase()}`;
-
-        if (isBroadcast) {
-          broadcastMessages = [
-            ...broadcastMessages,
-            {
-              id: `b-${compact.truncatedMsgId || Date.now()}`,
-              sender: `โหนด ${senderHex}`,
-              text: compact.textPayload,
-              time: timeStr,
-              hops: '1 Hop'
-            }
-          ];
-        } else {
-          // Direct message
-          let contact = contacts.find(c => c.id === senderHex || c.name.includes(senderHex));
-          if (!contact) {
-            contact = {
-              id: senderHex,
-              name: `โหนด ${senderHex}`,
-              avatar: '🧑‍🚀',
-              status: 'โหนดวิทยุใกล้เคียง',
-              lastMessage: `🔒 ${compact.textPayload}`,
-              lastTime: timeStr,
-              unreadCount: 1,
-              isOnline: true
-            };
-            contacts = [contact, ...contacts];
-          } else {
-            contact.lastMessage = `🔒 ${compact.textPayload}`;
-            contact.lastTime = timeStr;
-            if (currentView !== 'direct' || selectedRecipient !== contact.id) {
-              contact.unreadCount += 1;
-            }
-            contacts = [...contacts];
-          }
-
-          directMessages = [
-            ...directMessages,
-            {
-              id: `d-${compact.truncatedMsgId || Date.now()}`,
-              sender: contact.name,
-              isSelf: false,
-              text: compact.textPayload,
-              time: timeStr,
-              hops: '1 Hop 🔒',
-              recipientId: contact.id
-            }
-          ];
-        }
-      } catch (err) {
-        console.warn('Failed to deserialize compact chat frame:', err);
-      }
-      return;
-    }
-
-    // Handle Standard TOG Packet (>= 39 bytes)
-    if (bytes.length >= 39) {
-      try {
-        const packet = PacketSerializer.deserialize(bytes);
-        let senderHex = Array.from(packet.senderPubkeyHash)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('')
-          .slice(0, 4)
-          .toUpperCase();
-        if (!senderHex) senderHex = 'NODE';
-        if (senderHex === myPubHex) return; // Echo suppression
-
-        const senderNodeId = `#${senderHex}`;
-        const isBroadcast =
-          packet.recipientHash.every(b => b === 0xff || b === 0x00) ||
-          pType === TOGPacketType.GROUP_CHAT;
-
-        const recipientHex = Array.from(packet.recipientHash.subarray(0, 2))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('')
-          .toUpperCase();
-        const isForMe = isBroadcast || recipientHex === myPubHex || recipientHex === 'FFFF';
-
-        if (!isForMe) return;
-
-        const text = new TextDecoder('utf-8').decode(packet.payload);
-
-        if (isBroadcast) {
-          broadcastMessages = [
-            ...broadcastMessages,
-            {
-              id: `b-${packet.messageId.toString()}`,
-              sender: `โหนด ${senderNodeId}`,
-              text,
-              time: timeStr,
-              hops: `${packet.header.ttlHops} Hops`
-            }
-          ];
-        } else {
-          let contact = contacts.find(c => c.id === senderNodeId || c.name.includes(senderHex));
-          if (!contact) {
-            contact = {
-              id: senderNodeId,
-              name: `โหนด ${senderNodeId}`,
-              avatar: '🧑‍🚀',
-              status: 'โหนดวิทยุใกล้เคียง',
-              lastMessage: `🔒 ${text}`,
-              lastTime: timeStr,
-              unreadCount: 1,
-              isOnline: true
-            };
-            contacts = [contact, ...contacts];
-          } else {
-            contact.lastMessage = `🔒 ${text}`;
-            contact.lastTime = timeStr;
-            if (currentView !== 'direct' || selectedRecipient !== contact.id) {
-              contact.unreadCount += 1;
-            }
-            contacts = [...contacts];
-          }
-
-          directMessages = [
-            ...directMessages,
-            {
-              id: `d-${packet.messageId.toString()}`,
-              sender: contact.name,
-              isSelf: false,
-              text,
-              time: timeStr,
-              hops: '1 Hop 🔒',
-              recipientId: contact.id
-            }
-          ];
-        }
-      } catch (err) {
-        console.warn('Failed to parse incoming standard chat packet:', err);
-      }
-    }
-  }
-
   onMount(() => {
-    unsubscribeRadio = NativeBridgeDispatcher.getInstance().subscribeToPackets(event => {
-      handleIncomingRadioChat(event.bytes, event.rssi);
-    });
+    chatMessageManager.setActiveRecipient(currentView === 'direct' ? selectedRecipient : null);
   });
 
   onDestroy(() => {
-    if (unsubscribeRadio) {
-      unsubscribeRadio();
-      unsubscribeRadio = null;
-    }
+    chatMessageManager.setActiveRecipient(null);
   });
 
   function sendQuickBroadcast(text: string) {
@@ -549,6 +291,53 @@
         placeholder="🔍 ค้นหารายชื่อเพื่อน หรือ Node ID (#4C55)..."
         bind:value={contactSearchQuery}
       />
+
+      <!-- Live Discovered Nearby Peers (App Opened by Neighbors) -->
+      {#if $discoveredPeersStore && $discoveredPeersStore.length > 0}
+        <div class="live-peers-box">
+          <div class="live-peers-header">
+            <span>📡 โหนดวิทยุรอบตัวที่เปิดแอป ({$discoveredPeersStore.length})</span>
+          </div>
+          <div class="live-peers-list">
+            {#each $discoveredPeersStore as peer}
+              <div
+                class="live-peer-row"
+                role="button"
+                tabindex="0"
+                on:click={() => openDirectChatWithPeer(peer)}
+                on:keydown={(e) => e.key === 'Enter' && openDirectChatWithPeer(peer)}
+              >
+                <div class="live-peer-main">
+                  <div class="live-peer-avatar">📻</div>
+                  <div class="live-peer-text">
+                    <div class="live-peer-name">
+                      โหนด {peer.shortNodeId}
+                      {#if peer.isFriend}
+                        <span class="badge-friend-mini">เพื่อน</span>
+                      {/if}
+                    </div>
+                    <div class="live-peer-metrics">
+                      <span>{peer.rssiTier === 3 ? '🟢 สัญญาณแรง' : peer.rssiTier === 2 ? '🟡 สัญญาณดี' : '🟠 ปานกลาง'}</span>
+                      <span>• ~{peer.distanceMeters} ม.</span>
+                      <span>• 🔋 {peer.batteryBars * 20}%</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  class="btn-peer-direct-chat"
+                  on:click|stopPropagation={() => openDirectChatWithPeer(peer)}
+                >
+                  💬 ทักแชท
+                </button>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
+      <div class="saved-contacts-header">
+        <span>👥 รายชื่อผู้ติดต่อ & หน่วยกู้ภัย</span>
+      </div>
 
       <div class="contact-list">
         {#each filteredContacts as contact}
@@ -596,7 +385,7 @@
 
       <!-- Broadcast Messages Scroll -->
       <div class="chat-messages-scroll">
-        {#each broadcastMessages as msg}
+        {#each $broadcastMessagesStore as msg}
           {#if msg.isPinned}
             <div class="bubble-pinned">
               <div class="pinned-header">
@@ -1231,5 +1020,94 @@
     font-weight: 800;
     font-size: 12px;
     cursor: pointer;
+  }
+
+  /* Live Discovered Radio Peers Section */
+  .live-peers-box {
+    background: rgba(14, 165, 233, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+  }
+  .live-peers-header {
+    font-size: 12px;
+    font-weight: 800;
+    color: #38bdf8;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .live-peers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .live-peer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #111827;
+    border: 1px solid #1f2937;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .live-peer-row:hover {
+    background: #1e293b;
+    border-color: #38bdf8;
+  }
+  .live-peer-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .live-peer-avatar {
+    font-size: 18px;
+  }
+  .live-peer-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge-friend-mini {
+    font-size: 9px;
+    background: #059669;
+    color: #fff;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  .live-peer-metrics {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+  .btn-peer-direct-chat {
+    background: #0284c7;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .btn-peer-direct-chat:hover {
+    background: #0369a1;
+  }
+  .saved-contacts-header {
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    padding-left: 4px;
   }
 </style>

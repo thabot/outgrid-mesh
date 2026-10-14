@@ -21,6 +21,7 @@
     peerCountsStore,
     peerDiscoveryManager
   } from '../core/state/PeerDiscoveryStore';
+  import { unreadChatCountStore } from '../core/state/ChatMessageStore';
   import { AuthManager } from '../core/auth/AuthManager';
   import { OneTapSosEngine, SosStatusCategory } from '../core/state/OneTapSosEngine';
   import { NativeBridgeDispatcher } from '../core/native/NativeBridgeDispatcher';
@@ -339,6 +340,7 @@
   <!-- 5. Bottom Navigation Bar -->
   <BottomNavigationBar
     activeTab={activeTab === 'feed' ? 'chat' : (activeTab === 'donation' || activeTab === 'profile' ? 'manual' : (activeTab as any))}
+    unreadCount={$unreadChatCountStore}
     on:tabChange={handleBottomTabChange}
   />
 

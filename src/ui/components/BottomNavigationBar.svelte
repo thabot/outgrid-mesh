@@ -9,6 +9,7 @@
   import { i18n } from '../../core/i18n/I18nStore';
 
   export let activeTab: 'map' | 'chat' | 'sos' | 'manual' | 'friends' | 'profile' = 'sos';
+  export let unreadCount: number = 0;
 
   const translations = i18n.translations;
 
@@ -49,7 +50,12 @@
     on:click={() => selectTab('chat')}
     aria-label="Chat"
   >
-    <span class="icon">💬</span>
+    <div class="chat-icon-container">
+      <span class="icon">💬</span>
+      {#if unreadCount > 0}
+        <span class="nav-unread-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+      {/if}
+    </div>
     <span>{$translations.chat || 'แชต & เพื่อน'}</span>
   </button>
 
@@ -98,6 +104,28 @@
     color: #38bdf8;
     background: rgba(56, 189, 248, 0.1);
     font-weight: 700;
+  }
+  .chat-icon-container {
+    position: relative;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .nav-unread-badge {
+    position: absolute;
+    top: -6px;
+    right: -10px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 800;
+    min-width: 15px;
+    height: 15px;
+    line-height: 15px;
+    border-radius: 9999px;
+    padding: 0 4px;
+    text-align: center;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
   }
   .icon {
     font-size: 16px;
