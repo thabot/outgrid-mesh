@@ -12,8 +12,10 @@
 
   const controls = new EmergencyBeaconControls();
   const dispatcher = NativeBridgeDispatcher.getInstance();
+  const torchStore = dispatcher.torchActiveStore;
 
   export let isTorchActive = false;
+  $: isTorchActive = $torchStore;
   export let isSirenActive = false;
   export let isMuted = false;
   export let thermalWarning = false;
@@ -23,6 +25,7 @@
   function toggleTorch() {
     if (isTorchActive) {
       controls.stopFlashlight();
+      dispatcher.stopSosStrobe();
       dispatcher.stopTorch();
       isTorchActive = false;
     } else {
@@ -36,6 +39,7 @@
   function toggleSosStrobe() {
     if (isTorchActive) {
       controls.stopFlashlight();
+      dispatcher.stopSosStrobe();
       dispatcher.stopTorch();
       isTorchActive = false;
     } else {
@@ -72,6 +76,7 @@
 
   function stopAll() {
     controls.stopAllBeacons();
+    dispatcher.stopSosStrobe();
     dispatcher.stopTorch();
     isTorchActive = false;
     isSirenActive = false;

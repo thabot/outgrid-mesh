@@ -8,6 +8,7 @@
    */
   import { createEventDispatcher } from 'svelte';
   import { SosStatusCategory } from '../../core/state/OneTapSosEngine';
+  import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
 
   export let onTriggerSos: (category: SosStatusCategory) => void;
   export let isDispatching: boolean = false;
@@ -15,6 +16,11 @@
   const dispatch = createEventDispatcher<{
     viewBroadcast: void;
   }>();
+
+  const dispatcher = NativeBridgeDispatcher.getInstance();
+  const torchStore = dispatcher.torchActiveStore;
+  let isTorchRunning = false;
+  $: isTorchRunning = $torchStore;
 
   let selectedCategory: SosStatusCategory = SosStatusCategory.NEED_BOAT;
   let selectedCategoryLabel = '🌊 น้ำท่วมติดค้าง';
@@ -42,7 +48,18 @@
 
   function cancelSos() {
     isSosActive = false;
-    alert('🛑 ยกเลิกการแพร่สัญญาณ SOS เรียบร้อยแล้ว');
+    dispatcher.stopSosStrobe();
+    dispatcher.stopTorch();
+    alert('🛑 ยกเลิกสัญญาณ SOS และปิดไฟฉายเรียบร้อยแล้ว');
+  }
+
+  function toggleFlashlightFromSos() {
+    if (isTorchRunning) {
+      dispatcher.stopSosStrobe();
+      dispatcher.stopTorch();
+    } else {
+      dispatcher.startSosStrobe();
+    }
   }
 </script>
 
@@ -63,10 +80,13 @@
       <p class="active-banner-sub">พิกัดและข้อความฉุกเฉินถูกส่งขึ้นห้องแชตสาธารณะและบันทึกลงเครื่องแล้ว</p>
       <div class="active-banner-actions">
         <button class="btn-banner-view" on:click={() => dispatch('viewBroadcast')}>
-          📢 ดูในแชตสาธารณะ
+          📢 แชตสาธารณะ
+        </button>
+        <button class="btn-banner-torch" on:click={toggleFlashlightFromSos}>
+          {isTorchRunning ? '🔦 ปิดไฟฉาย' : '⚡ เปิดไฟฉาย'}
         </button>
         <button class="btn-banner-cancel" on:click={cancelSos}>
-          🛑 ยกเลิกสัญญาณ SOS
+          🛑 ยกเลิก SOS
         </button>
       </div>
     </div>
@@ -183,6 +203,17 @@
     border-radius: 6px;
     font-size: 11px;
     font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-banner-torch {
+    flex: 1;
+    background: #eab308;
+    color: #0f172a;
+    border: none;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
     cursor: pointer;
   }
   .btn-banner-cancel {

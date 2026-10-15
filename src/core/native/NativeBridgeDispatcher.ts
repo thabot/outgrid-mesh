@@ -7,6 +7,7 @@
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
 
+import { writable, get } from 'svelte/store';
 import { MockOutGridBridge, type IBatteryInfoPayload, type ICompassOrientationPayload, type IBarometerAltitudePayload } from './MockOutGridBridge';
 
 export interface INativePacketEvent {
@@ -21,6 +22,7 @@ export class NativeBridgeDispatcher {
   private bridgeImpl: any = null;
   private isNativeAndroid: boolean = false;
   private packetListeners: Set<NativePacketCallback> = new Set();
+  public torchActiveStore = writable<boolean>(false);
 
   private constructor() {
     this.initBridge();
@@ -90,6 +92,7 @@ export class NativeBridgeDispatcher {
   }
 
   public toggleTorch(enabled: boolean): boolean {
+    this.torchActiveStore.set(enabled);
     try {
       return Boolean(this.bridgeImpl?.toggleTorch?.(enabled));
     } catch (err) {
@@ -99,6 +102,7 @@ export class NativeBridgeDispatcher {
   }
 
   public startSosStrobe(): boolean {
+    this.torchActiveStore.set(true);
     try {
       return Boolean(this.bridgeImpl?.startSosStrobe?.());
     } catch (err) {
@@ -108,11 +112,16 @@ export class NativeBridgeDispatcher {
   }
 
   public stopSosStrobe(): boolean {
+    this.torchActiveStore.set(false);
     try {
+      let stopped = false;
       if (typeof this.bridgeImpl?.stopSosStrobe === 'function') {
-        return Boolean(this.bridgeImpl.stopSosStrobe());
+        stopped = Boolean(this.bridgeImpl.stopSosStrobe());
       }
-      return Boolean(this.bridgeImpl?.stopTorch?.());
+      if (typeof this.bridgeImpl?.stopTorch === 'function') {
+        stopped = Boolean(this.bridgeImpl.stopTorch()) || stopped;
+      }
+      return stopped;
     } catch (err) {
       console.warn('NativeBridge stopSosStrobe error:', err);
       return false;
@@ -120,12 +129,24 @@ export class NativeBridgeDispatcher {
   }
 
   public stopTorch(): boolean {
+    this.torchActiveStore.set(false);
     try {
-      return Boolean(this.bridgeImpl?.stopTorch?.());
+      let stopped = false;
+      if (typeof this.bridgeImpl?.stopTorch === 'function') {
+        stopped = Boolean(this.bridgeImpl.stopTorch());
+      }
+      if (typeof this.bridgeImpl?.stopSosStrobe === 'function') {
+        stopped = Boolean(this.bridgeImpl.stopSosStrobe()) || stopped;
+      }
+      return stopped;
     } catch (err) {
       console.warn('NativeBridge stopTorch error:', err);
       return false;
     }
+  }
+
+  public isTorchActive(): boolean {
+    return get(this.torchActiveStore);
   }
 
   public playAudibleAlarm(): boolean {

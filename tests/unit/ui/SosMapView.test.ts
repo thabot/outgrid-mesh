@@ -132,16 +132,28 @@ describe('NativeBridgeDispatcher & Flashlight SOS Safety Tests', () => {
     expect(() => {
       dispatcher.startSosStrobe();
     }).not.toThrow();
+    expect(dispatcher.isTorchActive()).toBe(true);
 
     expect(() => {
       dispatcher.stopSosStrobe();
     }).not.toThrow();
+    expect(dispatcher.isTorchActive()).toBe(false);
 
     expect(() => {
       dispatcher.toggleTorch(true);
+    }).not.toThrow();
+    expect(dispatcher.isTorchActive()).toBe(true);
+
+    expect(() => {
       dispatcher.toggleTorch(false);
+    }).not.toThrow();
+    expect(dispatcher.isTorchActive()).toBe(false);
+
+    expect(() => {
+      dispatcher.startSosStrobe();
       dispatcher.stopTorch();
     }).not.toThrow();
+    expect(dispatcher.isTorchActive()).toBe(false);
   });
 
   it('should support audible alarm methods safely', () => {

@@ -42,7 +42,10 @@
   let isProbing = false;
 
   // Emergency Beacon Controls State
+  const dispatcher = NativeBridgeDispatcher.getInstance();
+  const torchStore = dispatcher.torchActiveStore;
   let isFlashlightActive = false;
+  $: isFlashlightActive = $torchStore;
   let isSirenActive = false;
   let isStealthActive = false;
   let isUltraSurvival = false;
@@ -147,12 +150,11 @@
   }
 
   function toggleFlashlight() {
-    isFlashlightActive = !isFlashlightActive;
-    const dispatcher = NativeBridgeDispatcher.getInstance();
     if (isFlashlightActive) {
-      dispatcher.startSosStrobe();
-    } else {
       dispatcher.stopSosStrobe();
+      dispatcher.stopTorch();
+    } else {
+      dispatcher.startSosStrobe();
     }
   }
 
@@ -247,7 +249,7 @@
       on:click={toggleFlashlight}
       title="ไฟฉายกระพริบรหัสมอร์ส SOS"
     >
-      <span>⚡</span> <span>ไฟฉาย SOS</span>
+      <span>⚡</span> <span>{isFlashlightActive ? 'ปิดไฟฉาย' : 'ไฟฉาย SOS'}</span>
     </button>
     <button
       class="btn-beacon"

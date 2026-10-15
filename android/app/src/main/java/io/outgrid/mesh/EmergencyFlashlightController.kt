@@ -36,13 +36,30 @@ class EmergencyFlashlightController(private val context: Context) {
 
     init {
         try {
-            cameraId = cameraManager?.cameraIdList?.firstOrNull()
+            cameraManager?.let { cm ->
+                for (id in cm.cameraIdList) {
+                    try {
+                        val chars = cm.getCameraCharacteristics(id)
+                        val flashAvailable = chars.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                        if (flashAvailable) {
+                            cameraId = id
+                            break
+                        }
+                    } catch (_: Exception) {}
+                }
+                if (cameraId == null) {
+                    cameraId = cm.cameraIdList.firstOrNull()
+                }
+            }
         } catch (_: Exception) {}
     }
 
     private val strobeRunnable = object : Runnable {
         override fun run() {
-            if (!isStrobeRunning) return
+            if (!isStrobeRunning) {
+                setFlash(false)
+                return
+            }
 
             // Thermal cutoff check
             if (System.currentTimeMillis() - startTime >= MAX_CONTINUOUS_MS) {
@@ -60,17 +77,24 @@ class EmergencyFlashlightController(private val context: Context) {
         }
     }
 
+    @Synchronized
     fun startSosStrobe() {
         if (isStrobeRunning || cameraId == null) return
         isStrobeRunning = true
         patternIndex = 0
         startTime = System.currentTimeMillis()
+        handler.removeCallbacksAndMessages(null)
         handler.post(strobeRunnable)
     }
 
+    @Synchronized
     fun stopStrobe() {
         isStrobeRunning = false
-        handler.removeCallbacks(strobeRunnable)
+        handler.removeCallbacksAndMessages(null)
+        // Post turning off to the main looper thread to ensure execution after any in-flight runnable
+        handler.post {
+            setFlash(false)
+        }
         setFlash(false)
     }
 
@@ -81,6 +105,17 @@ class EmergencyFlashlightController(private val context: Context) {
             cameraId?.let { id ->
                 cameraManager?.setTorchMode(id, enable)
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+            // Fallback for turning off: iterate all available cameras to force torch off
+            if (!enable) {
+                try {
+                    cameraManager?.cameraIdList?.forEach { id ->
+                        try {
+                            cameraManager.setTorchMode(id, false)
+                        } catch (_: Exception) {}
+                    }
+                } catch (_: Exception) {}
+            }
+        }
     }
 }

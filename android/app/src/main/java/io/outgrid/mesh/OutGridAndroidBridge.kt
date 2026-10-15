@@ -38,7 +38,21 @@ class OutGridAndroidBridge(
 
     init {
         try {
-            cameraId = cameraManager?.cameraIdList?.firstOrNull()
+            cameraManager?.let { cm ->
+                for (id in cm.cameraIdList) {
+                    try {
+                        val chars = cm.getCameraCharacteristics(id)
+                        val flashAvailable = chars.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                        if (flashAvailable) {
+                            cameraId = id
+                            break
+                        }
+                    } catch (_: Exception) {}
+                }
+                if (cameraId == null) {
+                    cameraId = cm.cameraIdList.firstOrNull()
+                }
+            }
         } catch (_: Exception) {}
     }
 
@@ -66,6 +80,14 @@ class OutGridAndroidBridge(
     @JavascriptInterface
     fun stopSosStrobe(): Boolean {
         flashlightController.stopStrobe()
+        try {
+            cameraId?.let { cameraManager?.setTorchMode(it, false) }
+        } catch (_: Exception) {}
+        try {
+            cameraManager?.cameraIdList?.forEach { id ->
+                try { cameraManager?.setTorchMode(id, false) } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
         isTorchActive = false
         return true
     }
@@ -73,6 +95,14 @@ class OutGridAndroidBridge(
     @JavascriptInterface
     fun stopTorch(): Boolean {
         flashlightController.stopStrobe()
+        try {
+            cameraId?.let { cameraManager?.setTorchMode(it, false) }
+        } catch (_: Exception) {}
+        try {
+            cameraManager?.cameraIdList?.forEach { id ->
+                try { cameraManager?.setTorchMode(id, false) } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
         isTorchActive = false
         return true
     }
