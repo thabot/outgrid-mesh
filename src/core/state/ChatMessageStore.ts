@@ -44,13 +44,31 @@ export class ChatMessageManager {
   private dispatcher = NativeBridgeDispatcher.getInstance();
   private auth = new AuthManager();
   private unsubscribeRadio: (() => void) | null = null;
+  private seenPacketMap = new Map<string, number>();
 
   private static readonly DIRECT_STORAGE_KEY = 'outgrid_chat_direct_v2';
   private static readonly BROADCAST_STORAGE_KEY = 'outgrid_chat_broadcast_v2';
+  private static readonly DEDUP_WINDOW_MS = 15000; // 15-second deduplication suppression window
 
   constructor() {
     this.loadPersistedMessages();
     this.initRadioPacketListener();
+  }
+
+  public isDuplicatePacket(key: string, now: number = Date.now()): boolean {
+    const lastSeen = this.seenPacketMap.get(key);
+    if (lastSeen !== undefined && (now - lastSeen) < ChatMessageManager.DEDUP_WINDOW_MS) {
+      return true;
+    }
+    this.seenPacketMap.set(key, now);
+    if (this.seenPacketMap.size > 1000) {
+      for (const [k, timestamp] of this.seenPacketMap.entries()) {
+        if (now - timestamp > 60000) {
+          this.seenPacketMap.delete(k);
+        }
+      }
+    }
+    return false;
   }
 
   public getDirectMessagesStore() {
@@ -250,13 +268,23 @@ export class ChatMessageManager {
         if (!isForMe) return;
 
         const senderHex = `#${compact.senderShortId.toString(16).padStart(4, '0').toUpperCase()}`;
+        const dedupKey = `compact:${compact.senderShortId}:${compact.truncatedMsgId || compact.textPayload}:${compact.textPayload}`;
+        if (this.isDuplicatePacket(dedupKey, now)) {
+          return; // Suppress duplicate burst advertisement packets
+        }
+
+        const msgId = compact.truncatedMsgId ? `d-${compact.truncatedMsgId}` : `d-${now}`;
+        const bcastId = compact.truncatedMsgId ? `b-${compact.truncatedMsgId}` : `b-${now}`;
 
         if (isBroadcast) {
           this.broadcastMessagesStore.update(msgs => {
+            if (msgs.some(m => m.id === bcastId || (m.sender.includes(senderHex) && m.text === compact.textPayload && Math.abs(m.timestamp - now) < 5000))) {
+              return msgs;
+            }
             const next = [
               ...msgs,
               {
-                id: `b-${compact.truncatedMsgId || now}`,
+                id: bcastId,
                 sender: `โหนด ${senderHex}`,
                 text: compact.textPayload,
                 time: timeStr,
@@ -270,7 +298,7 @@ export class ChatMessageManager {
         } else {
           const isCurrentlyChatting = activeRecip && activeRecip.toUpperCase().includes(senderHex.toUpperCase());
           const newMsg: IChatMessage = {
-            id: `d-${compact.truncatedMsgId || now}`,
+            id: msgId,
             sender: `โหนด ${senderHex}`,
             isSelf: false,
             text: compact.textPayload,
@@ -282,6 +310,9 @@ export class ChatMessageManager {
           };
 
           this.directMessagesStore.update(msgs => {
+            if (msgs.some(m => m.id === newMsg.id || (m.sender.includes(senderHex) && m.text === newMsg.text && Math.abs(m.timestamp - now) < 5000))) {
+              return msgs;
+            }
             const next = [...msgs, newMsg];
             this.recalculateUnreadCount(next);
             this.savePersistedMessages(next, get(this.broadcastMessagesStore));
@@ -319,13 +350,23 @@ export class ChatMessageManager {
         if (!isForMe) return;
 
         const text = new TextDecoder('utf-8').decode(packet.payload);
+        const dedupKey = `std:${senderHex}:${packet.messageId.toString()}:${text}`;
+        if (this.isDuplicatePacket(dedupKey, now)) {
+          return; // Suppress duplicate standard packets
+        }
+
+        const msgId = `d-${packet.messageId.toString()}`;
+        const bcastId = `b-${packet.messageId.toString()}`;
 
         if (isBroadcast) {
           this.broadcastMessagesStore.update(msgs => {
+            if (msgs.some(m => m.id === bcastId || (m.sender.includes(senderHex) && m.text === text && Math.abs(m.timestamp - now) < 5000))) {
+              return msgs;
+            }
             const next = [
               ...msgs,
               {
-                id: `b-${packet.messageId.toString()}`,
+                id: bcastId,
                 sender: `โหนด ${senderNodeId}`,
                 text,
                 time: timeStr,
@@ -339,7 +380,7 @@ export class ChatMessageManager {
         } else {
           const isCurrentlyChatting = activeRecip && activeRecip.toUpperCase().includes(senderHex.toUpperCase());
           const newMsg: IChatMessage = {
-            id: `d-${packet.messageId.toString()}`,
+            id: msgId,
             sender: `โหนด ${senderNodeId}`,
             isSelf: false,
             text,
@@ -351,6 +392,9 @@ export class ChatMessageManager {
           };
 
           this.directMessagesStore.update(msgs => {
+            if (msgs.some(m => m.id === newMsg.id || (m.sender.includes(senderHex) && m.text === newMsg.text && Math.abs(m.timestamp - now) < 5000))) {
+              return msgs;
+            }
             const next = [...msgs, newMsg];
             this.recalculateUnreadCount(next);
             this.savePersistedMessages(next, get(this.broadcastMessagesStore));

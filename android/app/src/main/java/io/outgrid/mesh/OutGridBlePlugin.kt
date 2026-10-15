@@ -85,6 +85,12 @@ class OutGridBlePlugin(private val context: Context) {
 
         // Strictly fit within 31-byte BLE Legacy Advertising boundary
         // Manufacturer data uses 4B overhead (0xFF + length + 2B Company ID 0x544F) + payload
+        val safePayload = if (rawBytes.size > 27) {
+            Log.w(TAG, "Packet size ${rawBytes.size}B exceeds 27B legacy limit, safely clamping")
+            rawBytes.copyOfRange(0, 27)
+        } else {
+            rawBytes
+        }
         val data = AdvertiseData.Builder()
             .addManufacturerData(TOG_MANUFACTURER_ID, rawBytes)
             .setIncludeDeviceName(false)
@@ -123,13 +129,15 @@ class OutGridBlePlugin(private val context: Context) {
                 .build()
         }
 
-        // Hardware ScanFilter targeting Service UUID 0x544F
-        val filter = ScanFilter.Builder()
-            .setServiceUuid(TOG_PARCEL_UUID)
-            .build()
+        // Hardware ScanFilter targeting Service UUID & Manufacturer Data with open fallback
+        val filters = listOf(
+            ScanFilter.Builder().setServiceUuid(TOG_PARCEL_UUID).build(),
+            ScanFilter.Builder().setManufacturerData(TOG_MANUFACTURER_ID, byteArrayOf()).build(),
+            ScanFilter.Builder().build()
+        )
 
         return try {
-            scanner?.startScan(listOf(filter), scanSettings, scanCallback)
+            scanner?.startScan(filters, scanSettings, scanCallback)
             isScanning = true
             true
         } catch (e: SecurityException) {
@@ -163,11 +171,25 @@ class OutGridBlePlugin(private val context: Context) {
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
             super.onScanResult(callbackType, result)
             val record = result?.scanRecord ?: return
-            val serviceData = record.getServiceData(TOG_PARCEL_UUID) ?: record.bytes ?: return
             val rssi = result.rssi
 
-            // Dispatch raw byte stream up to TypeScript Layer
-            packetListener?.invoke(serviceData, rssi)
+            // 1. Check Service Data for TOG_PARCEL_UUID (Standard Android BLE transport)
+            val serviceData = record.getServiceData(TOG_PARCEL_UUID)
+            if (serviceData != null && serviceData.isNotEmpty()) {
+                packetListener?.invoke(serviceData, rssi)
+                return
+            }
+
+            // 2. Check Manufacturer Data for TOG_MANUFACTURER_ID (0x544F)
+            val mfgData = record.getManufacturerSpecificData(TOG_MANUFACTURER_ID)
+            if (mfgData != null && mfgData.isNotEmpty()) {
+                packetListener?.invoke(mfgData, rssi)
+                return
+            }
+
+            // 3. Fallback to raw advertising bytes
+            val rawBytes = record.bytes ?: return
+            packetListener?.invoke(rawBytes, rssi)
         }
     }
 }

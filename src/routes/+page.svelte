@@ -21,7 +21,7 @@
     peerCountsStore,
     peerDiscoveryManager
   } from '../core/state/PeerDiscoveryStore';
-  import { unreadChatCountStore } from '../core/state/ChatMessageStore';
+  import { unreadChatCountStore, chatMessageManager } from '../core/state/ChatMessageStore';
   import { AuthManager } from '../core/auth/AuthManager';
   import { OneTapSosEngine, SosStatusCategory } from '../core/state/OneTapSosEngine';
   import { NativeBridgeDispatcher } from '../core/native/NativeBridgeDispatcher';
@@ -73,73 +73,124 @@
     activeTab = 'chat';
   }
 
+  function getSosCategoryThaiLabel(cat: SosStatusCategory | string): string {
+    switch (cat) {
+      case SosStatusCategory.NEED_BOAT: return '🌊 น้ำท่วมติดค้าง (ต้องการเรือด่วน)';
+      case SosStatusCategory.TRAPPED_RUBBLE: return '🏚️ ติดใต้ซากอาคาร (ต้องการกู้ภัย)';
+      case SosStatusCategory.GENERAL_EMERGENCY: return '🩺 บาดเจ็บสาหัส (ต้องการแพทย์/พยาบาล)';
+      case SosStatusCategory.OXYGEN_DEPLETION: return '🔥 ไฟไหม้/ควัน (ขาดอากาศ)';
+      case SosStatusCategory.VULNERABLE_CHILD_ELDERLY: return '👶 มีเด็ก/คนชรา/ผู้ป่วยติดเตียง';
+      default: return '🚨 ขอความช่วยเหลือฉุกเฉิน';
+    }
+  }
+
+  function triggerIncomingSosAlert(alertObj: IIncomingSosAlert) {
+    incomingSosBannerRef?.handleIncomingSosPacket(alertObj);
+    const existingIdx = demoSosTargets.findIndex(t => t.id === alertObj.id);
+    if (existingIdx >= 0) {
+      demoSosTargets[existingIdx] = { ...alertObj };
+    } else {
+      demoSosTargets.push({ ...alertObj });
+    }
+    const dispatcher = NativeBridgeDispatcher.getInstance();
+    dispatcher.wakeScreenForEmergency();
+    dispatcher.playAudibleAlarm();
+    dispatcher.vibrateSosPattern();
+  }
+
   function handleIncomingSosRadio(bytes: Uint8Array, rssi: number) {
     if (bytes.length < 5) return;
+    const now = Date.now();
+    const measuredPower = -59;
+    const n = 2.5;
+    let dist = Math.round(Math.pow(10, (measuredPower - rssi) / (10 * n)));
+    dist = Math.max(5, Math.min(2500, dist));
+
+    // 1. Packets starting with TOG Magic (0x544F)
     if (bytes[0] === 0x54 && bytes[1] === 0x4F) {
       const pType = bytes[2] & 0x1f;
       if (pType === TOGPacketType.SOS_BEACON) {
-        try {
-          const packet = PacketSerializer.deserialize(bytes);
-          let senderHex = Array.from(packet.senderPubkeyHash).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
-          if (!senderHex) senderHex = 'NODE';
-          const senderNodeId = `#${senderHex}`;
-
-          const myPubHex = Array.from(myProfile.keyPair.publicKey).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
-          if (senderHex === myPubHex) return;
-
-          let lat = 13.7563;
-          let lng = 100.5018;
-          let cat = 'เหตุฉุกเฉินทั่วไป';
-
-          if (packet.payload.length >= 6) {
-            const view = new DataView(packet.payload.buffer, packet.payload.byteOffset, packet.payload.byteLength);
-            const deltaX = view.getInt16(0, false);
-            const deltaY = view.getInt16(2, false);
-            const decomp = H3DeltaCompressor.decompress(packet.targetH3Index, { deltaX, deltaY });
-            lat = decomp.lat;
-            lng = decomp.lng;
-            const catEnum = OneTapSosEngine.decodeCategory(packet.payload[5]);
-            cat = catEnum;
+        // 1A. Compact SOS Beacon (21 Bytes) - Legacy BLE Advertising Format
+        if (bytes.length === 21) {
+          try {
+            const compact = PacketSerializer.deserializeCompactSOS(bytes);
+            const decomp = H3DeltaCompressor.decompress(compact.h3Index, {
+              deltaX: compact.deltaX,
+              deltaY: compact.deltaY
+            });
+            const catEnum = OneTapSosEngine.decodeCategory(compact.statusFlags);
+            const catLabel = getSosCategoryThaiLabel(catEnum);
+            const alertObj: IIncomingSosAlert = {
+              id: `sos-compact-${compact.h3Index.toString(16)}-${compact.seqId}`,
+              senderNodeId: `โหนดวิทยุใกล้เคียง`,
+              lat: decomp.lat,
+              lng: decomp.lng,
+              distanceMeters: dist,
+              category: catLabel,
+              timestamp: now
+            };
+            triggerIncomingSosAlert(alertObj);
+            return;
+          } catch (err) {
+            console.warn('Failed to parse Compact SOS packet:', err);
           }
+        }
 
-          const measuredPower = -59;
-          const n = 2.5;
-          let dist = Math.round(Math.pow(10, (measuredPower - rssi) / (10 * n)));
-          dist = Math.max(5, Math.min(2500, dist));
+        // 1B. Standard TOG Packet (>= 39 Bytes)
+        if (bytes.length >= 39) {
+          try {
+            const packet = PacketSerializer.deserialize(bytes);
+            let senderHex = Array.from(packet.senderPubkeyHash).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
+            if (!senderHex) senderHex = 'NODE';
+            const senderNodeId = `#${senderHex}`;
 
-          const alertObj: IIncomingSosAlert = {
-            id: `sos-${packet.messageId.toString()}`,
-            senderNodeId,
-            lat,
-            lng,
-            distanceMeters: dist,
-            category: cat,
-            timestamp: Date.now()
-          };
+            const myPubHex = Array.from(myProfile.keyPair.publicKey).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
+            if (senderHex === myPubHex) return;
 
-          incomingSosBannerRef?.handleIncomingSosPacket(alertObj);
+            let lat = 13.7563;
+            let lng = 100.5018;
+            let cat = 'เหตุฉุกเฉินทั่วไป';
 
-          const existingIdx = demoSosTargets.findIndex(t => t.id === alertObj.id);
-          if (existingIdx >= 0) {
-            demoSosTargets[existingIdx] = { ...alertObj };
-          } else {
-            demoSosTargets.push({ ...alertObj });
+            if (packet.payload.length >= 6) {
+              const view = new DataView(packet.payload.buffer, packet.payload.byteOffset, packet.payload.byteLength);
+              const deltaX = view.getInt16(0, false);
+              const deltaY = view.getInt16(2, false);
+              const decomp = H3DeltaCompressor.decompress(packet.targetH3Index, { deltaX, deltaY });
+              lat = decomp.lat;
+              lng = decomp.lng;
+              const catEnum = OneTapSosEngine.decodeCategory(packet.payload[5]);
+              cat = getSosCategoryThaiLabel(catEnum);
+            }
+
+            const alertObj: IIncomingSosAlert = {
+              id: `sos-${packet.messageId.toString()}`,
+              senderNodeId,
+              lat,
+              lng,
+              distanceMeters: dist,
+              category: cat,
+              timestamp: now
+            };
+            triggerIncomingSosAlert(alertObj);
+            return;
+          } catch (err) {
+            console.warn('Failed to parse incoming SOS packet:', err);
           }
-        } catch (err) {
-          console.warn('Failed to parse incoming SOS packet:', err);
         }
       }
-    } else if (bytes.length === 10) {
+    }
+
+    // 2. Fixed 10-byte Canned Emergency Status Packet
+    if (bytes.length === 10) {
       try {
         const canned = PacketSerializer.deserializeCannedEmergency(bytes);
         const senderHex = canned.senderShortId.toString(16).padStart(4, '0').toUpperCase();
         const senderNodeId = `#${senderHex}`;
-        const catLabel = OneTapSosEngine.getCannedStatusLabel(canned.statusCode);
 
-        const measuredPower = -59;
-        const n = 2.5;
-        let dist = Math.round(Math.pow(10, (measuredPower - rssi) / (10 * n)));
-        dist = Math.max(5, Math.min(2500, dist));
+        const myPubHex = Array.from(myProfile.keyPair.publicKey).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 4).toUpperCase();
+        if (senderHex === myPubHex) return;
+
+        const catLabel = OneTapSosEngine.getCannedStatusLabel(canned.statusCode);
 
         const alertObj: IIncomingSosAlert = {
           id: `canned-${canned.senderShortId}-${canned.sequenceId}`,
@@ -148,24 +199,17 @@
           lng: 100.5018,
           distanceMeters: dist,
           category: catLabel,
-          timestamp: Date.now()
+          timestamp: now
         };
-
-        incomingSosBannerRef?.handleIncomingSosPacket(alertObj);
-
-        const existingIdx = demoSosTargets.findIndex(t => t.id === alertObj.id);
-        if (existingIdx >= 0) {
-          demoSosTargets[existingIdx] = { ...alertObj };
-        } else {
-          demoSosTargets.push({ ...alertObj });
-        }
+        triggerIncomingSosAlert(alertObj);
+        return;
       } catch (err) {
         console.warn('Failed to parse incoming Canned Emergency packet:', err);
       }
     }
   }
 
-  function handleTriggerSos(category: SosStatusCategory = SosStatusCategory.IMMEDIATE_ASSISTANCE) {
+  function handleTriggerSos(category: SosStatusCategory = SosStatusCategory.GENERAL_EMERGENCY) {
     if (isSosDispatching) return;
     isSosDispatching = true;
 
@@ -187,25 +231,62 @@
       } catch {}
 
       const senderPubkeyHash = myProfile.keyPair.publicKey.slice(0, 8);
-      const sosPacket = OneTapSosEngine.createSosBeacon({
+      let numericNodeId = 0x47a1;
+      try {
+        const parsed = parseInt(myProfile.nodeId.slice(0, 4), 16);
+        if (!isNaN(parsed) && parsed > 0) numericNodeId = parsed;
+      } catch {}
+
+      const dispatcher = NativeBridgeDispatcher.getInstance();
+      const now = Date.now();
+      const seqId = (now & 0xff);
+      const catLabel = getSosCategoryThaiLabel(category);
+
+      // 1. Transmit Compact 21-byte SOS Beacon (Strictly fits BLE 31-byte advertising boundary)
+      const compactSosWire = OneTapSosEngine.createCompactSosBeacon({
         lat: currentLat,
         lng: currentLng,
         batteryLevel: 95,
         category,
         senderPubkeyHash
-      });
+      }, seqId);
+      dispatcher.transmitRadioPacket(compactSosWire, true);
 
-      const wireBytes = PacketSerializer.serialize(sosPacket);
-      const dispatcher = NativeBridgeDispatcher.getInstance();
-      dispatcher.transmitRadioPacket(wireBytes, true);
+      // 2. Transmit Canned Emergency Packet (10 bytes) containing our sender Short ID
+      const cannedWire = OneTapSosEngine.createCannedEmergencyBeacon(
+        numericNodeId,
+        category,
+        95,
+        (now & 0xffff)
+      );
       setTimeout(() => {
-        dispatcher.transmitRadioPacket(wireBytes, true);
-      }, 350);
+        dispatcher.transmitRadioPacket(cannedWire, true);
+      }, 250);
+
+      // 3. Broadcast to public chat so everyone in range sees the SOS message in the chat feed
+      chatMessageManager.sendBroadcastMessage(
+        `🚨 [SOS ขอความช่วยเหลือ] ${catLabel} พิกัด (${currentLat.toFixed(4)}, ${currentLng.toFixed(4)})`
+      );
+
+      // 4. Standard TOG Packet for IP/Relay/LoRa bridges (45 bytes)
+      try {
+        const sosPacket = OneTapSosEngine.createSosBeacon({
+          lat: currentLat,
+          lng: currentLng,
+          batteryLevel: 95,
+          category,
+          senderPubkeyHash
+        });
+        const wireBytes = PacketSerializer.serialize(sosPacket);
+        setTimeout(() => {
+          dispatcher.transmitRadioPacket(wireBytes, true);
+        }, 500);
+      } catch {}
 
       dispatcher.startSosStrobe();
       dispatcher.vibrateSosPattern();
 
-      alert(`🚨 สัญญาณ SOS หมวด [${category}] ถูกกระจายผ่านคลื่นวิทยุ BLE เรียบร้อยแล้ว! รัศมี 300ม. - 5กม.`);
+      alert(`🚨 สัญญาณ SOS หมวด [${catLabel}] ถูกกระจายผ่านคลื่นวิทยุ BLE เรียบร้อยแล้ว! รัศมี 300ม. - 5กม.`);
     } catch (err: any) {
       alert(`⚠️ เกิดข้อผิดพลาดในการยิงวิทยุ: ${err.message}`);
     } finally {
@@ -214,7 +295,7 @@
   }
 
   function handlePanic() {
-    handleTriggerSos(SosStatusCategory.IMMEDIATE_ASSISTANCE);
+    handleTriggerSos(SosStatusCategory.GENERAL_EMERGENCY);
   }
 
   function toggleSurvivalMode() {

@@ -6,8 +6,9 @@
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
 
-import { ITOGPacket, TOGPacketType, TOGPriority, DEFAULT_SOS_HOPS } from '../protocol/TOGPacket';
+import { ITOGPacket, TOGPacketType, TOGPriority, DEFAULT_SOS_HOPS, CannedEmergencyCode } from '../protocol/TOGPacket';
 import { H3DeltaCompressor } from '../spatial/H3DeltaCompressor';
+import { PacketSerializer } from '../protocol/PacketSerializer';
 
 export enum SosStatusCategory {
   TRAPPED_RUBBLE = 'TRAPPED_RUBBLE',     // ติดอยู่ใต้ซากปรักหักพัง
@@ -78,6 +79,61 @@ export class OneTapSosEngine {
       case 0x04: return SosStatusCategory.OXYGEN_DEPLETION;
       default: return SosStatusCategory.GENERAL_EMERGENCY;
     }
+  }
+
+  /**
+   * Constructs compact 21-byte SOS emergency beacon packet strictly fitting BLE Legacy limit
+   */
+  public static createCompactSosBeacon(req: ISosRequest, seqId: number = (Date.now() & 0xff)): Uint8Array {
+    const compressed = H3DeltaCompressor.compress(req.lat, req.lng);
+    const catCode = OneTapSosEngine.encodeCategory(req.category);
+    return PacketSerializer.serializeCompactSosBeacon(
+      seqId,
+      compressed.h3Index,
+      compressed.deltaOffset.deltaX,
+      compressed.deltaOffset.deltaY,
+      req.batteryLevel,
+      catCode
+    );
+  }
+
+  /**
+   * Constructs fixed 10-byte Canned Emergency Beacon containing sender Short ID
+   */
+  public static createCannedEmergencyBeacon(
+    senderShortId: number,
+    category: SosStatusCategory,
+    batteryLevel: number,
+    sequenceId: number = (Date.now() & 0xffff)
+  ): Uint8Array {
+    let cannedCode = CannedEmergencyCode.NEED_MEDIC;
+    switch (category) {
+      case SosStatusCategory.NEED_BOAT:
+        cannedCode = CannedEmergencyCode.FLOOD_DANGER;
+        break;
+      case SosStatusCategory.TRAPPED_RUBBLE:
+        cannedCode = CannedEmergencyCode.TRAPPED;
+        break;
+      case SosStatusCategory.OXYGEN_DEPLETION:
+        cannedCode = CannedEmergencyCode.FIRE_HAZARD;
+        break;
+      case SosStatusCategory.VULNERABLE_CHILD_ELDERLY:
+      case SosStatusCategory.GENERAL_EMERGENCY:
+      default:
+        cannedCode = CannedEmergencyCode.NEED_MEDIC;
+        break;
+    }
+
+    return PacketSerializer.serializeCannedEmergency({
+      packetType: TOGPacketType.SOS_BEACON,
+      hopCount: 7,
+      senderShortId,
+      recipientShortId: 0xffff,
+      sequenceId,
+      statusCode: cannedCode,
+      h3LowerRes9: 0,
+      batteryLevelTier: Math.min(5, Math.max(1, Math.ceil(batteryLevel / 20)))
+    });
   }
 
   /**
