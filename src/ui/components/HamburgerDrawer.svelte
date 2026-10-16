@@ -14,10 +14,24 @@
   import ApkShareScreen from './ApkShareScreen.svelte';
   import AcousticBeaconPanel from './AcousticBeaconPanel.svelte';
   import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../../core/i18n/I18nStore';
+  import { AuthManager } from '../../core/auth/AuthManager';
 
   export let isOpen = false;
   export let appVersion = '1.1.0';
   export let commitSha = 'local';
+
+  let authManager: AuthManager;
+  let userProfile: any = { nodeId: '0000', displayName: 'Guest User' };
+  try {
+    authManager = new AuthManager();
+    userProfile = authManager.getProfile();
+  } catch {}
+
+  $: if (isOpen) {
+    try {
+      if (authManager) userProfile = authManager.getProfile();
+    } catch {}
+  }
 
   const currentLocaleStore = i18n.locale;
   const translations = i18n.translations;
@@ -79,6 +93,21 @@
         </div>
         <button class="btn-close" on:click={closeDrawer} aria-label="ปิดเมนู">✕</button>
       </div>
+
+      <!-- Logged-in User / Device Identity Card -->
+      <button
+        type="button"
+        class="drawer-profile-card"
+        on:click={() => { dispatch('openTab', { tab: 'profile' }); closeDrawer(); }}
+        title="แตะเพื่อดูรหัสเครื่องและแก้ไขโปรไฟล์ตัวตน"
+      >
+        <div class="drawer-profile-avatar">👤</div>
+        <div class="drawer-profile-info">
+          <div class="drawer-profile-name">{userProfile.displayName || `Guest-${(userProfile.nodeId || '0000').slice(0, 4).toUpperCase()}`}</div>
+          <div class="drawer-profile-node">🔑 รหัสเครื่อง (Node ID): <span class="node-highlight">#{(userProfile.nodeId || '0000').slice(0, 4).toUpperCase()}</span></div>
+        </div>
+        <span class="drawer-profile-arrow">➔</span>
+      </button>
 
       {#if currentSection !== 'menu'}
         <div class="sub-nav-bar">
@@ -415,6 +444,65 @@
     flex-direction: column;
     gap: 8px;
     font-size: 0.82rem;
+  }
+
+  .drawer-profile-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(59, 130, 246, 0.08));
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin: 12px 16px 4px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    width: calc(100% - 32px);
+  }
+  .drawer-profile-card:hover {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(59, 130, 246, 0.15));
+    border-color: #38bdf8;
+  }
+  .drawer-profile-avatar {
+    font-size: 1.5rem;
+    background: rgba(56, 189, 248, 0.2);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    flex-shrink: 0;
+  }
+  .drawer-profile-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .drawer-profile-name {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .drawer-profile-node {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+  .node-highlight {
+    color: #38bdf8;
+    font-weight: 800;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+  }
+  .drawer-profile-arrow {
+    color: #38bdf8;
+    font-size: 0.95rem;
+    font-weight: bold;
   }
 
   .drawer-footer {

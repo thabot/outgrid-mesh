@@ -413,6 +413,15 @@
       </div>
     </div>
     <div class="header-right">
+      <button
+        type="button"
+        class="header-node-badge"
+        on:click={() => activeTab = 'profile'}
+        title="แตะเพื่อดูรหัสเครื่องและแก้ไขโปรไฟล์ตัวตน"
+      >
+        <span class="node-key-icon">🔑</span>
+        <span class="node-id-text">#{(myProfile?.nodeId || '0000').slice(0, 4).toUpperCase()}</span>
+      </button>
       <span>{versionLabel}</span>
     </div>
   </header>
@@ -695,6 +704,31 @@
     gap: 8px;
     font-size: 11px;
     color: #64748b;
+  }
+  .header-node-badge {
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 6px;
+    padding: 3px 7px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #38bdf8;
+    font-weight: 700;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .header-node-badge:hover {
+    background: rgba(56, 189, 248, 0.22);
+    border-color: #38bdf8;
+  }
+  .node-key-icon {
+    font-size: 0.75rem;
+  }
+  .node-id-text {
+    font-family: monospace;
+    letter-spacing: 0.5px;
   }
 
   /* Battery Exemption Guide Banner */

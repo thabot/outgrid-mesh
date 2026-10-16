@@ -1,10 +1,14 @@
 package io.outgrid.mesh
 
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
+import android.bluetooth.le.AdvertisingSet
+import android.bluetooth.le.AdvertisingSetCallback
+import android.bluetooth.le.AdvertisingSetParameters
 import android.bluetooth.le.BluetoothLeAdvertiser
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
@@ -53,8 +57,26 @@ class OutGridBlePlugin(private val context: Context) {
         this.packetListener = listener
     }
 
+    private var currentAdvertisingSet: Any? = null
+    private val advertisingSetCallback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        object : AdvertisingSetCallback() {
+            override fun onAdvertisingSetStarted(advertisingSet: AdvertisingSet?, txPower: Int, status: Int) {
+                if (status == AdvertisingSetCallback.ADVERTISE_SUCCESS) {
+                    currentAdvertisingSet = advertisingSet
+                    isAdvertising = true
+                }
+            }
+            override fun onAdvertisingSetStopped(advertisingSet: AdvertisingSet?) {
+                currentAdvertisingSet = null
+                isAdvertising = false
+            }
+        }
+    } else {
+        null
+    }
+
     /**
-     * Broadcasts a raw TOG v1.1 packet (e.g. PRESENCE_CHIRP 27B or SOS_BEACON 21B)
+     * Broadcasts a raw TOG v1.1 packet (e.g. PRESENCE_CHIRP 27B, SOS_BEACON 21B, or DIRECT_CHAT <= 254B)
      */
     fun transmitPacket(rawBytes: ByteArray, txPowerHigh: Boolean = true): Boolean {
         if (advertiser == null || !bluetoothAdapter!!.isEnabled) {
@@ -79,8 +101,47 @@ class OutGridBlePlugin(private val context: Context) {
         if (isAdvertising) {
             try {
                 advertiser?.stopAdvertising(advertiseCallback)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && advertisingSetCallback != null) {
+                    advertiser?.stopAdvertisingSet(advertisingSetCallback as AdvertisingSetCallback)
+                }
             } catch (_: Exception) {}
             isAdvertising = false
+        }
+
+        // 1. If payload > 27 bytes and Android 8.0+ Extended Advertising is supported:
+        // Use BLE Extended Advertising (up to 254 bytes) with LE Coded PHY / 1M PHY
+        if (rawBytes.size > 27 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bluetoothAdapter?.isLeExtendedAdvertisingSupported == true) {
+            val isCoded = bluetoothAdapter?.isLeCodedPhySupported == true
+            val params = AdvertisingSetParameters.Builder()
+                .setLegacyMode(false)
+                .setConnectable(false)
+                .setScannable(false)
+                .setInterval(AdvertisingSetParameters.INTERVAL_LOW)
+                .setTxPowerLevel(if (txPowerHigh) AdvertisingSetParameters.TX_POWER_HIGH else AdvertisingSetParameters.TX_POWER_LOW)
+                .apply {
+                    if (isCoded) {
+                        setPrimaryPhy(BluetoothDevice.PHY_LE_CODED)
+                        setSecondaryPhy(BluetoothDevice.PHY_LE_CODED)
+                    } else {
+                        setPrimaryPhy(BluetoothDevice.PHY_LE_1M)
+                        setSecondaryPhy(BluetoothDevice.PHY_LE_2M)
+                    }
+                }
+                .build()
+
+            val extData = AdvertiseData.Builder()
+                .addManufacturerData(TOG_MANUFACTURER_ID, rawBytes)
+                .setIncludeDeviceName(false)
+                .setIncludeTxPowerLevel(false)
+                .build()
+
+            try {
+                advertiser?.startAdvertisingSet(params, extData, null, null, null, advertisingSetCallback as AdvertisingSetCallback)
+                isAdvertising = true
+                return true
+            } catch (e: Exception) {
+                Log.w(TAG, "Extended advertising burst failed, falling back to legacy", e)
+            }
         }
 
         // Strictly fit within 31-byte BLE Legacy Advertising boundary

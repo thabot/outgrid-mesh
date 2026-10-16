@@ -321,7 +321,7 @@ export class ChatMessageManager {
           };
 
           this.directMessagesStore.update(msgs => {
-            if (msgs.some(m => m.id === newMsg.id || (m.sender.includes(senderHex) && m.text === newMsg.text && Math.abs(m.timestamp - now) < 5000))) {
+            if (msgs.some(m => m.id === newMsg.id || (m.sender.includes(senderHex) && (m.text === newMsg.text || m.text.startsWith(newMsg.text)) && Math.abs(m.timestamp - now) < 5000))) {
               return msgs;
             }
             const next = [...msgs, newMsg];
@@ -379,7 +379,18 @@ export class ChatMessageManager {
 
         if (isBroadcast) {
           this.broadcastMessagesStore.update(msgs => {
-            if (msgs.some(m => m.id === bcastId || (m.sender.includes(senderHex) && m.text === text && Math.abs(m.timestamp - now) < 5000))) {
+            const existingIdx = msgs.findIndex(m => m.id === bcastId || (m.sender.includes(senderHex) && Math.abs(m.timestamp - now) < 5000));
+            if (existingIdx >= 0) {
+              if (msgs[existingIdx].text.length < text.length) {
+                const next = [...msgs];
+                next[existingIdx] = {
+                  ...next[existingIdx],
+                  text,
+                  hops: `${packet.header.ttlHops} Hops`
+                };
+                this.savePersistedMessages(get(this.directMessagesStore), next);
+                return next;
+              }
               return msgs;
             }
             const next = [
@@ -420,7 +431,18 @@ export class ChatMessageManager {
           };
 
           this.directMessagesStore.update(msgs => {
-            if (msgs.some(m => m.id === newMsg.id || (m.sender.includes(senderHex) && m.text === newMsg.text && Math.abs(m.timestamp - now) < 5000))) {
+            const existingIdx = msgs.findIndex(m => m.id === newMsg.id || (m.sender.includes(senderHex) && Math.abs(m.timestamp - now) < 5000));
+            if (existingIdx >= 0) {
+              if (msgs[existingIdx].text.length < newMsg.text.length) {
+                const next = [...msgs];
+                next[existingIdx] = {
+                  ...next[existingIdx],
+                  text: newMsg.text,
+                  hops: newMsg.hops
+                };
+                this.savePersistedMessages(next, get(this.broadcastMessagesStore));
+                return next;
+              }
               return msgs;
             }
             const next = [...msgs, newMsg];
@@ -514,18 +536,23 @@ export class ChatMessageManager {
       };
 
       const wireBytes = PacketSerializer.serialize(directPacket);
-      this.dispatcher.transmitRadioPacket(wireBytes, true);
 
-      // Compact direct chat frame (<= 28 bytes)
-      const compactMsg: ICompactDirectChat = {
-        senderShortId: myNumericShortId,
-        recipientShortId,
-        truncatedMsgId: (now & 0xffffffff) >>> 0,
-        h3LowerRes9: 0,
-        textPayload: text
-      };
-      const compactWire = PacketSerializer.serializeCompactDirectChat(compactMsg);
-      this.dispatcher.transmitRadioPacket(compactWire, true);
+      // If message fits within 14 bytes (legacy BLE limit), send compact frame
+      // If message is longer than 14 bytes (e.g. Thai text "สบายดีไหม"), send standard TOG packet
+      // NEVER send truncated compact frame for messages > 14 bytes as that causes loss of text!
+      if (payloadBytes.length <= 14) {
+        const compactMsg: ICompactDirectChat = {
+          senderShortId: myNumericShortId,
+          recipientShortId,
+          truncatedMsgId: (now & 0xffffffff) >>> 0,
+          h3LowerRes9: 0,
+          textPayload: text
+        };
+        const compactWire = PacketSerializer.serializeCompactDirectChat(compactMsg);
+        this.dispatcher.transmitRadioPacket(compactWire, true);
+      } else {
+        this.dispatcher.transmitRadioPacket(wireBytes, true);
+      }
       return true;
     } catch (err) {
       console.warn('Failed to transmit direct radio chat:', err);
@@ -582,18 +609,20 @@ export class ChatMessageManager {
       };
 
       const wireBytes = PacketSerializer.serialize(bcastPacket);
-      this.dispatcher.transmitRadioPacket(wireBytes, true);
 
-      // Compact broadcast frame
-      const compactMsg: ICompactDirectChat = {
-        senderShortId: myNumericShortId,
-        recipientShortId: 0xffff,
-        truncatedMsgId: (now & 0xffffffff) >>> 0,
-        h3LowerRes9: 0,
-        textPayload: text
-      };
-      const compactWire = PacketSerializer.serializeCompactDirectChat(compactMsg);
-      this.dispatcher.transmitRadioPacket(compactWire, true);
+      if (payloadBytes.length <= 14) {
+        const compactMsg: ICompactDirectChat = {
+          senderShortId: myNumericShortId,
+          recipientShortId: 0xffff,
+          truncatedMsgId: (now & 0xffffffff) >>> 0,
+          h3LowerRes9: 0,
+          textPayload: text
+        };
+        const compactWire = PacketSerializer.serializeCompactDirectChat(compactMsg);
+        this.dispatcher.transmitRadioPacket(compactWire, true);
+      } else {
+        this.dispatcher.transmitRadioPacket(wireBytes, true);
+      }
       return true;
     } catch (err) {
       console.warn('Failed to transmit broadcast radio packet:', err);
