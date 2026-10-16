@@ -21,7 +21,7 @@
     peerCountsStore,
     peerDiscoveryManager
   } from '../core/state/PeerDiscoveryStore';
-  import { unreadChatCountStore, chatMessageManager } from '../core/state/ChatMessageStore';
+  import { unreadChatCountStore, chatMessageManager, incomingMessageAlertStore } from '../core/state/ChatMessageStore';
   import { AuthManager } from '../core/auth/AuthManager';
   import { OneTapSosEngine, SosStatusCategory } from '../core/state/OneTapSosEngine';
   import { NativeBridgeDispatcher } from '../core/native/NativeBridgeDispatcher';
@@ -302,15 +302,34 @@
     isUltraSurvival = !isUltraSurvival;
   }
 
+  let isInternetOnline = typeof navigator !== 'undefined' ? navigator.onLine : false;
+  let incomingMsgTimeout: any = null;
+
+  function updateOnlineState() {
+    const nativeVal = NativeBridgeDispatcher.getInstance().isInternetConnected();
+    if (nativeVal !== null) {
+      isInternetOnline = nativeVal;
+    } else if (typeof navigator !== 'undefined') {
+      isInternetOnline = navigator.onLine;
+    }
+  }
+
+  $: if ($incomingMessageAlertStore) {
+    if (incomingMsgTimeout) clearTimeout(incomingMsgTimeout);
+    incomingMsgTimeout = setTimeout(() => {
+      incomingMessageAlertStore.set(null);
+    }, 6000);
+  }
+
   onMount(() => {
     myProfile = auth.getProfile();
-    let numericNodeId = 0x47A1;
-    try {
-      const parsed = parseInt(myProfile.nodeId.slice(0, 4), 16);
-      if (!isNaN(parsed) && parsed > 0) {
-        numericNodeId = parsed;
-      }
-    } catch {}
+    const numericNodeId = auth.getNumericShortNodeId();
+
+    updateOnlineState();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', updateOnlineState);
+      window.addEventListener('offline', updateOnlineState);
+    }
 
     peerDiscoveryManager.startPresenceBroadcaster(numericNodeId);
 
@@ -320,6 +339,11 @@
   });
 
   onDestroy(() => {
+    if (incomingMsgTimeout) clearTimeout(incomingMsgTimeout);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', updateOnlineState);
+      window.removeEventListener('offline', updateOnlineState);
+    }
     peerDiscoveryManager.stopPresenceBroadcaster();
     if (unsubscribeRadioSos) {
       unsubscribeRadioSos();
@@ -375,6 +399,47 @@
     on:openRadar={(e) => openRadarForTarget(e.detail.target)}
   />
 
+  <!-- Real-time Incoming Chat / Broadcast Alert Toast Banner -->
+  {#if $incomingMessageAlertStore}
+    <div class="incoming-msg-toast" class:broadcast={$incomingMessageAlertStore.isBroadcast}>
+      <div class="msg-toast-icon">{$incomingMessageAlertStore.isBroadcast ? '📢' : '💬'}</div>
+      <div class="msg-toast-body">
+        <div class="msg-toast-header">
+          <span class="msg-toast-sender">{$incomingMessageAlertStore.sender}</span>
+          <span class="msg-toast-time">{$incomingMessageAlertStore.time}</span>
+        </div>
+        <div class="msg-toast-snippet">{$incomingMessageAlertStore.text}</div>
+      </div>
+      <div class="msg-toast-actions">
+        {#if !$incomingMessageAlertStore.isBroadcast}
+          <button
+            class="btn-toast-view"
+            on:click={() => {
+              if ($incomingMessageAlertStore) {
+                targetChatPeer = { peerId: $incomingMessageAlertStore.senderId, peerName: $incomingMessageAlertStore.sender };
+                activeTab = 'chat';
+                incomingMessageAlertStore.set(null);
+              }
+            }}
+          >
+            💬 เปิดดู
+          </button>
+        {:else}
+          <button
+            class="btn-toast-view"
+            on:click={() => {
+              activeTab = 'chat';
+              incomingMessageAlertStore.set(null);
+            }}
+          >
+            📢 ดูประกาศ
+          </button>
+        {/if}
+        <button class="btn-toast-close" on:click={() => incomingMessageAlertStore.set(null)}>✕</button>
+      </div>
+    </div>
+  {/if}
+
   <!-- 3. Unified Status & Emergency Quick Control Bar -->
   <NetworkStatusBar
     peerCounts={$peerCountsStore}
@@ -390,6 +455,8 @@
         <SosMapView
           sosTargets={demoSosTargets}
           peerNodes={$discoveredPeersStore}
+          myNodeId={myProfile?.nodeId || auth.getProfile().nodeId}
+          isOnline={isInternetOnline}
           on:openRadar={(e) => openRadarForTarget(e.detail.target)}
           on:startDirectChat={(e) => {
             targetChatPeer = { peerId: e.detail.peerId, peerName: e.detail.peerName };
@@ -725,5 +792,99 @@
     font-weight: 800;
     font-size: 12px;
     cursor: pointer;
+  }
+
+  /* Incoming Chat / Broadcast Toast Banner */
+  .incoming-msg-toast {
+    margin: 4px 8px;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    border: 1.5px solid #0284c7;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: slideDownToast 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 999;
+  }
+  .incoming-msg-toast.broadcast {
+    border-color: #f59e0b;
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  }
+  @keyframes slideDownToast {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .msg-toast-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .msg-toast-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .msg-toast-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+  }
+  .msg-toast-sender {
+    font-size: 11px;
+    font-weight: 800;
+    color: #38bdf8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .incoming-msg-toast.broadcast .msg-toast-sender {
+    color: #fbbf24;
+  }
+  .msg-toast-time {
+    font-size: 9px;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .msg-toast-snippet {
+    font-size: 11px;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .msg-toast-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .btn-toast-view {
+    background: #0284c7;
+    color: #fff;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .incoming-msg-toast.broadcast .btn-toast-view {
+    background: #d97706;
+  }
+  .btn-toast-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
   }
 </style>

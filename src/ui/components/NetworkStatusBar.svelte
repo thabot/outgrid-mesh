@@ -51,6 +51,11 @@
   let isUltraSurvival = false;
 
   async function checkActiveInternet(): Promise<boolean> {
+    const nativeStatus = dispatcher.isInternetConnected();
+    if (nativeStatus !== null) {
+      return nativeStatus;
+    }
+
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return false;
     }

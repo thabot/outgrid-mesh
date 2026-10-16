@@ -3,6 +3,8 @@ package io.outgrid.mesh
 import android.content.Context
 import android.content.Intent
 import android.hardware.camera2.CameraManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
@@ -13,6 +15,10 @@ import android.provider.Settings
 import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import org.json.JSONObject
 import java.io.File
@@ -235,6 +241,77 @@ class OutGridAndroidBridge(
             put("relativeAltitudeMeters", 0.0)
         }
         return json.toString()
+    }
+
+    /**
+     * Accurately checks whether device has validated active Internet access
+     */
+    @JavascriptInterface
+    fun isInternetConnected(): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val network = cm.activeNetwork ?: return false
+                val caps = cm.getNetworkCapabilities(network) ?: return false
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            } else {
+                @Suppress("DEPRECATION")
+                val netInfo = cm.activeNetworkInfo
+                netInfo != null && netInfo.isConnected
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Displays a system Heads-Up Notification for incoming direct or broadcast chat messages
+     */
+    @JavascriptInterface
+    fun showMessageNotification(sender: String, message: String): Boolean {
+        return try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return false
+            val channelId = "outgrid_chat_notifications"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "OutGrid ข้อความวิทยุฉุกเฉิน",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "การแจ้งเตือนข้อความฉุกเฉินและแชทวิทยุแบบออฟไลน์"
+                    enableVibration(true)
+                    vibrationPattern = longArrayOf(0, 200, 100, 200)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val launchIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                launchIntent,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            val notification = NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(android.R.drawable.ic_dialog_email)
+                .setContentTitle("💬 $sender")
+                .setContentText(message)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+            notificationManager.notify((System.currentTimeMillis() % 10000).toInt(), notification)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**

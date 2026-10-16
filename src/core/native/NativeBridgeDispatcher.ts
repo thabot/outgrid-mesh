@@ -91,6 +91,15 @@ export class NativeBridgeDispatcher {
     return this.isNativeAndroid;
   }
 
+  public isInternetConnected(): boolean | null {
+    try {
+      if (typeof this.bridgeImpl?.isInternetConnected === 'function') {
+        return Boolean(this.bridgeImpl.isInternetConnected());
+      }
+    } catch {}
+    return null;
+  }
+
   public toggleTorch(enabled: boolean): boolean {
     this.torchActiveStore.set(enabled);
     try {

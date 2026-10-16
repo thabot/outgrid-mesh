@@ -202,5 +202,16 @@ export class MockOutGridBridge {
   public isScreenAwake(): boolean {
     return this.screenAwake;
   }
+
+  public isInternetConnected(): boolean {
+    if (typeof navigator !== 'undefined') {
+      return navigator.onLine;
+    }
+    return false;
+  }
+
+  public showMessageNotification(sender: string, message: string): boolean {
+    return true;
+  }
 }
 

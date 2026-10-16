@@ -27,13 +27,27 @@ export class AuthManager {
   private currentProfile: IUserProfile;
   private static readonly STORAGE_KEY = 'outgrid_identity_profile_v1';
 
+  public static resetCache(): void {
+    AuthManager.cachedProfile = null;
+  }
+
+  public static setCachedProfile(profile: IUserProfile | null): void {
+    AuthManager.cachedProfile = profile;
+  }
+
   constructor(profile?: Partial<IUserProfile>) {
     if (profile && (profile.nodeId || profile.keyPair)) {
+      let actualNodeId = profile.nodeId || '';
+      if (!actualNodeId || actualNodeId === 'guest001' || !/^[0-9a-fA-F]{4,}$/.test(actualNodeId)) {
+        const rand8 = new Uint8Array(8);
+        for (let i = 0; i < 8; i++) rand8[i] = Math.floor(Math.random() * 256);
+        actualNodeId = Array.from(rand8).map(b => b.toString(16).padStart(2, '0')).join('');
+      }
       this.currentProfile = {
-        nodeId: profile.nodeId || 'guest001',
+        nodeId: actualNodeId,
         keyPair: profile.keyPair || CryptoEngine.generateKeyPair(),
         role: profile.role || UserRole.GUEST_VICTIM,
-        displayName: profile.displayName || `Guest-${(profile.nodeId || '0000').substring(0, 4)}`,
+        displayName: profile.displayName || `Guest-${actualNodeId.substring(0, 4).toUpperCase()}`,
         badge: profile.badge,
       };
       return;
@@ -64,14 +78,16 @@ export class AuthManager {
       const fallbackBytes = new Uint8Array(32);
       for (let i = 0; i < 32; i++) fallbackBytes[i] = Math.floor(Math.random() * 256);
       keyPair = { privateKey: fallbackBytes, publicKey: fallbackBytes };
-      nodeIdHex = 'guest001';
+      const rand8 = new Uint8Array(8);
+      for (let i = 0; i < 8; i++) rand8[i] = Math.floor(Math.random() * 256);
+      nodeIdHex = Array.from(rand8).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     this.currentProfile = {
       nodeId: nodeIdHex,
       keyPair,
       role: UserRole.GUEST_VICTIM,
-      displayName: `Guest-${nodeIdHex.substring(0, 4)}`,
+      displayName: `Guest-${nodeIdHex.substring(0, 4).toUpperCase()}`,
       badge: undefined,
     };
 
@@ -88,11 +104,19 @@ export class AuthManager {
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed.nodeId && parsed.keyPairHex) {
+            let actualNodeId = parsed.nodeId;
+            // Migrate legacy non-hex or guest001 ids to authentic random hex node IDs
+            if (actualNodeId === 'guest001' || !/^[0-9a-fA-F]{4,}$/.test(actualNodeId)) {
+              const rand8 = new Uint8Array(8);
+              for (let i = 0; i < 8; i++) rand8[i] = Math.floor(Math.random() * 256);
+              actualNodeId = Array.from(rand8).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
             const privBytes = new Uint8Array(parsed.keyPairHex.privateKey.match(/.{1,2}/g).map((byte: string) => parseInt(byte, 16)));
             const pubBytes = new Uint8Array(parsed.keyPairHex.publicKey.match(/.{1,2}/g).map((byte: string) => parseInt(byte, 16)));
-            return {
-              nodeId: parsed.nodeId,
-              displayName: parsed.displayName,
+            const profile: IUserProfile = {
+              nodeId: actualNodeId,
+              displayName: parsed.displayName && !parsed.displayName.startsWith('Guest-gues') ? parsed.displayName : `Guest-${actualNodeId.substring(0, 4).toUpperCase()}`,
               role: parsed.role || UserRole.GUEST_VICTIM,
               badge: parsed.badge,
               keyPair: {
@@ -100,6 +124,10 @@ export class AuthManager {
                 publicKey: pubBytes
               }
             };
+            if (actualNodeId !== parsed.nodeId) {
+              this.savePersistentProfile(profile);
+            }
+            return profile;
           }
         }
       }
@@ -174,4 +202,16 @@ export class AuthManager {
         return false;
     }
   }
+
+  public getShortNodeId(): string {
+    const hex = (this.currentProfile.nodeId || '0000').slice(0, 4).toUpperCase();
+    return `#${hex}`;
+  }
+
+  public getNumericShortNodeId(): number {
+    const hex = (this.currentProfile.nodeId || '0000').slice(0, 4);
+    const parsed = parseInt(hex, 16);
+    return !isNaN(parsed) && parsed > 0 ? (parsed & 0xffff) : 0x47a1;
+  }
 }
+

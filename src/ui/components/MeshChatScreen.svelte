@@ -25,7 +25,7 @@
     directMessagesStore,
     broadcastMessagesStore
   } from '../../core/state/ChatMessageStore';
-  import { discoveredPeersStore } from '../../core/state/PeerDiscoveryStore';
+  import { discoveredPeersStore, peerDiscoveryManager } from '../../core/state/PeerDiscoveryStore';
 
   export let myNodeId: string = 'node-self-47';
   export let targetContact: { peerId: string; peerName: string } | null = null;
@@ -34,18 +34,14 @@
 
   const authManager = new AuthManager();
   const myProfile = authManager.getProfile();
-  const myPubHex = Array.from(myProfile.keyPair.publicKey)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-    .slice(0, 4)
-    .toUpperCase();
+  const myPubHex = (myProfile.nodeId || '0000').slice(0, 4).toUpperCase();
   const myNumericShortId = parseInt(myPubHex, 16) || 0x47a1;
   const myDisplayName = myProfile.displayName || `ฉัน (#${myPubHex})`;
 
   let currentView: 'contacts' | 'broadcast' | 'direct' = 'contacts';
-  let selectedRecipient = 'node-rescue-team';
-  let selectedRecipientName = 'หน่วยกู้ภัยสว่างบริบูรณ์ (Rescue Team)';
-  let selectedRecipientAvatar = '🚑';
+  let selectedRecipient = '';
+  let selectedRecipientName = '';
+  let selectedRecipientAvatar = '📻';
   let contactSearchQuery = '';
   let inputText = '';
   let broadcastInputText = '';
@@ -66,101 +62,73 @@
     isOnline: boolean;
   }
 
-  let contacts: IContactPeer[] = [
-    {
-      id: 'node-rescue-team',
-      name: 'หน่วยกู้ภัยสว่างบริบูรณ์ (Rescue Team)',
-      avatar: '🚑',
-      status: 'ทีมแพทย์และเรือกู้ภัย',
-      lastMessage: '🔒 ได้รับพิกัดแล้ว ทีมอาสากำลังเดินทางด้วยเรือยาง...',
-      lastTime: '15:42',
-      unreadCount: 1,
-      isOnline: true
-    },
-    {
-      id: 'node-medic-04',
-      name: 'หมอสมชาย (Field Doctor #4C55)',
-      avatar: '🩺',
-      status: 'จุดปฐมพยาบาลโซนเหนือ',
-      lastMessage: 'มียาลดไข้และน้ำเกลือสำรองเพียงพอ พร้อมรับผู้ป่วย',
-      lastTime: '14:55',
-      unreadCount: 0,
-      isOnline: true
-    },
-    {
-      id: 'node-scout-01',
-      name: 'อาสาสมัครลาดตระเวน (Scout 01)',
-      avatar: '🦺',
-      status: 'ลาดตระเวนเส้นทางแม่น้ำ',
-      lastMessage: 'จุดอพยพวัดสะพานพร้อมรับผู้ประสบภัย',
-      lastTime: '13:10',
-      unreadCount: 0,
-      isOnline: true
-    }
-  ];
+  const CONTACTS_STORAGE_KEY = 'outgrid_persisted_contacts_v1';
 
-  let broadcastMessages: Array<{
-    id: string;
-    sender: string;
-    text: string;
-    time: string;
-    hops: string;
-    isPinned?: boolean;
-  }> = [
-    {
-      id: 'b-01',
-      sender: 'Scout 01',
-      text: '📢 แจ้งเตือน: ระดับน้ำสะพานมิตรภาพสูงขึ้น 20 ซม. ใน 1 ชม. หลีกเลี่ยงเส้นทางริมแม่น้ำ',
-      time: '15:10',
-      hops: '15 Hops (~2-3km)',
-      isPinned: true
-    },
-    {
-      id: 'b-02',
-      sender: 'หมอสมชาย (Field Doctor #4C55)',
-      text: 'จุดปฐมพยาบาลศาลาประชาคมเปิดบริการแล้ว มีผ้าพันแผล ยาฆ่าเชื้อ และน้ำดื่มสะอาด',
-      time: '15:20',
-      hops: '3 Hops'
-    },
-    {
-      id: 'b-03',
-      sender: 'สถานีวิทยุชุมชนดอนเมือง (#9B22)',
-      text: 'โหนดสถานีทวนสัญญาณ LoRa และ BLE Coded PHY พร้อมรับส่งต่อข้อความกู้ภัย 24 ชม.',
-      time: '15:35',
-      hops: '15 Hops (Max Range)'
-    }
-  ];
+  function loadPersistedContacts(): IContactPeer[] {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(CONTACTS_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      }
+    } catch {}
+    return [];
+  }
 
-  let directMessages: Array<{
-    id: string;
-    sender: string;
-    isSelf: boolean;
-    text: string;
-    time: string;
-    hops: string;
-    hasPhoto?: boolean;
-    recipientId?: string;
-  }> = [
-    {
-      id: 'd-01',
-      sender: 'หน่วยกู้ภัยสว่างบริบูรณ์',
-      isSelf: false,
-      text: 'สวัสดีครับ ได้รับพิกัดขอความช่วยเหลือแล้ว ทีมอาสากำลังนำเรือยางเข้าไป ขอภาพถ่ายสภาพน้ำท่วมในพื้นที่เพื่อประเมินระดับน้ำครับ',
-      time: '15:42',
-      hops: '1 Hop',
-      recipientId: 'node-rescue-team'
-    },
-    {
-      id: 'd-02',
-      sender: `ฉัน (#${myPubHex})`,
-      isSelf: true,
-      text: 'ระดับน้ำสูงถึงเอวแล้วครับ กำลังส่งภาพถ่ายสภาพหน้าบ้านให้ดูครับ',
-      time: '15:44',
-      hops: '1 Hop 🔒',
-      hasPhoto: true,
-      recipientId: 'node-rescue-team'
+  function saveContactsToStorage(list: IContactPeer[]) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(list));
+      }
+    } catch {}
+  }
+
+  let contacts: IContactPeer[] = [];
+
+  function syncContactsFromMessages(messages: any[]) {
+    let changed = false;
+    const current = [...contacts];
+
+    for (const msg of messages) {
+      const peerId = msg.isSelf ? (msg.recipientId || '') : (msg.recipientId || msg.sender.replace(/^โหนด\s*/, ''));
+      if (!peerId) continue;
+      const normalizedPeerId = peerId.trim();
+
+      let contact = current.find(c => c.id === normalizedPeerId || c.id.replace('#', '') === normalizedPeerId.replace('#', ''));
+      if (!contact) {
+        contact = {
+          id: normalizedPeerId,
+          name: `โหนด ${normalizedPeerId}`,
+          avatar: '📻',
+          status: 'เพื่อน & คู่สนทนาวิทยุ',
+          lastMessage: msg.text,
+          lastTime: msg.time,
+          unreadCount: msg.isUnread ? 1 : 0,
+          isOnline: true
+        };
+        current.push(contact);
+        changed = true;
+        peerDiscoveryManager.addFriendPeer(normalizedPeerId);
+      } else {
+        if (contact.lastMessage !== msg.text) {
+          contact.lastMessage = msg.text;
+          contact.lastTime = msg.time;
+          changed = true;
+        }
+      }
     }
-  ];
+
+    if (changed) {
+      contacts = current;
+      saveContactsToStorage(contacts);
+    }
+  }
+
+  $: if ($directMessagesStore) {
+    syncContactsFromMessages($directMessagesStore);
+  }
 
   function parseRecipientShortId(idStr: string): number {
     const hexMatch = idStr.match(/[0-9A-Fa-f]{4}/);
@@ -188,7 +156,7 @@
       found = {
         id: targetContact.peerId,
         name: targetContact.peerName || `Node ${targetContact.peerId}`,
-        avatar: '🧑‍🚀',
+        avatar: '📻',
         status: 'โหนดในระยะวิทยุ',
         lastMessage: 'เริ่มการสนทนา',
         lastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -196,9 +164,11 @@
         isOnline: true
       };
       contacts = [found, ...contacts];
+      saveContactsToStorage(contacts);
     }
     selectedRecipientAvatar = found.avatar;
     chatMessageManager.setActiveRecipient(selectedRecipient);
+    peerDiscoveryManager.addFriendPeer(selectedRecipient);
     currentView = 'direct';
   }
 
@@ -217,10 +187,28 @@
   }
 
   function openDirectChatWithPeer(peer: any) {
-    selectedRecipient = peer.shortNodeId;
-    selectedRecipientName = `โหนด ${peer.shortNodeId}`;
+    const peerId = peer.shortNodeId;
+    selectedRecipient = peerId;
+    selectedRecipientName = peer.customName || `โหนด ${peerId}`;
     selectedRecipientAvatar = '📻';
-    chatMessageManager.setActiveRecipient(peer.shortNodeId);
+    chatMessageManager.setActiveRecipient(peerId);
+    peerDiscoveryManager.addFriendPeer(peerId);
+
+    let found = contacts.find(c => c.id === peerId);
+    if (!found) {
+      found = {
+        id: peerId,
+        name: selectedRecipientName,
+        avatar: '📻',
+        status: 'เพื่อน & โหนดวิทยุใกล้เคียง',
+        lastMessage: 'เริ่มการสนทนา',
+        lastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        unreadCount: 0,
+        isOnline: true
+      };
+      contacts = [found, ...contacts];
+      saveContactsToStorage(contacts);
+    }
     currentView = 'direct';
   }
 
@@ -236,19 +224,38 @@
     if (!text) return;
 
     chatMessageManager.sendDirectMessage(selectedRecipient, text);
+    peerDiscoveryManager.addFriendPeer(selectedRecipient);
 
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const c = contacts.find(item => item.id === selectedRecipient);
+    let c = contacts.find(item => item.id === selectedRecipient);
     if (c) {
       c.lastMessage = `🔒 ${text}`;
       c.lastTime = timeStr;
       contacts = [...contacts];
+      saveContactsToStorage(contacts);
+    } else {
+      c = {
+        id: selectedRecipient,
+        name: selectedRecipientName || `โหนด ${selectedRecipient}`,
+        avatar: selectedRecipientAvatar || '📻',
+        status: 'เพื่อน & คู่สนทนาวิทยุ',
+        lastMessage: `🔒 ${text}`,
+        lastTime: timeStr,
+        unreadCount: 0,
+        isOnline: true
+      };
+      contacts = [c, ...contacts];
+      saveContactsToStorage(contacts);
     }
 
     inputText = '';
   }
 
   onMount(() => {
+    contacts = loadPersistedContacts();
+    if ($directMessagesStore && $directMessagesStore.length > 0) {
+      syncContactsFromMessages($directMessagesStore);
+    }
     chatMessageManager.setActiveRecipient(currentView === 'direct' ? selectedRecipient : null);
   });
 
@@ -340,24 +347,32 @@
       </div>
 
       <div class="contact-list">
-        {#each filteredContacts as contact}
-          <div class="contact-item" on:click={() => openDirectChat(contact)} role="button" tabindex="0" on:keydown={(e) => e.key === 'Enter' && openDirectChat(contact)}>
-            <div class="contact-avatar">
-              {contact.avatar}
-              <span class="avatar-online-dot"></span>
-            </div>
-            <div class="contact-info">
-              <div class="contact-name-row">
-                <span class="contact-name">{contact.name}</span>
-                <span class="contact-time">{contact.lastTime}</span>
-              </div>
-              <div class="contact-last-msg">{contact.lastMessage}</div>
-            </div>
-            {#if contact.unreadCount > 0}
-              <span class="unread-badge">{contact.unreadCount}</span>
-            {/if}
+        {#if filteredContacts.length === 0}
+          <div class="empty-contacts-box">
+            <span class="empty-icon">💬</span>
+            <div class="empty-title">ยังไม่มีประวัติการสนทนา</div>
+            <p class="empty-desc">แตะ "💬 ทักแชท" บนโหนดวิทยุรอบตัวด้านบน หรือสแกน QR เพื่อเริ่มคุย</p>
           </div>
-        {/each}
+        {:else}
+          {#each filteredContacts as contact}
+            <div class="contact-item" on:click={() => openDirectChat(contact)} role="button" tabindex="0" on:keydown={(e) => e.key === 'Enter' && openDirectChat(contact)}>
+              <div class="contact-avatar">
+                {contact.avatar}
+                <span class="avatar-online-dot"></span>
+              </div>
+              <div class="contact-info">
+                <div class="contact-name-row">
+                  <span class="contact-name">{contact.name}</span>
+                  <span class="contact-time">{contact.lastTime}</span>
+                </div>
+                <div class="contact-last-msg">{contact.lastMessage}</div>
+              </div>
+              {#if contact.unreadCount > 0}
+                <span class="unread-badge">{contact.unreadCount}</span>
+              {/if}
+            </div>
+          {/each}
+        {/if}
       </div>
     </div>
 
@@ -491,7 +506,7 @@
   <div class="modal-overlay" on:click={() => showMyQrModal = false}>
     <div class="modal-card modal-qr" on:click|stopPropagation>
       <div class="modal-header">
-        <span style="font-weight: 800; color: #38bdf8;">📱 QR Code ของฉัน (#47A1)</span>
+        <span style="font-weight: 800; color: #38bdf8;">📱 QR Code ของฉัน (#{myPubHex})</span>
         <button class="btn-close-modal" on:click={() => showMyQrModal = false}>✕</button>
       </div>
       <p style="font-size: 11px; color: #94a3b8; margin-bottom: 12px; text-align: center;">
@@ -499,11 +514,11 @@
       </p>
       <div class="qr-container">
         <div class="qr-box">
-          <span class="qr-label">#47A1 QR</span>
+          <span class="qr-label">#{myPubHex} QR</span>
         </div>
       </div>
       <p style="font-size: 11px; color: #34d399; font-weight: bold; text-align: center;">
-        🔒 Public Key Hash: 0x47A1B29F
+        🔒 Public Key Hash: 0x{(myProfile.nodeId || '00000000').slice(0, 8).toUpperCase()}
       </p>
     </div>
   </div>
@@ -611,6 +626,36 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  .empty-contacts-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 16px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px dashed #334155;
+    border-radius: 10px;
+    text-align: center;
+    margin: 8px 0;
+  }
+  .empty-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+    opacity: 0.8;
+  }
+  .empty-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #cbd5e1;
+    margin-bottom: 4px;
+  }
+  .empty-desc {
+    font-size: 11px;
+    color: #94a3b8;
+    margin: 0;
+    max-width: 260px;
+    line-height: 1.4;
   }
   .contact-item {
     background: #1e293b;

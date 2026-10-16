@@ -37,6 +37,11 @@
     customName?: string;
   }> = [];
 
+  export let myNodeId: string = '';
+  export let isOnline: boolean = false;
+
+  $: myShortNodeId = myNodeId ? '#' + myNodeId.slice(0, 4).toUpperCase() : '#47A1';
+
   const dispatch = createEventDispatcher<{
     openRadar: { target: any };
     startDirectChat: { peerId: string; peerName: string };
@@ -223,19 +228,19 @@
 
   function handleSelectSelf() {
     selectedNode = {
-      name: 'โหนดของฉัน (#47A1)',
+      name: `โหนดของฉัน (${myShortNodeId})`,
       avatar: '📍',
       role: '📍 โหนดของฉัน (Host)',
       roleBg: '#064e3b',
       radio: '⚡ BLE 5.3 Coded PHY (S=8)',
-      isInternet: false,
-      internetStatus: 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘',
+      isInternet: isOnline,
+      internetStatus: isOnline ? 'ต่อ Internet ได้ (Online) 🟢' : 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘',
       distance: '0 เมตร (ตำแหน่งปัจจุบัน)',
       bearing: '000° N',
       rssi: '-35 dBm (สูงสุด)',
       battery: '85% (~34 ชม.)',
       freshness: 'ใช้งานอยู่ตอนนี้ 🟢',
-      security: 'Curve25519 (0x47A1B29F)',
+      security: `Curve25519 (0x${(myNodeId || '47A1').slice(0, 8).toUpperCase()})`,
       extra: 'สถานะ: ให้บริการทวนสัญญาณฉุกเฉินและกระจายพิกัดกู้ภัย 24/7',
       isSelf: true,
       lat: myPos.lat,
@@ -375,7 +380,7 @@
       html: `
         <div class="tactical-marker-wrap">
           <div class="node-icon-bubble bubble-self">📍</div>
-          <span class="node-tag tag-self">ฉัน (#47A1)</span>
+          <span class="node-tag tag-self">ฉัน (${myShortNodeId})</span>
         </div>
       `,
       iconSize: [80, 50],
@@ -534,9 +539,13 @@
     <div class="top-bar-left">
       <span class="top-bar-title">🗺️ เรดาร์ & แผนที่กู้ภัย</span>
       <div class="top-bar-legend">
-        <span class="legend-internet">🟢 ต่อ Internet ได้</span>
+        {#if isOnline}
+          <span class="legend-internet">🟢 ต่อ Internet ได้</span>
+        {:else}
+          <span class="legend-bt">🔘 ออฟไลน์ (Bluetooth Mesh)</span>
+        {/if}
         <span class="legend-divider">|</span>
-        <span class="legend-bt">🔘 Bluetooth เท่านั้น</span>
+        <span class="legend-hint">โหนด: 🟢 ต่อเน็ต 🔘 วิทยุ</span>
       </div>
     </div>
     <div class="top-bar-right-group">
@@ -557,12 +566,11 @@
       style="transform: rotate({-currentHeading}deg); transform-origin: 50% 50%;"
     ></div>
 
-    <!-- Subtle Tactical H3 Hexagon Grid Overlay -->
+    <!-- Subtle Tactical H3 Hexagon Grid Overlay (Seamless Non-Overlapping Regular Honeycomb) -->
     <svg class="h3-subtle-overlay" width="100%" height="100%">
       <defs>
-        <pattern id="h3-hex-pattern-map" width="60" height="104" patternUnits="userSpaceOnUse">
-          <path d="M 30,0 L 60,17.3 L 60,52 L 30,69.3 L 0,52 L 0,17.3 Z" fill="none" stroke="#38bdf8" stroke-width="0.75" stroke-dasharray="2,2"/>
-          <path d="M 30,52 L 60,69.3 L 60,104 L 30,121.3 L 0,104 L 0,69.3 Z" fill="none" stroke="#38bdf8" stroke-width="0.75" stroke-dasharray="2,2"/>
+        <pattern id="h3-hex-pattern-map" width="60" height="103.92" patternUnits="userSpaceOnUse">
+          <path d="M 30,0 L 60,17.32 L 60,51.96 L 30,69.28 L 0,51.96 L 0,17.32 Z M 30,69.28 L 30,103.92" fill="none" stroke="#38bdf8" stroke-width="0.75" stroke-dasharray="2,2"/>
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill="url(#h3-hex-pattern-map)" />
@@ -714,6 +722,10 @@
   .legend-bt {
     color: #cbd5e1;
     font-weight: 600;
+  }
+  .legend-hint {
+    color: #94a3b8;
+    font-size: 9.5px;
   }
   .top-bar-right-group {
     display: flex;

@@ -11,6 +11,18 @@ import { NativeBridgeDispatcher } from '../native/NativeBridgeDispatcher';
 import { PacketSerializer, type ICompactDirectChat } from '../protocol/PacketSerializer';
 import { TOG_MAGIC, TOGPacketType, TOGPriority, type ITOGPacket } from '../protocol/TOGPacket';
 import { AuthManager } from '../auth/AuthManager';
+import { peerDiscoveryManager } from './PeerDiscoveryStore';
+
+export interface IIncomingMessageAlert {
+  id: string;
+  sender: string;
+  senderId: string;
+  text: string;
+  time: string;
+  isBroadcast: boolean;
+}
+
+export const incomingMessageAlertStore = writable<IIncomingMessageAlert | null>(null);
 
 export interface IChatMessage {
   id: string;
@@ -159,66 +171,56 @@ export class ChatMessageManager {
   }
 
   private seedInitialMessages() {
-    const profile = this.auth.getProfile();
-    const myPubHex = profile.nodeId.slice(0, 4).toUpperCase();
-    const initialDirect: IChatMessage[] = [
-      {
-        id: 'd-01',
-        sender: 'หน่วยกู้ภัยสว่างบริบูรณ์ (HQ)',
-        isSelf: false,
-        text: 'สวัสดีครับ ได้รับพิกัดขอความช่วยเหลือแล้ว ทีมอาสากำลังนำเรือยางเข้าไป ขอภาพถ่ายสภาพน้ำท่วมในพื้นที่เพื่อประเมินระดับน้ำครับ',
-        time: '15:42',
-        hops: '1 Hop',
-        recipientId: 'node-rescue-team',
-        timestamp: Date.now() - 120000,
-        isUnread: false
-      },
-      {
-        id: 'd-02',
-        sender: `ฉัน (#${myPubHex})`,
-        isSelf: true,
-        text: 'ระดับน้ำสูงถึงเอวแล้วครับ กำลังส่งภาพถ่ายสภาพหน้าบ้านให้ดูครับ',
-        time: '15:44',
-        hops: '1 Hop 🔒',
-        hasPhoto: true,
-        recipientId: 'node-rescue-team',
-        timestamp: Date.now() - 60000,
-        isUnread: false
-      }
-    ];
-    this.directMessagesStore.set(initialDirect);
-    this.recalculateUnreadCount(initialDirect);
+    this.directMessagesStore.set([]);
+    this.recalculateUnreadCount([]);
   }
 
   private seedInitialBroadcasts() {
-    const initialBcast: IBroadcastChatMessage[] = [
-      {
-        id: 'b-01',
-        sender: 'Scout 01',
-        text: '📢 แจ้งเตือน: ระดับน้ำสะพานมิตรภาพสูงขึ้น 20 ซม. ใน 1 ชม. หลีกเลี่ยงเส้นทางริมแม่น้ำ',
-        time: '15:10',
-        hops: '15 Hops (~2-3km)',
-        isPinned: true,
-        timestamp: Date.now() - 300000
-      },
-      {
-        id: 'b-02',
-        sender: 'หมอสมชาย (Field Doctor #4C55)',
-        text: 'จุดปฐมพยาบาลศาลาประชาคมเปิดบริการแล้ว มีผ้าพันแผล ยาฆ่าเชื้อ และน้ำดื่มสะอาด',
-        time: '15:20',
-        hops: '3 Hops',
-        timestamp: Date.now() - 200000
-      },
-      {
-        id: 'b-03',
-        sender: 'สถานีวิทยุชุมชนดอนเมือง (#9B22)',
-        text: 'โหนดสถานีทวนสัญญาณ LoRa และ BLE Coded PHY พร้อมรับส่งต่อข้อความกู้ภัย 24 ชม.',
-        time: '15:35',
-        hops: '15 Hops (Max Range)',
-        timestamp: Date.now() - 100000
+    this.broadcastMessagesStore.set([]);
+  }
+
+  public triggerMessageAlert(alert: IIncomingMessageAlert) {
+    incomingMessageAlertStore.set(alert);
+
+    // 1. Synthesize audio chime (Web Audio API - 100% offline, zero assets required)
+    try {
+      const AudioCtxClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
+      if (AudioCtxClass) {
+        const ctx = new AudioCtxClass();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.45);
       }
-    ];
-    this.broadcastMessagesStore.set(initialBcast);
+    } catch {}
+
+    // 2. Hardware Vibration
+    try {
+      const g: any = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null);
+      if (g?.navigator?.vibrate) {
+        g.navigator.vibrate([150, 80, 150]);
+      }
+    } catch {}
+
+    // 3. Native Android Notification banner & screen wake
+    try {
+      const g: any = typeof window !== 'undefined' ? window : null;
+      if (g?.AndroidBridge) {
+        if (typeof g.AndroidBridge.showMessageNotification === 'function') {
+          g.AndroidBridge.showMessageNotification(alert.sender, alert.text);
+        }
+        if (typeof g.AndroidBridge.wakeScreenForEmergency === 'function') {
+          g.AndroidBridge.wakeScreenForEmergency();
+        }
+      }
+    } catch {}
   }
 
   private savePersistedMessages(direct: IChatMessage[], bcast: IBroadcastChatMessage[]) {
@@ -295,7 +297,16 @@ export class ChatMessageManager {
             this.savePersistedMessages(get(this.directMessagesStore), next);
             return next;
           });
+          this.triggerMessageAlert({
+            id: bcastId,
+            sender: `📢 ประกาศ (${senderHex})`,
+            senderId: senderHex,
+            text: compact.textPayload,
+            time: timeStr,
+            isBroadcast: true
+          });
         } else {
+          peerDiscoveryManager.addFriendPeer(senderHex);
           const isCurrentlyChatting = activeRecip && activeRecip.toUpperCase().includes(senderHex.toUpperCase());
           const newMsg: IChatMessage = {
             id: msgId,
@@ -317,6 +328,14 @@ export class ChatMessageManager {
             this.recalculateUnreadCount(next);
             this.savePersistedMessages(next, get(this.broadcastMessagesStore));
             return next;
+          });
+          this.triggerMessageAlert({
+            id: msgId,
+            sender: `โหนด ${senderHex}`,
+            senderId: senderHex,
+            text: compact.textPayload,
+            time: timeStr,
+            isBroadcast: false
           });
         }
       } catch (err) {
@@ -377,7 +396,16 @@ export class ChatMessageManager {
             this.savePersistedMessages(get(this.directMessagesStore), next);
             return next;
           });
+          this.triggerMessageAlert({
+            id: bcastId,
+            sender: `📢 ประกาศ (${senderNodeId})`,
+            senderId: senderNodeId,
+            text,
+            time: timeStr,
+            isBroadcast: true
+          });
         } else {
+          peerDiscoveryManager.addFriendPeer(senderNodeId);
           const isCurrentlyChatting = activeRecip && activeRecip.toUpperCase().includes(senderHex.toUpperCase());
           const newMsg: IChatMessage = {
             id: msgId,
@@ -400,6 +428,14 @@ export class ChatMessageManager {
             this.savePersistedMessages(next, get(this.broadcastMessagesStore));
             return next;
           });
+          this.triggerMessageAlert({
+            id: msgId,
+            sender: `โหนด ${senderNodeId}`,
+            senderId: senderNodeId,
+            text,
+            time: timeStr,
+            isBroadcast: false
+          });
         }
       } catch (err) {
         // Silently skip corrupted frame
@@ -418,6 +454,7 @@ export class ChatMessageManager {
   }
 
   public sendDirectMessage(recipientId: string, text: string): boolean {
+    peerDiscoveryManager.addFriendPeer(recipientId);
     const profile = this.auth.getProfile();
     const myPubHex = profile.nodeId.slice(0, 4).toUpperCase();
     let myNumericShortId = 0x47a1;
