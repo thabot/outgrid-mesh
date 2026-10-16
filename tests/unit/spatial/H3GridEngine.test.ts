@@ -3,7 +3,7 @@
  * Protocol: TOG v1.1 Wire Specification & Spatial Mesh
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { H3GridEngine, H3Direction } from '../../../src/core/spatial/H3GridEngine';
 
 describe('H3GridEngine Spatial Direction & Azimuth Suite', () => {

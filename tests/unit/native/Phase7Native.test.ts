@@ -129,7 +129,7 @@ describe('Phase 7: Android Native Layer, Foreground Service & Battery Duty Cycle
         version: 1,
         packetType: TOGPacketType.SOS_BEACON,
         ttlHops: 7,
-        priority: TOGPriority.CRITICAL,
+        priority: TOGPriority.CRITICAL_SOS,
         flags: 0,
         reserved: 0,
       },

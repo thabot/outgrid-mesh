@@ -30,6 +30,10 @@ class OutGridMeshService : Service() {
     private var periodicWakeIntent: PendingIntent? = null
     private val SCAN_DUTY_INTERVAL_MS = 60000L // 60s periodic scan cycle
 
+    private val servicePacketListener = { bytes: ByteArray, rssi: Int ->
+        handleBackgroundPacket(bytes, rssi)
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -45,6 +49,7 @@ class OutGridMeshService : Service() {
 
         // Initialize BLE Radio Engine
         BleRadioNativeDriver.initialize(applicationContext)
+        BleRadioNativeDriver.addPacketListener(servicePacketListener)
         BleRadioNativeDriver.startScanning()
 
         schedulePeriodicDozeWakeup()
@@ -55,8 +60,39 @@ class OutGridMeshService : Service() {
         super.onDestroy()
         instance = null
         cancelPeriodicDozeWakeup()
+        BleRadioNativeDriver.removePacketListener(servicePacketListener)
         BleRadioNativeDriver.stopScanning()
         releaseWakeLock()
+    }
+
+    private fun handleBackgroundPacket(bytes: ByteArray, rssi: Int) {
+        if (bytes.size < 5) return
+        // Check for SOS Beacon (Magic 0x544F, packetType 0x01)
+        if (bytes[0] == 0x54.toByte() && bytes[1] == 0x4F.toByte()) {
+            val pType = bytes[2].toInt() and 0x1f
+            if (pType == 0x01) { // SOS_BEACON
+                triggerEmergencyNotification("🚨 ตรวจพบสัญญาณ SOS จากโหนดวิทยุใกล้เคียง (RSSI: ${rssi}dBm)")
+            }
+        }
+    }
+
+    private fun triggerEmergencyNotification(message: String) {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val alertNotification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("🚨 OutGrid SOS Alert!")
+            .setContentText(message)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+        notificationManager?.notify(9911, alertNotification)
     }
 
     private fun schedulePeriodicDozeWakeup() {

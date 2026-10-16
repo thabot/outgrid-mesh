@@ -52,6 +52,8 @@
   let L: typeof import('leaflet') | null = null;
   let markersLayer: LeafletLayerGroup | null = null;
   let ringsLayer: LeafletLayerGroup | null = null;
+  let vectorBasemapLayer: LeafletLayerGroup | null = null;
+  let tileLayerRef: any = null;
 
   // Persistent User Position and Zoom Level
   let myPos: { lat: number; lng: number } = { lat: 13.7563, lng: 100.5018 };
@@ -454,6 +456,44 @@
     }
   }
 
+  async function loadOfflineVectorBasemap() {
+    if (!map || !L || !vectorBasemapLayer) return;
+    try {
+      const resp = await fetch('/data/world_basemap_l2.json');
+      if (resp.ok) {
+        const geojson = await resp.json();
+        vectorBasemapLayer.clearLayers();
+        L.geoJSON(geojson, {
+          style: (feature) => {
+            const layer = feature?.properties?.layer;
+            if (layer === 'country') {
+              return { color: '#0369a1', weight: 1.5, fillColor: '#082f49', fillOpacity: 0.25 };
+            }
+            if (layer === 'state') {
+              return { color: '#38bdf8', weight: 1, dashArray: '4, 4', fillOpacity: 0.1 };
+            }
+            if (layer === 'river') {
+              return { color: '#0284c7', weight: 2 };
+            }
+            return { color: '#64748b', weight: 1 };
+          },
+          pointToLayer: (feature, latlng) => {
+            return L.circleMarker(latlng, {
+              radius: 4,
+              fillColor: '#38bdf8',
+              color: '#ffffff',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
+          }
+        }).addTo(vectorBasemapLayer);
+      }
+    } catch (err) {
+      console.warn('Offline basemap load fallback:', err);
+    }
+  }
+
   async function initLeafletMap() {
     if (typeof window === 'undefined' || !mapEl) return;
     L = (await import('leaflet')) as typeof import('leaflet');
@@ -473,12 +513,15 @@
       boxZoom: true
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    tileLayerRef = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19
     }).addTo(map);
 
+    vectorBasemapLayer = L.layerGroup().addTo(map);
     ringsLayer = L.layerGroup().addTo(map);
     markersLayer = L.layerGroup().addTo(map);
+
+    loadOfflineVectorBasemap();
 
     map.on('zoomend', () => {
       if (map) {

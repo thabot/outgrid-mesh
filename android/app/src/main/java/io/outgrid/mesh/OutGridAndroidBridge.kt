@@ -113,6 +113,44 @@ class OutGridAndroidBridge(
         return true
     }
 
+    private var toneGenerator: android.media.ToneGenerator? = null
+    private var alarmThread: Thread? = null
+    private var isAlarmRunning = false
+
+    @JavascriptInterface
+    fun playAudibleAlarm(): Boolean {
+        if (isAlarmRunning) return true
+        isAlarmRunning = true
+        alarmThread = Thread {
+            try {
+                val tg = android.media.ToneGenerator(
+                    android.media.AudioManager.STREAM_ALARM,
+                    100
+                )
+                toneGenerator = tg
+                while (isAlarmRunning) {
+                    tg.startTone(android.media.ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 350)
+                    Thread.sleep(400)
+                }
+                tg.release()
+            } catch (_: Exception) {}
+        }.apply { start() }
+        return true
+    }
+
+    @JavascriptInterface
+    fun stopAudibleAlarm(): Boolean {
+        isAlarmRunning = false
+        try {
+            toneGenerator?.stopTone()
+            toneGenerator?.release()
+        } catch (_: Exception) {}
+        toneGenerator = null
+        alarmThread?.interrupt()
+        alarmThread = null
+        return true
+    }
+
     @JavascriptInterface
     fun getBatteryInfo(): String {
         val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
@@ -159,7 +197,8 @@ class OutGridAndroidBridge(
     fun shareApkFile(): Boolean {
         return try {
             val apkFile = hotspotService.getLocalApkFile() ?: return false
-            val uri = FileProvider.getUriForFile(context, ".fileprovider", apkFile)
+            val authority = "${context.packageName}.fileprovider"
+            val uri = FileProvider.getUriForFile(context, authority, apkFile)
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "application/vnd.android.package-archive"
                 putExtra(Intent.EXTRA_STREAM, uri)

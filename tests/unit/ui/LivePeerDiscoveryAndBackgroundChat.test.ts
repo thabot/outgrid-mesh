@@ -115,7 +115,8 @@ describe('Live Peer Discovery & Background Zero-Loss Chat Tests', () => {
 
     const content = fs.readFileSync(pluginPath, 'utf-8');
     expect(content.includes('TOG_MANUFACTURER_ID = 0x544F')).toBe(true);
-    expect(content.includes('addManufacturerData(TOG_MANUFACTURER_ID, rawBytes)')).toBe(true);
+    expect(content.includes('safePayload')).toBe(true);
+    expect(content.includes('addManufacturerData(TOG_MANUFACTURER_ID, safePayload)')).toBe(true);
     expect(content.includes('stopAdvertising')).toBe(true);
   });
 });

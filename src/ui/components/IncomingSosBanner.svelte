@@ -1,13 +1,4 @@
-<script lang="ts">
-  /**
-   * Top Floating Emergency Alert Banner & Deduplication Engine (Sprint E Task E.3)
-   * Multi-sensory alert, 64-bit MessageId deduplication cache, and 1-tap radar launcher
-   * Creator & Lead Architect: Thabot <thabo47@gmail.com>
-   * Protocol: TOG v1.1 Emergency Alerts
-   * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
-   */
-  import { createEventDispatcher } from 'svelte';
-
+<script module lang="ts">
   export interface IIncomingSosAlert {
     id: string;
     senderNodeId: string;
@@ -17,6 +8,17 @@
     category: string;
     timestamp: number;
   }
+</script>
+
+<script lang="ts">
+  /**
+   * Top Floating Emergency Alert Banner & Deduplication Engine (Sprint E Task E.3)
+   * Multi-sensory alert, 64-bit MessageId deduplication cache, and 1-tap radar launcher
+   * Creator & Lead Architect: Thabot <thabo47@gmail.com>
+   * Protocol: TOG v1.1 Emergency Alerts
+   * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
+   */
+  import { createEventDispatcher } from 'svelte';
 
   export let alertData: IIncomingSosAlert | null = null;
 

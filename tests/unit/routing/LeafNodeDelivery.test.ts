@@ -3,7 +3,7 @@
  * Protocol: TOG v1.1 Routing & Wire Format
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { EpidemicRouter } from '../../../src/core/routing/EpidemicRouter';
 import { BloomFilter } from '../../../src/core/protocol/BloomFilter';
 import { PacketSerializer } from '../../../src/core/protocol/PacketSerializer';

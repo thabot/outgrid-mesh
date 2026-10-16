@@ -158,19 +158,81 @@ export class NativeBridgeDispatcher {
     return get(this.torchActiveStore);
   }
 
-  public playAudibleAlarm(): boolean {
+  private audioCtx: any = null;
+  private currentOsc: any = null;
+  private sirenTimer: any = null;
+  private isWebSirenRunning: boolean = false;
+
+  private startWebAudioSiren() {
+    if (this.isWebSirenRunning) return;
+    this.isWebSirenRunning = true;
     try {
-      if (typeof this.bridgeImpl?.playAudibleAlarm === 'function') {
-        return Boolean(this.bridgeImpl.playAudibleAlarm());
+      const globalObj = typeof window !== 'undefined' ? (window as any) : (globalThis as any);
+      if (globalObj) {
+        const AudioContextClass = globalObj.AudioContext || globalObj.webkitAudioContext;
+        if (!this.audioCtx && AudioContextClass) {
+          this.audioCtx = new AudioContextClass();
+        }
       }
-      return true;
-    } catch (err) {
-      console.warn('NativeBridge playAudibleAlarm error:', err);
-      return false;
+        if (this.audioCtx && this.audioCtx.state === 'suspended') {
+          this.audioCtx.resume();
+        }
+        if (!this.audioCtx) return;
+
+        let toneIdx = 0;
+        const tones = [960, 1440];
+        const playTone = () => {
+          if (!this.isWebSirenRunning || !this.audioCtx) return;
+          try {
+            if (this.currentOsc) {
+              this.currentOsc.stop();
+              this.currentOsc.disconnect();
+            }
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(tones[toneIdx % 2], this.audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.35, this.audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(this.audioCtx.destination);
+            osc.start();
+            this.currentOsc = osc;
+            toneIdx++;
+            this.sirenTimer = setTimeout(playTone, 350);
+          } catch {}
+        };
+        playTone();
+    } catch {}
+  }
+
+  private stopWebAudioSiren() {
+    this.isWebSirenRunning = false;
+    if (this.sirenTimer) clearTimeout(this.sirenTimer);
+    if (this.currentOsc) {
+      try {
+        this.currentOsc.stop();
+        this.currentOsc.disconnect();
+      } catch {}
+      this.currentOsc = null;
     }
   }
 
+  public playAudibleAlarm(): boolean {
+    let nativeRes = false;
+    try {
+      if (typeof this.bridgeImpl?.playAudibleAlarm === 'function') {
+        nativeRes = Boolean(this.bridgeImpl.playAudibleAlarm());
+      }
+    } catch (err) {
+      console.warn('NativeBridge playAudibleAlarm error:', err);
+    }
+    // Always activate Web Audio synthesizer as immediate audio feedback
+    this.startWebAudioSiren();
+    return true;
+  }
+
   public stopAudibleAlarm(): boolean {
+    this.stopWebAudioSiren();
     try {
       if (typeof this.bridgeImpl?.stopAudibleAlarm === 'function') {
         return Boolean(this.bridgeImpl.stopAudibleAlarm());

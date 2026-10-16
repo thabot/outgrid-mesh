@@ -15,6 +15,7 @@
   import FriendsScreen from '../ui/components/FriendsScreen.svelte';
   import IncomingSosBanner, { type IIncomingSosAlert } from '../ui/components/IncomingSosBanner.svelte';
   import AuthProfileScreen from '../ui/components/AuthProfileScreen.svelte';
+  import { CrisisUrgency, type ICrisisFeedItem } from '../core/feed/CrisisFeedManager';
   import { i18n } from '../core/i18n/I18nStore';
   import {
     discoveredPeersStore,
@@ -60,6 +61,21 @@
     floor?: number;
   }> = [];
 
+  // Active Emergency Crisis Feed items
+  let activeCrisisFeedItems: ICrisisFeedItem[] = [
+    {
+      id: 'feed-init-01',
+      senderAuthority: 'ปภ. (DDPM Disaster Control)',
+      senderPubkey: new Uint8Array(32),
+      urgency: CrisisUrgency.WARNING,
+      title: 'เตรียมพร้อมรับมือสถานการณ์ฉุกเฉินระดับชุมชน',
+      content: 'ระบบ OutGrid Mesh พร้อมทำงานในโหมดออฟไลน์ไร้คลื่นอินเทอร์เน็ต สามารถส่งสัญญาณ SOS และคุยวิทยุได้ 24 ชม.',
+      timestamp: Date.now(),
+      signature: new Uint8Array(64),
+      isVerified: true
+    }
+  ];
+
   function openRadarForTarget(target: any) {
     activeRadarTarget = target;
   }
@@ -96,6 +112,20 @@
     dispatcher.wakeScreenForEmergency();
     dispatcher.playAudibleAlarm();
     dispatcher.vibrateSosPattern();
+
+    // Auto-ingest into Emergency Crisis Feed
+    const feedItem: ICrisisFeedItem = {
+      id: `crisis-${alertObj.id}`,
+      senderAuthority: `โหนดวิทยุกู้ภัย (${alertObj.senderNodeId})`,
+      senderPubkey: new Uint8Array(32),
+      urgency: CrisisUrgency.EVACUATE_IMMEDIATE,
+      title: `🚨 ขอความช่วยเหลือเร่งด่วน: ${alertObj.category}`,
+      content: `ตรวจพบสัญญาณ SOS ผ่านคลื่นวิทยุ BLE ระยะห่างประมาณ ~${alertObj.distanceMeters} ม. พิกัด (${alertObj.lat.toFixed(4)}, ${alertObj.lng.toFixed(4)})`,
+      timestamp: alertObj.timestamp,
+      signature: new Uint8Array(64),
+      isVerified: true
+    };
+    activeCrisisFeedItems = [feedItem, ...activeCrisisFeedItems];
   }
 
   function handleIncomingSosRadio(bytes: Uint8Array, rssi: number) {
@@ -466,11 +496,15 @@
       {:else if activeTab === 'sos'}
         <OneTapSos onTriggerSos={handleTriggerSos} isDispatching={isSosDispatching} on:viewBroadcast={() => activeTab = 'chat'} />
       {:else if activeTab === 'chat'}
-        <MeshChatScreen targetContact={targetChatPeer} myNodeId={myProfile.nodeId} />
+        <MeshChatScreen
+          targetContact={targetChatPeer}
+          myNodeId={myProfile.nodeId}
+          on:openFriendsScanner={() => activeTab = 'friends'}
+        />
       {:else if activeTab === 'manual'}
         <HelpManualScreen />
       {:else if activeTab === 'feed'}
-        <CrisisFeed />
+        <CrisisFeed feedItems={activeCrisisFeedItems} />
       {:else if activeTab === 'donation'}
         <DonationDashboard />
       {:else if activeTab === 'friends'}
@@ -537,7 +571,12 @@
             <b>📱 Huawei:</b> การตั้งค่า > แบตเตอรี่ > การเปิดใช้แอป > OutGrid Mesh > <b>จัดการด้วยตนเอง</b>
           </div>
           <div class="guide-buttons">
-            <button class="btn-guide-config" on:click={() => alert('เปิดการตั้งค่าแอปในระบบ Android...')}>
+            <button class="btn-guide-config" on:click={() => {
+              const res = NativeBridgeDispatcher.getInstance().requestBatteryOptimizationExemption();
+              if (!res) {
+                alert('เปิดการตั้งค่าแอปในระบบ Android: การตั้งค่า > แอป > OutGrid Mesh > แบตเตอรี่ > ไม่จำกัด');
+              }
+            }}>
               ⚙️ เปิดหน้าต่างตั้งค่าระบบ Android ทันที
             </button>
             <button class="btn-guide-dismiss" on:click={() => { isBatteryBannerDismissed = true; showBatteryModal = false; }}>

@@ -38,13 +38,24 @@ object BleRadioNativeDriver {
         }
     }
 
-    private var packetListener: ((bytes: ByteArray, rssi: Int) -> Unit)? = null
+    private val packetListeners = java.util.concurrent.CopyOnWriteArraySet<(bytes: ByteArray, rssi: Int) -> Unit>()
     private var lastScanEventTimestamp: Long = System.currentTimeMillis()
     private val watchdogHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val WATCHDOG_INTERVAL_MS = 15 * 60 * 1000L // 15-minute Watchdog cycle
 
+    fun addPacketListener(listener: (bytes: ByteArray, rssi: Int) -> Unit) {
+        this.packetListeners.add(listener)
+    }
+
+    fun removePacketListener(listener: (bytes: ByteArray, rssi: Int) -> Unit) {
+        this.packetListeners.remove(listener)
+    }
+
     fun setPacketListener(listener: ((bytes: ByteArray, rssi: Int) -> Unit)?) {
-        this.packetListener = listener
+        this.packetListeners.clear()
+        if (listener != null) {
+            this.packetListeners.add(listener)
+        }
     }
 
     private val watchdogRunnable = object : Runnable {
@@ -118,14 +129,14 @@ object BleRadioNativeDriver {
             // 1. Check Service Data for TOG_PARCEL_UUID (Standard Android BLE transport)
             val serviceData = record.getServiceData(TOG_PARCEL_UUID)
             if (serviceData != null && serviceData.isNotEmpty()) {
-                packetListener?.invoke(serviceData, rssi)
+                packetListeners.forEach { it.invoke(serviceData, rssi) }
                 return
             }
 
             // 2. Check Manufacturer Data for TOG_MANUFACTURER_ID (0x544F)
             val mfgData = record.getManufacturerSpecificData(TOG_MANUFACTURER_ID)
             if (mfgData != null && mfgData.isNotEmpty()) {
-                packetListener?.invoke(mfgData, rssi)
+                packetListeners.forEach { it.invoke(mfgData, rssi) }
                 return
             }
 
@@ -134,7 +145,7 @@ object BleRadioNativeDriver {
             if (rawBytes.size >= 2) {
                 // Direct index 0 check
                 if (rawBytes[0] == 0x54.toByte() && rawBytes[1] == 0x4F.toByte()) {
-                    packetListener?.invoke(rawBytes, rssi)
+                    packetListeners.forEach { it.invoke(rawBytes, rssi) }
                     return
                 }
 
@@ -142,7 +153,7 @@ object BleRadioNativeDriver {
                 for (i in 0 until (rawBytes.size - 4)) {
                     if (rawBytes[i] == 0x54.toByte() && rawBytes[i + 1] == 0x4F.toByte()) {
                         val packetSlice = rawBytes.copyOfRange(i, rawBytes.size)
-                        packetListener?.invoke(packetSlice, rssi)
+                        packetListeners.forEach { it.invoke(packetSlice, rssi) }
                         return
                     }
                 }

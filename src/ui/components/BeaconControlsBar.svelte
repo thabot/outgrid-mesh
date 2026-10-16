@@ -53,21 +53,29 @@
   function toggleSiren() {
     if (isSirenActive) {
       controls.stopAcousticSiren();
+      dispatcher.stopAudibleAlarm();
       isSirenActive = false;
     } else {
       controls.startAcousticSiren();
+      dispatcher.playAudibleAlarm();
       isSirenActive = true;
     }
   }
 
   function toggleMute() {
     isMuted = controls.toggleMute();
+    if (isMuted) {
+      dispatcher.stopAudibleAlarm();
+    } else if (isSirenActive) {
+      dispatcher.playAudibleAlarm();
+    }
   }
 
   function triggerMasterPanic() {
     controls.startPanicBeacon();
     dispatcher.startSosStrobe();
     dispatcher.vibrateSosPattern();
+    dispatcher.playAudibleAlarm();
     isTorchActive = true;
     isSirenActive = true;
     isMuted = false;
@@ -78,6 +86,7 @@
     controls.stopAllBeacons();
     dispatcher.stopSosStrobe();
     dispatcher.stopTorch();
+    dispatcher.stopAudibleAlarm();
     isTorchActive = false;
     isSirenActive = false;
     thermalWarning = false;

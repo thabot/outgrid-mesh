@@ -6,8 +6,9 @@
    * Protocol: TOG v1.1 Tactical Chat Hub
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { MeshChatPayloadManager, type IChatMessage } from '../../core/chat/MeshChatPayload';
+  import { ImageCompressor, ImageQualityTier } from '../../core/media/ImageCompressor';
   import { i18n } from '../../core/i18n/I18nStore';
   import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
   import { PacketSerializer } from '../../core/protocol/PacketSerializer';
@@ -46,6 +47,10 @@
   let inputText = '';
   let broadcastInputText = '';
   let unsubscribeRadio: (() => void) | null = null;
+
+  const dispatch = createEventDispatcher<{
+    openFriendsScanner: void;
+  }>();
 
   // Modals state
   let showMyQrModal = false;
@@ -269,7 +274,39 @@
   }
 
   function handlePhotoUpload(event: Event) {
-    alert('📷 บีบอัดรูปภาพด้วย WebP (ขนาด < 15KB) และแบ่งชิ้นส่วน 16 Shards ส่งผ่านคลื่นวิทยุ BLE เรียบร้อยแล้ว!');
+    const target = event.target as HTMLInputElement;
+    const file = target?.files?.[0];
+    if (!file) return;
+
+    if (!ImageCompressor.isMediaTypePermitted(file.type, true)) {
+      alert('⚠️ โหมดกู้ภัยออฟไลน์รองรับเฉพาะไฟล์รูปภาพ (ไม่อนุญาตไฟล์วิดีโอเพื่อประหยัดพลังงานวิทยุ)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const specs = ImageCompressor.calculateTargetSpecs(img.width, img.height, ImageQualityTier.ULTRA_LOW);
+        const canvas = document.createElement('canvas');
+        canvas.width = specs.targetWidth;
+        canvas.height = specs.targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, specs.targetWidth, specs.targetHeight);
+          const webpDataUrl = canvas.toDataURL('image/webp', 0.65);
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          if (currentView === 'direct' && selectedRecipient) {
+            chatMessageManager.sendDirectMessage(selectedRecipient, `📷 [รูปภาพบีบอัด WebP ${specs.targetWidth}x${specs.targetHeight}]`);
+          } else {
+            chatMessageManager.sendBroadcastMessage(`📷 [รูปภาพบีบอัด WebP ${specs.targetWidth}x${specs.targetHeight}]`);
+          }
+        }
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    target.value = '';
   }
 </script>
 
@@ -286,7 +323,7 @@
           <button class="btn-qr-action" on:click={() => showMyQrModal = true}>
             <span>📱</span> <span>QR ของฉัน</span>
           </button>
-          <button class="btn-qr-action btn-scan" on:click={() => showScanQrModal = true}>
+          <button class="btn-qr-action btn-scan" on:click={() => dispatch('openFriendsScanner')}>
             <span>📷</span> <span>สแกน QR</span>
           </button>
         </div>

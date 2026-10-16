@@ -279,13 +279,13 @@ export enum CannedEmergencyCode {
  * Fits in 1 single BLE packet without fragmentation
  */
 export interface ICannedEmergencyPacket {
-  packetType: TOGPacketType;       // TOGPacketType.SOS_BEACON (0x01)
+  packetType?: TOGPacketType;       // TOGPacketType.SOS_BEACON (0x01)
   hopCount: number;          // 3 bits (0 - 7)
   senderShortId: number;     // uint16 (2 Bytes)
   recipientShortId: number;  // uint16 (2 Bytes, 0xFFFF = Broadcast)
   sequenceId: number;        // uint16 (2 Bytes)
   statusCode: CannedEmergencyCode; // uint8 (1 Byte)
-  crc16: number;             // uint16 (2 Bytes, CRC-16-CCITT)
+  crc16?: number;             // uint16 (2 Bytes, CRC-16-CCITT)
 }
 
 /**

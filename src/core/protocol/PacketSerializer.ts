@@ -23,6 +23,7 @@ import {
   type ICannedEmergencyPacket,
   type IUltraCompactSOSBeacon
 } from './TOGPacket';
+export type { ICompactDirectChat };
 import { CRC16 } from './CRC16';
 
 export const HEADER_SIZE = 4; // Magic (2B) + Ver/Type/TTL (2B) + Priority/Flags/Reserved

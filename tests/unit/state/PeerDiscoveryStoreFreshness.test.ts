@@ -3,7 +3,7 @@
  * Protocol: TOG v1.1 State & Spatial Mesh
  * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import {
   calculateBroadcastInterval,
   isStealthModeStore,

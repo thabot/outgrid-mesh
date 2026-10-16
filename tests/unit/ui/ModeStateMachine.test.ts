@@ -42,8 +42,9 @@ describe('ModeStateMachine (5s Zero-Config Fallback)', () => {
     expect(sm.getOperatingMode()).toBe(AppOperatingMode.DISASTER_MESH);
     expect(sm.isMeshEngaged()).toBe(true);
     expect(transitionEvent).not.toBeNull();
-    expect(transitionEvent?.previousMode).toBe(AppOperatingMode.NORMAL_CLOUD);
-    expect(transitionEvent?.currentMode).toBe(AppOperatingMode.DISASTER_MESH);
+    const event = transitionEvent as IModeTransitionEvent | null;
+    expect(event?.previousMode).toBe(AppOperatingMode.NORMAL_CLOUD);
+    expect(event?.currentMode).toBe(AppOperatingMode.DISASTER_MESH);
   });
 
   it('should restore NORMAL_CLOUD automatically when internet recovers', () => {

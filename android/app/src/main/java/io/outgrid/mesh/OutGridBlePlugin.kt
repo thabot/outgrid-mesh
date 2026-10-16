@@ -92,7 +92,7 @@ class OutGridBlePlugin(private val context: Context) {
             rawBytes
         }
         val data = AdvertiseData.Builder()
-            .addManufacturerData(TOG_MANUFACTURER_ID, rawBytes)
+            .addManufacturerData(TOG_MANUFACTURER_ID, safePayload)
             .setIncludeDeviceName(false)
             .setIncludeTxPowerLevel(false)
             .build()
