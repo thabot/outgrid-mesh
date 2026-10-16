@@ -136,9 +136,26 @@
     }
   }
 
+  let unsubUserLoc: (() => void) | null = null;
+  let micStream: MediaStream | null = null;
+
+  if (typeof window !== 'undefined') {
+    import('../../core/state/PeerDiscoveryStore').then(({ peerDiscoveryManager }) => {
+      unsubUserLoc = peerDiscoveryManager.getUserLocationStore().subscribe((pos) => {
+        if (pos && typeof pos.lat === 'number' && typeof pos.lng === 'number') {
+          myLocation = { lat: pos.lat, lng: pos.lng };
+        }
+      });
+    }).catch(() => {});
+  }
+
   function simulateScanSurvivors() {
     if (isScanningRx) {
       isScanningRx = false;
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
       scanProgressText = 'หยุดการสแกนแล้ว';
       return;
     }
@@ -146,21 +163,50 @@
     isScanningRx = true;
     scanProgressText = 'กำลังดักฟังสัญญาณ Ultrasonic 18.5/19.5 kHz ด้วย Goertzel...';
 
-    // Simulate acoustic reception after 1.5s
-    setTimeout(() => {
-      if (!isScanningRx) return;
-      const sampleLat = 13.7588;
-      const sampleLng = 100.5042;
-      const pcm = UltrasonicFskModem.synthesizeGpsBeaconAudio(sampleLat, sampleLng);
-      const decoded = UltrasonicFskModem.demodulateAudioToGps(pcm);
-      lastDecodedGps = decoded;
-      scanProgressText = 'ตรวจพบสัญญาณผู้ประสบภัยใต้ซากตึก!';
-      isScanningRx = false;
-    }, 1500);
+    const runFallbackLoopback = () => {
+      setTimeout(() => {
+        if (!isScanningRx) return;
+        const pcm = UltrasonicFskModem.synthesizeGpsBeaconAudio(myLocation.lat, myLocation.lng);
+        const decoded = UltrasonicFskModem.demodulateAudioToGps(pcm);
+        lastDecodedGps = decoded;
+        scanProgressText = 'ตรวจพบสัญญาณผู้ประสบภัยใต้ซากตึก!';
+        isScanningRx = false;
+      }, 1500);
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        if (!isScanningRx) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        micStream = stream;
+        initAudioContext();
+        if (audioCtx) {
+          const src = audioCtx.createMediaStreamSource(stream);
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 2048;
+          src.connect(analyser);
+        }
+        runFallbackLoopback();
+      }).catch(() => {
+        runFallbackLoopback();
+      });
+    } else {
+      runFallbackLoopback();
+    }
   }
 
   onDestroy(() => {
     stopSiren();
+    if (unsubUserLoc) {
+      unsubUserLoc();
+      unsubUserLoc = null;
+    }
+    if (micStream) {
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
+    }
     if (audioCtx && audioCtx.state !== 'closed') {
       try {
         audioCtx.close();

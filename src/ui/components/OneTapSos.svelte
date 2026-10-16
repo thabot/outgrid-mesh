@@ -50,6 +50,7 @@
     isSosActive = false;
     dispatcher.stopSosStrobe();
     dispatcher.stopTorch();
+    dispatcher.stopAudibleAlarm();
     alert('🛑 ยกเลิกสัญญาณ SOS และปิดไฟฉายเรียบร้อยแล้ว');
   }
 

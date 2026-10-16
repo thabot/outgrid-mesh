@@ -4,11 +4,7 @@
   Author: Thabot (thabo47@gmail.com)
   License: AGPL-3.0 + Commercial Rights Reserved to Thabot
 -->
-<script lang="ts">
-  import type { SupportedLocale } from '../../core/i18n/I18nStore';
-
-  export let currentLanguage: SupportedLocale = 'th';
-
+<script context="module" lang="ts">
   export interface ManualContent {
     title: string;
     steps: { number: number; title: string; desc: string; icon: string }[];
@@ -17,6 +13,16 @@
     beaconTitle: string;
     beaconDesc: string;
     isRtl?: boolean;
+  }
+</script>
+
+<script lang="ts">
+  import { i18n, type SupportedLocale } from '../../core/i18n/I18nStore';
+
+  export let currentLanguage: SupportedLocale = 'th';
+  const localeStore = i18n.locale;
+  $: if ($localeStore) {
+    currentLanguage = $localeStore;
   }
 
   export const MANUALS: Record<SupportedLocale, ManualContent> = {
@@ -152,7 +158,7 @@
     <h2>📖 {manual.title}</h2>
     <div class="lang-selector">
       <label for="lang-select">🌐</label>
-      <select id="lang-select" bind:value={currentLanguage}>
+      <select id="lang-select" bind:value={currentLanguage} on:change={() => i18n.setLocale(currentLanguage)}>
         <option value="th">ไทย (TH)</option>
         <option value="en">English (EN)</option>
         <option value="zh">中文 (ZH)</option>

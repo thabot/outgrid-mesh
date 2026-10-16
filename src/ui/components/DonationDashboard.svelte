@@ -4,7 +4,7 @@
   Author: Thabot (thabo47@gmail.com)
   License: AGPL-3.0 + Commercial Rights Reserved to Thabot
 -->
-<script lang="ts">
+<script context="module" lang="ts">
   export interface ExpenseItem {
     id: string;
     description: string;
@@ -19,7 +19,9 @@
     solarRepeaterCount: number;
     activeBeneficiaries: number;
   }
+</script>
 
+<script lang="ts">
   export let isGuest: boolean = true;
   export let promptPayId: string = '081-xxx-xxxx';
   export let githubSponsorsUrl: string = 'https://github.com/sponsors/thabot';

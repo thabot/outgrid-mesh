@@ -112,7 +112,19 @@
     pingTimer = setTimeout(scheduleProximityBeep, intervalMs);
   }
 
+  let unsubUserLoc: (() => void) | null = null;
+
   onMount(() => {
+    try {
+      import('../../core/state/PeerDiscoveryStore').then(({ peerDiscoveryManager }) => {
+        unsubUserLoc = peerDiscoveryManager.getUserLocationStore().subscribe((pos) => {
+          if (pos && typeof pos.lat === 'number' && typeof pos.lng === 'number') {
+            myLocation = { lat: pos.lat, lng: pos.lng };
+            updateBearingAndDistance();
+          }
+        });
+      });
+    } catch {}
     updateBearingAndDistance();
     if (typeof window !== 'undefined') {
       window.addEventListener('deviceorientation', handleDeviceOrientation, true);
@@ -121,6 +133,10 @@
   });
 
   onDestroy(() => {
+    if (unsubUserLoc) {
+      unsubUserLoc();
+      unsubUserLoc = null;
+    }
     if (typeof window !== 'undefined') {
       window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
     }

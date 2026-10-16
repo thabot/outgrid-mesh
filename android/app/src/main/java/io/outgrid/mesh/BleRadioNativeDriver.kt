@@ -38,6 +38,7 @@ object BleRadioNativeDriver {
         }
     }
 
+    private var primaryListener: ((bytes: ByteArray, rssi: Int) -> Unit)? = null
     private val packetListeners = java.util.concurrent.CopyOnWriteArraySet<(bytes: ByteArray, rssi: Int) -> Unit>()
     private var lastScanEventTimestamp: Long = System.currentTimeMillis()
     private val watchdogHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -52,7 +53,8 @@ object BleRadioNativeDriver {
     }
 
     fun setPacketListener(listener: ((bytes: ByteArray, rssi: Int) -> Unit)?) {
-        this.packetListeners.clear()
+        primaryListener?.let { this.packetListeners.remove(it) }
+        primaryListener = listener
         if (listener != null) {
             this.packetListeners.add(listener)
         }

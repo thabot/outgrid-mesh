@@ -173,12 +173,24 @@ class OutGridAndroidBridge(
             val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
             val packageName = context.packageName
             if (pm?.isIgnoringBatteryOptimizations(packageName) == false) {
-                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = Uri.parse("package:")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                return try {
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                    true
+                } catch (_: Exception) {
+                    try {
+                        val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(fallbackIntent)
+                        true
+                    } catch (_: Exception) {
+                        false
+                    }
                 }
-                context.startActivity(intent)
-                return true
             }
         }
         return true
@@ -216,7 +228,7 @@ class OutGridAndroidBridge(
 
     @JavascriptInterface
     fun startApkHotspot(): String {
-        var resultUrl = "http://192.168.49.1:8080/app.apk"
+        val resultUrl = "http://192.168.49.1:8080/app.apk"
         hotspotService.startSideloadHotspot(
             onSuccess = { _ -> },
             onError = { _ -> }
@@ -262,12 +274,50 @@ class OutGridAndroidBridge(
         }
     }
 
+    private var lastAzimuth: Double = 45.0
+    private var lastPitch: Double = 0.0
+    private var lastRoll: Double = 0.0
+    private var lastPressureHpa: Double = 1013.25
+    private var sensorsRegistered: Boolean = false
+
+    private fun ensureSensorsRegistered() {
+        if (sensorsRegistered) return
+        sensorsRegistered = true
+        try {
+            val sm = context.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager ?: return
+            @Suppress("DEPRECATION")
+            val orientSensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_ORIENTATION)
+            val pressureSensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_PRESSURE)
+            val listener = object : android.hardware.SensorEventListener {
+                override fun onSensorChanged(event: android.hardware.SensorEvent?) {
+                    if (event == null) return
+                    @Suppress("DEPRECATION")
+                    if (event.sensor.type == android.hardware.Sensor.TYPE_ORIENTATION && event.values.size >= 3) {
+                        lastAzimuth = ((event.values[0].toDouble() % 360.0) + 360.0) % 360.0
+                        lastPitch = event.values[1].toDouble()
+                        lastRoll = event.values[2].toDouble()
+                    } else if (event.sensor.type == android.hardware.Sensor.TYPE_PRESSURE && event.values.isNotEmpty()) {
+                        lastPressureHpa = event.values[0].toDouble()
+                    }
+                }
+                override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+            }
+            if (orientSensor != null) {
+                sm.registerListener(listener, orientSensor, android.hardware.SensorManager.SENSOR_DELAY_UI)
+            }
+            if (pressureSensor != null) {
+                sm.registerListener(listener, pressureSensor, android.hardware.SensorManager.SENSOR_DELAY_UI)
+            }
+        } catch (_: Exception) {}
+    }
+
     @JavascriptInterface
     fun getCompassOrientation(): String {
+        ensureSensorsRegistered()
         val json = JSONObject().apply {
-            put("azimuth", 45.0)
-            put("pitch", 0.0)
-            put("roll", 0.0)
+            put("azimuth", lastAzimuth)
+            put("pitch", lastPitch)
+            put("roll", lastRoll)
             put("accuracy", 3)
         }
         return json.toString()
@@ -275,9 +325,14 @@ class OutGridAndroidBridge(
 
     @JavascriptInterface
     fun getBarometerAltitude(): String {
+        ensureSensorsRegistered()
+        val relativeAlt = android.hardware.SensorManager.getAltitude(
+            android.hardware.SensorManager.PRESSURE_STANDARD_ATMOSPHERE,
+            lastPressureHpa.toFloat()
+        ).toDouble()
         val json = JSONObject().apply {
-            put("pressureHpa", 1013.25)
-            put("relativeAltitudeMeters", 0.0)
+            put("pressureHpa", lastPressureHpa)
+            put("relativeAltitudeMeters", relativeAlt)
         }
         return json.toString()
     }

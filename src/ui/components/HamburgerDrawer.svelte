@@ -135,6 +135,30 @@
               </div>
             </button>
 
+            <button class="menu-entry" on:click={() => { dispatch('openTab', { tab: 'feed' }); closeDrawer(); }}>
+              <span class="menu-icon">📢</span>
+              <div class="menu-info">
+                <strong>ศูนย์ประกาศเตือนภัยพิบัติ (Crisis Feed)</strong>
+                <small>Verified Offline Emergency Alerts & Broadcasts</small>
+              </div>
+            </button>
+
+            <button class="menu-entry" on:click={() => { dispatch('openTab', { tab: 'friends' }); closeDrawer(); }}>
+              <span class="menu-icon">👥</span>
+              <div class="menu-info">
+                <strong>รายชื่อเพื่อน & จับคู่ QR Code</strong>
+                <small>Two-Way QR Handshake & Nearby Radio Nodes</small>
+              </div>
+            </button>
+
+            <button class="menu-entry" on:click={() => { dispatch('openTab', { tab: 'profile' }); closeDrawer(); }}>
+              <span class="menu-icon">👤</span>
+              <div class="menu-info">
+                <strong>โปรไฟล์ตัวตน & สำรองข้อมูล (Identity)</strong>
+                <small>Self-Sovereign Node ID & Zero-Knowledge Backup</small>
+              </div>
+            </button>
+
             <button class="menu-entry" on:click={() => currentSection = 'system'}>
               <span class="menu-icon">⚙️</span>
               <div class="menu-info">

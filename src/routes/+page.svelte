@@ -392,6 +392,10 @@
     bind:isOpen={isDrawerOpen}
     {appVersion}
     {commitSha}
+    on:openTab={(e) => {
+      activeTab = e.detail.tab as any;
+      isDrawerOpen = false;
+    }}
   />
 
   <!-- 1. App Header (Exact Match to Mockup) -->

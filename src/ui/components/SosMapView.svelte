@@ -30,11 +30,11 @@
     batteryBars: number;
     rssiTier: number;
     distanceMeters: number;
-    isInternet?: boolean;
-    isGateway?: boolean;
-    isFriend?: boolean;
-    isSos?: boolean;
-    customName?: string;
+    isInternet?: boolean | undefined;
+    isGateway?: boolean | undefined;
+    isFriend?: boolean | undefined;
+    isSos?: boolean | undefined;
+    customName?: string | undefined;
   }> = [];
 
   export let myNodeId: string = '';
@@ -275,7 +275,7 @@
       security: 'Curve25519 Direct Wire 🔒',
       extra: peer.isSos ? '🚨 ส่งสัญญาณฉุกเฉินผ่านคลื่นวิทยุใกล้เคียง' : 'โหนดในรัศมีสื่อสารวิทยุกู้ภัยตรง',
       peerId: peer.shortNodeId,
-      isSos: peer.isSos,
+      isSos: Boolean(peer.isSos),
       lat: peer.lat,
       lng: peer.lng
     };
@@ -478,7 +478,7 @@
             return { color: '#64748b', weight: 1 };
           },
           pointToLayer: (feature, latlng) => {
-            return L.circleMarker(latlng, {
+            return L!.circleMarker(latlng, {
               radius: 4,
               fillColor: '#38bdf8',
               color: '#ffffff',
@@ -551,10 +551,11 @@
     loadPersistedMapState();
 
     if (typeof window !== 'undefined') {
-      if ('ondeviceorientationabsolute' in window) {
-        window.addEventListener('deviceorientationabsolute', handleDeviceOrientation as any, true);
+      const win = window as any;
+      if ('ondeviceorientationabsolute' in win) {
+        win.addEventListener('deviceorientationabsolute', handleDeviceOrientation as any, true);
       } else {
-        window.addEventListener('deviceorientation', handleDeviceOrientation as any, true);
+        win.addEventListener('deviceorientation', handleDeviceOrientation as any, true);
       }
     }
 

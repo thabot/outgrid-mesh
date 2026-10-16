@@ -19,7 +19,7 @@ export interface IUserProfile {
   keyPair: IKeyPair;
   role: UserRole;
   displayName: string;
-  badge?: string;
+  badge?: string | undefined;
 }
 
 export class AuthManager {

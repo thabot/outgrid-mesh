@@ -22,7 +22,7 @@ export enum MeshErrorCode {
 export class MeshError extends Error {
   public readonly code: MeshErrorCode;
   public readonly timestamp: number;
-  public readonly context?: Record<string, unknown>;
+  public readonly context?: Record<string, unknown> | undefined;
 
   constructor(code: MeshErrorCode, message: string, context?: Record<string, unknown>) {
     super(`[${code}] ${message}`);

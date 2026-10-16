@@ -67,11 +67,19 @@ class OutGridMeshService : Service() {
 
     private fun handleBackgroundPacket(bytes: ByteArray, rssi: Int) {
         if (bytes.size < 5) return
-        // Check for SOS Beacon (Magic 0x544F, packetType 0x01)
+        // 1. Standard or 21B Compact SOS Beacon (Magic 0x544F, packetType 0x01)
         if (bytes[0] == 0x54.toByte() && bytes[1] == 0x4F.toByte()) {
             val pType = bytes[2].toInt() and 0x1f
             if (pType == 0x01) { // SOS_BEACON
                 triggerEmergencyNotification("🚨 ตรวจพบสัญญาณ SOS จากโหนดวิทยุใกล้เคียง (RSSI: ${rssi}dBm)")
+            }
+            return
+        }
+        // 2. 10B Canned Emergency or 13B Ultra-Compact SOS (Manufacturer ID 0x544F stripped by OS)
+        if (bytes.size == 10 || bytes.size == 13) {
+            val pType = bytes[0].toInt() and 0x1f
+            if (pType == 0x01) {
+                triggerEmergencyNotification("🚨 ตรวจพบสัญญาณ SOS ฉุกเฉินจากโหนดวิทยุใกล้เคียง (RSSI: ${rssi}dBm)")
             }
         }
     }

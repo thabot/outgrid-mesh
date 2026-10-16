@@ -58,16 +58,16 @@
   let searchQuery = '';
 
   // Saved contacts interface
-  export interface ISavedFriend {
+  interface ISavedFriend {
     id: string; // e.g. "#4C55"
-    fullNodeId?: string;
+    fullNodeId?: string | undefined;
     name: string;
     avatarEmoji: string;
     statusMessage: string;
     safetyNumber: string;
     addedAt: number;
-    isOnline?: boolean;
-    lastSeen?: number;
+    isOnline?: boolean | undefined;
+    lastSeen?: number | undefined;
   }
 
   // Saved friends loaded from localStorage or initialized empty

@@ -13,18 +13,18 @@ import { H3GridEngine } from '../spatial/H3GridEngine';
 
 export interface IDiscoveredPeer {
   shortNodeId: string;       // e.g. "#4C55"
-  fullNodeId?: string;
+  fullNodeId?: string | undefined;
   lat: number;
   lng: number;
   batteryBars: number;       // 1 to 5 bars
   rssiTier: number;          // 0 to 3 (0=Weak, 1=Med, 2=Good, 3=Strong)
   distanceMeters: number;    // Estimated distance
   lastSeen: number;          // Timestamp in ms
-  isFriend?: boolean;
-  isRelay?: boolean;
-  isGateway?: boolean;
-  isSos?: boolean;
-  isInternet?: boolean;      // Connected to Internet Gateway
+  isFriend?: boolean | undefined;
+  isRelay?: boolean | undefined;
+  isGateway?: boolean | undefined;
+  isSos?: boolean | undefined;
+  isInternet?: boolean | undefined;      // Connected to Internet Gateway
 }
 
 export interface IPeerCounts {
@@ -320,10 +320,10 @@ export class PeerDiscoveryStoreManager {
         existing.isFriend = true;
         if (fullNodeId) existing.fullNodeId = fullNodeId;
       } else {
-        let userPos: { lat: number; lng: number } | null = null;
+        let userPos = null as { lat: number; lng: number } | null;
         this.userLocationStore.subscribe(val => { userPos = val; })();
-        const baseLat = userPos?.lat ?? 13.7563;
-        const baseLng = userPos?.lng ?? 100.5018;
+        const baseLat = userPos ? userPos.lat : 13.7563;
+        const baseLng = userPos ? userPos.lng : 100.5018;
 
         map.set(shortNodeId, {
           shortNodeId,
@@ -342,6 +342,16 @@ export class PeerDiscoveryStoreManager {
     this.persistPeersToStorage();
   }
 
+  public setStealthMode(enabled: boolean): void {
+    isStealthModeStore.set(enabled);
+  }
+
+  public isStealthMode(): boolean {
+    let current = false;
+    isStealthModeStore.subscribe(val => { current = val; })();
+    return current;
+  }
+
   /**
    * Starts periodic BLE Presence Chirp broadcasting with Adaptive Interval & Stealth Mode Check
    */
@@ -357,7 +367,7 @@ export class PeerDiscoveryStoreManager {
 
       if (!isStealth) {
         try {
-          let userPos: { lat: number; lng: number } | null = null;
+          let userPos = null as { lat: number; lng: number } | null;
           this.userLocationStore.subscribe(val => { userPos = val; })();
 
           let h3Index = 0;

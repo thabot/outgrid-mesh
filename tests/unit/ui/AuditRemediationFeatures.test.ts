@@ -144,6 +144,59 @@ describe('Audit Remediation Features & Verification Suite', () => {
       expect(content.includes('CrisisFeed')).toBe(true);
       expect(content.includes('activeCrisisFeedItems')).toBe(true);
       expect(content.includes('requestBatteryOptimizationExemption')).toBe(true);
+      expect(content.includes('on:openTab')).toBe(true);
+    });
+  });
+
+  describe('Phase 6: Deep End-to-End Verification & Edge Case Fixes', () => {
+    it('should verify peerDiscoveryManager supports setStealthMode and isStealthMode', async () => {
+      const { peerDiscoveryManager } = await import('../../../src/core/state/PeerDiscoveryStore');
+      expect(typeof peerDiscoveryManager.setStealthMode).toBe('function');
+      expect(typeof peerDiscoveryManager.isStealthMode).toBe('function');
+
+      peerDiscoveryManager.setStealthMode(true);
+      expect(peerDiscoveryManager.isStealthMode()).toBe(true);
+      peerDiscoveryManager.setStealthMode(false);
+      expect(peerDiscoveryManager.isStealthMode()).toBe(false);
+    });
+
+    it('should verify LocalHotspotSideloadService.kt copies APK to cacheDir and serves over HTTP ServerSocket(8080)', () => {
+      const servicePath = path.resolve('android/app/src/main/java/io/outgrid/mesh/LocalHotspotSideloadService.kt');
+      expect(fs.existsSync(servicePath)).toBe(true);
+
+      const content = fs.readFileSync(servicePath, 'utf-8');
+      expect(content.includes('File(context.cacheDir, "OutGrid-Rescue.apk")')).toBe(true);
+      expect(content.includes('java.net.ServerSocket(8080)')).toBe(true);
+      expect(content.includes('application/vnd.android.package-archive')).toBe(true);
+    });
+
+    it('should verify OutGridAndroidBridge.kt uses package:$packageName URI and real SensorManager', () => {
+      const bridgePath = path.resolve('android/app/src/main/java/io/outgrid/mesh/OutGridAndroidBridge.kt');
+      expect(fs.existsSync(bridgePath)).toBe(true);
+
+      const content = fs.readFileSync(bridgePath, 'utf-8');
+      expect(content.includes('Uri.parse("package:$packageName")')).toBe(true);
+      expect(content.includes('ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS')).toBe(true);
+      expect(content.includes('Sensor.TYPE_PRESSURE')).toBe(true);
+    });
+
+    it('should verify HamburgerDrawer.svelte provides navigation to Crisis Feed, Friends, and Profile', () => {
+      const drawerPath = path.resolve('src/ui/components/HamburgerDrawer.svelte');
+      expect(fs.existsSync(drawerPath)).toBe(true);
+
+      const content = fs.readFileSync(drawerPath, 'utf-8');
+      expect(content.includes("dispatch('openTab', { tab: 'feed' })")).toBe(true);
+      expect(content.includes("dispatch('openTab', { tab: 'friends' })")).toBe(true);
+      expect(content.includes("dispatch('openTab', { tab: 'profile' })")).toBe(true);
+    });
+
+    it('should verify AuthProfileScreen.svelte persists encrypted Zero-Knowledge Contact Backup', () => {
+      const profilePath = path.resolve('src/ui/components/AuthProfileScreen.svelte');
+      expect(fs.existsSync(profilePath)).toBe(true);
+
+      const content = fs.readFileSync(profilePath, 'utf-8');
+      expect(content.includes('outgrid_zk_contact_backup_v1')).toBe(true);
+      expect(content.includes('TOG-ZK-BACKUP-1.1')).toBe(true);
     });
   });
 });

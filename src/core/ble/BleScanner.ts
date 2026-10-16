@@ -19,7 +19,7 @@ export type ScanCallback = (result: IScanResult) => void;
 
 export class BleScanner {
   private isScanning: boolean = false;
-  private onPacketReceived?: ScanCallback;
+  private onPacketReceived?: ScanCallback | undefined;
   private seenHashes: Set<string> = new Set();
 
   /**

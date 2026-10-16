@@ -15,8 +15,11 @@ import java.io.File
 class LocalHotspotSideloadService(private val context: Context) {
 
     private var reservation: WifiManager.LocalOnlyHotspotReservation? = null
+    private var httpServerSocket: java.net.ServerSocket? = null
+    private var isHttpServerRunning: Boolean = false
 
     fun startSideloadHotspot(onSuccess: (ssid: String) -> Unit, onError: (errorCode: Int) -> Unit) {
+        startEmbeddedApkHttpServer()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
 
@@ -45,7 +48,50 @@ class LocalHotspotSideloadService(private val context: Context) {
         }
     }
 
+    private fun startEmbeddedApkHttpServer() {
+        if (isHttpServerRunning) return
+        isHttpServerRunning = true
+        Thread {
+            try {
+                val server = java.net.ServerSocket(8080)
+                httpServerSocket = server
+                while (isHttpServerRunning && !server.isClosed) {
+                    val client = try { server.accept() } catch (_: Exception) { break }
+                    Thread {
+                        try {
+                            client.use { sock ->
+                                val apkFile = getLocalApkFile()
+                                val out = sock.getOutputStream()
+                                if (apkFile != null && apkFile.exists()) {
+                                    val header = "HTTP/1.1 200 OK\r\n" +
+                                        "Content-Type: application/vnd.android.package-archive\r\n" +
+                                        "Content-Disposition: attachment; filename=\"OutGrid-Rescue.apk\"\r\n" +
+                                        "Content-Length: ${apkFile.length()}\r\n" +
+                                        "Connection: close\r\n\r\n"
+                                    out.write(header.toByteArray(Charsets.UTF_8))
+                                    apkFile.inputStream().use { input -> input.copyTo(out) }
+                                    out.flush()
+                                } else {
+                                    val notFound = "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\nAPK Not Found"
+                                    out.write(notFound.toByteArray(Charsets.UTF_8))
+                                    out.flush()
+                                }
+                            }
+                        } catch (_: Exception) {}
+                    }.start()
+                }
+            } catch (_: Exception) {
+                isHttpServerRunning = false
+            }
+        }.start()
+    }
+
     fun stopSideloadHotspot() {
+        isHttpServerRunning = false
+        try {
+            httpServerSocket?.close()
+        } catch (_: Exception) {}
+        httpServerSocket = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             reservation?.close()
             reservation = null
@@ -53,9 +99,17 @@ class LocalHotspotSideloadService(private val context: Context) {
     }
 
     fun getLocalApkFile(): File? {
-        // App package file located at context.packageCodePath
-        val apkPath = context.packageCodePath
-        val file = File(apkPath)
-        return if (file.exists()) file else null
+        return try {
+            val sourceFile = File(context.packageCodePath)
+            if (!sourceFile.exists()) return null
+            val cachedApk = File(context.cacheDir, "OutGrid-Rescue.apk")
+            if (!cachedApk.exists() || cachedApk.length() != sourceFile.length()) {
+                sourceFile.copyTo(cachedApk, overwrite = true)
+            }
+            cachedApk
+        } catch (_: Exception) {
+            val fallback = File(context.packageCodePath)
+            if (fallback.exists()) fallback else null
+        }
     }
 }
