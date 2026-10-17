@@ -13,6 +13,9 @@
   import { peerDiscoveryManager } from '../../core/state/PeerDiscoveryStore';
   import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
   import { SosRadarEngine } from '../../core/spatial/SosRadarEngine';
+  import { i18n } from '../../core/i18n/I18nStore';
+
+  const translations = i18n.translations;
 
   export let sosTargets: Array<{
     id: string;
@@ -239,20 +242,20 @@
 
   function handleSelectSelf() {
     selectedNode = {
-      name: `โหนดของฉัน (${myShortNodeId})`,
+      name: `${$translations.self_node_title || 'โหนดของฉัน'} (${myShortNodeId})`,
       avatar: '📍',
-      role: '📍 โหนดของฉัน (Host)',
+      role: $translations.self_host_role || '📍 โหนดของฉัน (Host)',
       roleBg: '#064e3b',
       radio: '⚡ BLE 5.3 Coded PHY (S=8)',
       isInternet: isOnline,
-      internetStatus: isOnline ? 'ต่อ Internet ได้ (Online) 🟢' : 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘',
-      distance: '0 เมตร (ตำแหน่งปัจจุบัน)',
+      internetStatus: isOnline ? ($translations.internet_online_status || 'ต่อ Internet ได้ (Online) 🟢') : ($translations.mesh_only_status || 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘'),
+      distance: $translations.current_position_dist || '0 เมตร (ตำแหน่งปัจจุบัน)',
       bearing: '000° N',
-      rssi: '-35 dBm (สูงสุด)',
-      battery: '85% (~34 ชม.)',
-      freshness: 'ใช้งานอยู่ตอนนี้ 🟢',
+      rssi: '-35 dBm',
+      battery: '85% (~34h)',
+      freshness: $translations.active_now || 'ใช้งานอยู่ตอนนี้ 🟢',
       security: `Curve25519 (0x${(myNodeId || '47A1').slice(0, 8).toUpperCase()})`,
-      extra: 'สถานะ: ให้บริการทวนสัญญาณฉุกเฉินและกระจายพิกัดกู้ภัย 24/7',
+      extra: $translations.self_status_extra || 'สถานะ: ให้บริการทวนสัญญาณฉุกเฉินและกระจายพิกัดกู้ภัย 24/7',
       isSelf: true,
       lat: myPos.lat,
       lng: myPos.lng
@@ -269,20 +272,20 @@
     const cardDir = getCardinalDirection(bearingDeg);
 
     selectedNode = {
-      name: peer.customName || `โหนด ${peer.shortNodeId}`,
+      name: peer.customName || `${$translations.peer_node_title || 'โหนด'} ${peer.shortNodeId}`,
       avatar: peer.isSos ? '🆘' : (peer.isFriend ? '👥' : (peer.isGateway ? '🌐' : '📡')),
-      role: peer.isSos ? '🚨 ผู้ประสบภัย (SOS)' : (peer.isFriend ? '👥 โหนดเพื่อน' : (peer.isGateway ? '🌐 เกตเวย์ดาวเทียม' : '📡 โหนดวิทยุกู้ภัย')),
+      role: peer.isSos ? ($translations.node_role_sos || '🚨 ผู้ประสบภัย (SOS)') : (peer.isFriend ? ($translations.node_role_friend || '👥 โหนดเพื่อน') : (peer.isGateway ? ($translations.node_role_gateway || '🌐 เกตเวย์ดาวเทียม') : ($translations.node_role_relay || '📡 โหนดวิทยุกู้ภัย'))),
       roleBg: peer.isSos ? '#dc2626' : (peer.isFriend ? '#0284c7' : (peer.isGateway ? '#059669' : '#334155')),
       radio: '⚡ BLE 5.0 Coded PHY',
       isInternet: Boolean(peer.isInternet || peer.isGateway),
-      internetStatus: (peer.isInternet || peer.isGateway) ? 'ต่อ Internet ได้ (BLE+4G/Satellite) 🟢' : 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘',
-      distance: `~${peer.distanceMeters || 120} เมตร`,
+      internetStatus: (peer.isInternet || peer.isGateway) ? ($translations.mesh_gateway_status || 'ต่อ Internet ได้ (BLE+4G/Satellite) 🟢') : ($translations.mesh_only_status || 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘'),
+      distance: `~${peer.distanceMeters || 120} m`,
       bearing: `${String(Math.round(bearingDeg)).padStart(3, '0')}° ${cardDir}`,
       rssi: `${peer.rssiTier === 3 ? '-68' : peer.rssiTier === 2 ? '-78' : '-88'} dBm`,
       battery: `${Math.min(100, peer.batteryBars * 20)}%`,
-      freshness: 'สแกนพบล่าสุด 🟢',
+      freshness: $translations.recently_scanned || 'สแกนพบล่าสุด 🟢',
       security: 'Curve25519 Direct Wire 🔒',
-      extra: peer.isSos ? '🚨 ส่งสัญญาณฉุกเฉินผ่านคลื่นวิทยุใกล้เคียง' : 'โหนดในรัศมีสื่อสารวิทยุกู้ภัยตรง',
+      extra: peer.isSos ? ($translations.peer_extra_sos || '🚨 ส่งสัญญาณฉุกเฉินผ่านคลื่นวิทยุใกล้เคียง') : ($translations.peer_extra_relay || 'โหนดในรัศมีสื่อสารวิทยุกู้ภัยตรง'),
       peerId: peer.shortNodeId,
       isSos: Boolean(peer.isSos),
       lat: peer.lat,
@@ -306,20 +309,20 @@
     );
 
     selectedNode = {
-      name: `ขอความช่วยเหลือ: ${target.category || 'SOS'}`,
+      name: `${$translations.sos_target_prefix || 'ขอความช่วยเหลือ:'} ${target.category || 'SOS'}`,
       avatar: '🆘',
-      role: '🚨 ผู้ประสบภัยขอความช่วยเหลือ',
+      role: $translations.sos_target_role || '🚨 ผู้ประสบภัยขอความช่วยเหลือ',
       roleBg: '#dc2626',
       radio: '📻 BLE Emergency Flood Beacon',
       isInternet: false,
-      internetStatus: 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘',
-      distance: `~${dist} เมตร`,
+      internetStatus: $translations.mesh_only_status || 'Bluetooth Mesh เท่านั้น (Off-Grid) 🔘',
+      distance: `~${dist} m`,
       bearing: `${String(Math.round(bearingDeg)).padStart(3, '0')}° ${cardDir}`,
-      rssi: '-75 dBm (กำลังสัญญาณ)',
-      battery: 'โหมดประหยัดพลังงาน ⚠️',
-      freshness: 'สัญญาณแจ้งเตือนฉุกเฉิน 🚨',
+      rssi: '-75 dBm',
+      battery: $translations.sos_power_saving || 'โหมดประหยัดพลังงาน ⚠️',
+      freshness: $translations.sos_alert_freshness || 'สัญญาณแจ้งเตือนฉุกเฉิน 🚨',
       security: 'TOG v1.1 Emergency Wire',
-      extra: `เหตุฉุกเฉิน: ${target.category} ${target.floor ? `(ชั้น ${target.floor})` : ''}`,
+      extra: `${$translations.sos_emergency_prefix || 'เหตุฉุกเฉิน:'} ${target.category} ${target.floor ? `(${$translations.sos_floor_prefix || 'ชั้น'} ${target.floor})` : ''}`,
       isSos: true,
       peerId: target.senderNodeId || target.id,
       lat: target.lat,
@@ -346,7 +349,7 @@
         bearing: selectedNode.bearing,
         lat: selectedNode.lat || myPos.lat,
         lng: selectedNode.lng || myPos.lng,
-        category: selectedNode.isSos ? '🚨 ฉุกเฉิน SOS' : '📍 พิกัดกู้ภัย'
+        category: selectedNode.isSos ? ($translations.radar_cat_sos || '🚨 ฉุกเฉิน SOS') : ($translations.radar_cat_rescue || '📍 พิกัดกู้ภัย')
       }
     });
     selectedNode = null;
@@ -391,7 +394,7 @@
       html: `
         <div class="tactical-marker-wrap">
           <div class="node-icon-bubble bubble-self">📍</div>
-          <span class="node-tag tag-self">ฉัน (${myShortNodeId})</span>
+          <span class="node-tag tag-self">${$translations.self_marker_label || 'ฉัน'} (${myShortNodeId})</span>
         </div>
       `,
       iconSize: [80, 50],
@@ -612,8 +615,8 @@
     renderH3Grid();
   }
 
-  // Reactive updater when peerNodes, sosTargets or myPos update
-  $: if (map && L && markersLayer && (peerNodes || sosTargets || myPos)) {
+  // Reactive updater when peerNodes, sosTargets, myPos, or translations update
+  $: if (map && L && markersLayer && (peerNodes || sosTargets || myPos || $translations)) {
     renderMapElements();
   }
 
@@ -651,20 +654,20 @@
   <!-- Top Bar -->
   <div class="map-top-bar">
     <div class="top-bar-left">
-      <span class="top-bar-title">🗺️ เรดาร์ & แผนที่กู้ภัย</span>
+      <span class="top-bar-title">{$translations.map_radar_title || '🗺️ เรดาร์ & แผนที่กู้ภัย'}</span>
       <div class="top-bar-legend">
         {#if isOnline}
-          <span class="legend-internet">🟢 ต่อ Internet ได้</span>
+          <span class="legend-internet">{$translations.legend_online || '🟢 ต่อ Internet ได้'}</span>
         {:else}
-          <span class="legend-bt">🔘 ออฟไลน์ (Bluetooth Mesh)</span>
+          <span class="legend-bt">{$translations.legend_offline_bt || '🔘 ออฟไลน์ (Bluetooth Mesh)'}</span>
         {/if}
         <span class="legend-divider">|</span>
-        <span class="legend-hint">โหนด: 🟢 ต่อเน็ต 🔘 วิทยุ</span>
+        <span class="legend-hint">{$translations.legend_mode_hint || 'โหนด: 🟢 ต่อเน็ต 🔘 วิทยุ'}</span>
       </div>
     </div>
     <div class="top-bar-right-group">
       {#if peerNodes.length > 0}
-        <button class="btn-focus-peers" on:click={focusAllNodes} title="ซูมแสดงโหนดทั้งหมด ({peerNodes.length} โหนด)">
+        <button class="btn-focus-peers" on:click={focusAllNodes} title="{$translations.btn_focus_nodes_title || 'ซูมแสดงโหนดทั้งหมด'} ({peerNodes.length})">
           👥 {peerNodes.length} Node
         </button>
       {/if}
@@ -687,7 +690,7 @@
         <div
           class="compass-dial"
           on:click={toggleHeadingMode}
-          title="แตะเพื่อสลับโหมด หมุนตามมือถือ (Heading-Up) / ทิศเหนือชี้ขึ้น (North-Up)"
+          title={$translations.compass_toggle_title || 'แตะเพื่อสลับโหมด หมุนตามมือถือ (Heading-Up) / ทิศเหนือชี้ขึ้น (North-Up)'}
           role="button"
           tabindex="0"
           on:keydown={(e) => e.key === 'Enter' && toggleHeadingMode()}
@@ -703,20 +706,20 @@
         </div>
         <div class="compass-degree-badge">🧭 {String(deviceHeading).padStart(3, '0')}° {getCardinalDirection(deviceHeading)}</div>
         <button class="compass-mode-btn" class:active={isHeadingUpMode} on:click={toggleHeadingMode}>
-          {isHeadingUpMode ? '📱 หมุนตามมือถือ' : '⬆️ ทิศเหนือชี้ขึ้น'}
+          {isHeadingUpMode ? ($translations.compass_heading_up || '📱 หมุนตามมือถือ') : ($translations.compass_north_up || '⬆️ ทิศเหนือชี้ขึ้น')}
         </button>
       </div>
 
       <!-- Interactive Map Zoom Controls -->
       <div class="map-zoom-controls">
-        <button class="btn-zoom" on:click={zoomIn} title="ซูมเข้า">+</button>
+        <button class="btn-zoom" on:click={zoomIn} title={$translations.zoom_in || 'ซูมเข้า'}>+</button>
         <div class="zoom-level-badge">L{mapZoomLevel}</div>
-        <button class="btn-zoom" on:click={zoomOut} title="ซูมออก">−</button>
-        <button class="btn-zoom btn-center" on:click={locateMe} title="ระบุตำแหน่งของฉัน" class:locating={isLocating}>
+        <button class="btn-zoom" on:click={zoomOut} title={$translations.zoom_out || 'ซูมออก'}>−</button>
+        <button class="btn-zoom btn-center" on:click={locateMe} title={$translations.locate_me || 'ระบุตำแหน่งของฉัน'} class:locating={isLocating}>
           {isLocating ? '⏳' : '🎯'}
         </button>
         {#if peerNodes.length > 0}
-          <button class="btn-zoom btn-nodes-focus" on:click={focusAllNodes} title="จัดมุมมองให้เห็นทุกโหนด">
+          <button class="btn-zoom btn-nodes-focus" on:click={focusAllNodes} title={$translations.btn_focus_all_nodes || 'จัดมุมมองให้เห็นทุกโหนด'}>
             👥
           </button>
         {/if}
@@ -744,23 +747,23 @@
           </div>
 
           <div class="card-metrics-grid">
-            <div><span class="metric-label">📏 ระยะห่าง:</span> <b class="metric-val" style="color: #38bdf8;">{selectedNode.distance}</b></div>
-            <div><span class="metric-label">🧭 ทิศทาง:</span> <b class="metric-val">{selectedNode.bearing}</b></div>
-            <div><span class="metric-label">🌐 การต่อเน็ต:</span> <b class="metric-val" style="color: {selectedNode.isInternet ? '#22c55e' : '#cbd5e1'};">{selectedNode.internetStatus}</b></div>
-            <div><span class="metric-label">📶 สัญญาณ:</span> <b class="metric-val" style="color: #34d399;">{selectedNode.rssi}</b></div>
-            <div><span class="metric-label">🔋 แบตเตอรี่:</span> <b class="metric-val">{selectedNode.battery}</b></div>
-            <div><span class="metric-label">⏱️ สดใหม่:</span> <b class="metric-val" style="color: #22c55e;">{selectedNode.freshness}</b></div>
-            <div class="metric-full"><span class="metric-label">📻 คลื่นวิทยุ:</span> <b class="metric-val" style="color: #38bdf8;">{selectedNode.radio}</b></div>
+            <div><span class="metric-label">{$translations.inspector_distance || '📏 ระยะห่าง:'}</span> <b class="metric-val" style="color: #38bdf8;">{selectedNode.distance}</b></div>
+            <div><span class="metric-label">{$translations.inspector_bearing || '🧭 ทิศทาง:'}</span> <b class="metric-val">{selectedNode.bearing}</b></div>
+            <div><span class="metric-label">{$translations.inspector_internet || '🌐 การต่อเน็ต:'}</span> <b class="metric-val" style="color: {selectedNode.isInternet ? '#22c55e' : '#cbd5e1'};">{selectedNode.internetStatus}</b></div>
+            <div><span class="metric-label">{$translations.inspector_signal || '📶 สัญญาณ:'}</span> <b class="metric-val" style="color: #34d399;">{selectedNode.rssi}</b></div>
+            <div><span class="metric-label">{$translations.inspector_battery || '🔋 แบตเตอรี่:'}</span> <b class="metric-val">{selectedNode.battery}</b></div>
+            <div><span class="metric-label">{$translations.inspector_freshness || '⏱️ สดใหม่:'}</span> <b class="metric-val" style="color: #22c55e;">{selectedNode.freshness}</b></div>
+            <div class="metric-full"><span class="metric-label">{$translations.inspector_radio || '📻 คลื่นวิทยุ:'}</span> <b class="metric-val" style="color: #38bdf8;">{selectedNode.radio}</b></div>
             <div class="metric-full metric-extra">{selectedNode.extra}</div>
           </div>
 
           <div class="card-actions-row">
             {#if !selectedNode.isSelf}
               <button class="btn-action-chat" on:click={handleDirectChatFromInspector}>
-                💬 แชต 1:1 ทันที
+                {$translations.inspector_direct_chat || '💬 แชต 1:1 ทันที'}
               </button>
               <button class="btn-action-radar" on:click={handleStartRadarFromInspector}>
-                <span>🧭</span> <span>นำทางเรดาร์</span>
+                <span>🧭</span> <span>{$translations.inspector_radar_nav || 'นำทางเรดาร์'}</span>
               </button>
             {/if}
           </div>

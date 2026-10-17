@@ -130,4 +130,62 @@ describe('I18nLanguageBundle (Sprint F Task F.5 10-Language Parity & Store)', ()
     expect(profileContent).toContain('$t.btn_edit_name');
     expect(profileContent).toContain('$t.btn_save');
   });
+
+  it('should verify Map and OneTapSos components integrate reactive translations with 10-language parity', () => {
+    let dict: Record<string, string> = {};
+    const unsub = i18n.translations.subscribe((t) => {
+      dict = t;
+    });
+
+    // Test Japanese (ja) - User issue reproduction and fix assertion
+    i18n.setLocale('ja');
+    expect(dict.map_radar_title).toBe('🗺️ レーダー＆救助マップ');
+    expect(dict.legend_online).toBe('🟢 インターネット接続');
+    expect(dict.legend_offline_bt).toBe('🔘 オフライン (Bluetooth Mesh)');
+    expect(dict.self_marker_label).toBe('自分');
+    expect(dict.compass_heading_up).toBe('📱 進行方向 (Heading-Up)');
+    expect(dict.compass_north_up).toBe('⬆️ 北固定 (North-Up)');
+    expect(dict.sos_category_flood).toBe('🌊 浸水・冠水孤立');
+    expect(dict.sos_category_rubble).toBe('🏚️ 倒壊家屋・瓦礫の下');
+    expect(dict.modal_battery_title).toBe('⚡ バッテリー最適化の解除 (制限なし)');
+
+    // Test Thai (th)
+    i18n.setLocale('th');
+    expect(dict.map_radar_title).toBe('🗺️ เรดาร์ & แผนที่กู้ภัย');
+    expect(dict.legend_online).toBe('🟢 ต่อ Internet ได้');
+    expect(dict.self_marker_label).toBe('ฉัน');
+    expect(dict.sos_category_flood).toBe('🌊 น้ำท่วมติดค้าง');
+
+    // Test Chinese (zh)
+    i18n.setLocale('zh');
+    expect(dict.map_radar_title).toBe('🗺️ 雷达与救援地图');
+    expect(dict.self_marker_label).toBe('我');
+    expect(dict.sos_category_flood).toBe('🌊 洪水被困');
+
+    // Test English (en)
+    i18n.setLocale('en');
+    expect(dict.map_radar_title).toBe('🗺️ Radar & Rescue Map');
+    expect(dict.self_marker_label).toBe('Me');
+    expect(dict.sos_category_flood).toBe('🌊 Flood / Trapped');
+
+    unsub();
+
+    // Verify SosMapView.svelte has i18n bindings
+    const mapPath = join(root, 'src/ui/components/SosMapView.svelte');
+    expect(existsSync(mapPath)).toBe(true);
+    const mapContent = readFileSync(mapPath, 'utf8');
+    expect(mapContent).toContain('$translations.map_radar_title');
+    expect(mapContent).toContain('$translations.legend_online');
+    expect(mapContent).toContain('$translations.compass_toggle_title');
+    expect(mapContent).toContain('$translations.self_marker_label');
+    expect(mapContent).toContain('$translations.inspector_distance');
+
+    // Verify OneTapSos.svelte has i18n bindings
+    const sosPath = join(root, 'src/ui/components/OneTapSos.svelte');
+    expect(existsSync(sosPath)).toBe(true);
+    const sosContent = readFileSync(sosPath, 'utf8');
+    expect(sosContent).toContain('$translations.sos_screen_title');
+    expect(sosContent).toContain('$translations.sos_category_flood');
+    expect(sosContent).toContain('$translations.sos_btn_send');
+  });
 });

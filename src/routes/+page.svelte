@@ -431,7 +431,7 @@
   <!-- 1. App Header (Exact Match to Mockup) -->
   <header class="app-header">
     <div class="header-left">
-      <button class="hamburger-btn" on:click={() => isDrawerOpen = true} aria-label="เปิดเมนูหลัก" title="เปิดเมนูหลัก">
+      <button class="hamburger-btn" on:click={() => isDrawerOpen = true} aria-label={$translations.header_menu_open || 'เปิดเมนูหลัก'} title={$translations.header_menu_open || 'เปิดเมนูหลัก'}>
         <span class="hamburger-bar"></span>
         <span class="hamburger-bar"></span>
         <span class="hamburger-bar"></span>
@@ -495,7 +495,7 @@
               }
             }}
           >
-            💬 เปิดดู
+            {$translations.toast_view_chat || '💬 เปิดดู'}
           </button>
         {:else}
           <button
@@ -505,7 +505,7 @@
               incomingMessageAlertStore.set(null);
             }}
           >
-            📢 ดูประกาศ
+            {$translations.toast_view_broadcast || '📢 ดูประกาศ'}
           </button>
         {/if}
         <button class="btn-toast-close" on:click={() => incomingMessageAlertStore.set(null)}>✕</button>
@@ -583,7 +583,7 @@
       class="modal-overlay"
       role="dialog"
       aria-modal="true"
-      aria-label="ปลดล็อกแบตเตอรี่"
+      aria-label={$translations.modal_battery_title || 'ปลดล็อกแบตเตอรี่'}
       tabindex="-1"
       on:click={() => showBatteryModal = false}
       on:keydown={(e) => e.key === 'Escape' && (showBatteryModal = false)}
@@ -596,34 +596,34 @@
         on:keydown|stopPropagation
       >
         <div class="modal-header">
-          <span style="color: #f59e0b; font-weight: 800;">⚡ ปลดล็อกแบตเตอรี่ (Unrestricted)</span>
+          <span style="color: #f59e0b; font-weight: 800;">{$translations.modal_battery_title || '⚡ ปลดล็อกแบตเตอรี่ (Unrestricted)'}</span>
           <button class="btn-close-modal" on:click={() => showBatteryModal = false}>✕</button>
         </div>
         <div class="modal-body-guide">
-          <p style="margin-bottom: 8px;">เพื่อให้รับส่งสัญญาณกู้ภัยเบื้องหลัง 24/7 ได้ตลอดเวลา กรุณาตั้งค่าตามรุ่นมือถือ:</p>
+          <p style="margin-bottom: 8px;">{$translations.modal_battery_desc || 'เพื่อให้รับส่งสัญญาณกู้ภัยเบื้องหลัง 24/7 ได้ตลอดเวลา กรุณาตั้งค่าตามรุ่นมือถือ:'}</p>
           <div class="guide-box">
-            <b>📱 Samsung:</b> การตั้งค่า > แอป > OutGrid Mesh > แบตเตอรี่ > <b>ไม่จำกัด</b>
+            <b>{$translations.modal_battery_samsung || '📱 Samsung: การตั้งค่า > แอป > OutGrid Mesh > แบตเตอรี่ > ไม่จำกัด'}</b>
           </div>
           <div class="guide-box">
-            <b>📱 Xiaomi:</b> การตั้งค่า > จัดการแอป > ประหยัดแบตเตอรี่ > <b>ไม่มีข้อจำกัด</b>
+            <b>{$translations.modal_battery_xiaomi || '📱 Xiaomi: การตั้งค่า > จัดการแอป > ประหยัดแบตเตอรี่ > ไม่มีข้อจำกัด'}</b>
           </div>
           <div class="guide-box">
-            <b>📱 OPPO / Vivo / Realme:</b> การตั้งค่า > การจัดการแอป > เริ่มต้นอัตโนมัติ > <b>เปิด</b>
+            <b>{$translations.modal_battery_oppo || '📱 OPPO / Vivo / Realme: การตั้งค่า > การจัดการแอป > เริ่มต้นอัตโนมัติ > เปิด'}</b>
           </div>
           <div class="guide-box">
-            <b>📱 Huawei:</b> การตั้งค่า > แบตเตอรี่ > การเปิดใช้แอป > OutGrid Mesh > <b>จัดการด้วยตนเอง</b>
+            <b>{$translations.modal_battery_huawei || '📱 Huawei: การตั้งค่า > แบตเตอรี่ > การเปิดใช้แอป > OutGrid Mesh > จัดการด้วยตนเอง'}</b>
           </div>
           <div class="guide-buttons">
             <button class="btn-guide-config" on:click={() => {
               const res = NativeBridgeDispatcher.getInstance().requestBatteryOptimizationExemption();
               if (!res) {
-                alert('เปิดการตั้งค่าแอปในระบบ Android: การตั้งค่า > แอป > OutGrid Mesh > แบตเตอรี่ > ไม่จำกัด');
+                alert($translations.modal_battery_alert_fallback || 'เปิดการตั้งค่าแอปในระบบ Android: การตั้งค่า > แอป > OutGrid Mesh > แบตเตอรี่ > ไม่จำกัด');
               }
             }}>
-              ⚙️ เปิดหน้าต่างตั้งค่าระบบ Android ทันที
+              {$translations.modal_battery_btn_open || '⚙️ เปิดหน้าต่างตั้งค่าระบบ Android ทันที'}
             </button>
             <button class="btn-guide-dismiss" on:click={() => { isBatteryBannerDismissed = true; showBatteryModal = false; }}>
-              ✅ ฉันตั้งค่าเรียบร้อยแล้ว (ปิดแถบเตือนนี้)
+              {$translations.modal_battery_btn_done || '✅ ฉันตั้งค่าเรียบร้อยแล้ว (ปิดแถบเตือนนี้)'}
             </button>
           </div>
         </div>

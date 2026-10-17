@@ -9,6 +9,9 @@
   import { createEventDispatcher } from 'svelte';
   import { SosStatusCategory } from '../../core/state/OneTapSosEngine';
   import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
+  import { i18n } from '../../core/i18n/I18nStore';
+
+  const translations = i18n.translations;
 
   export let onTriggerSos: (category: SosStatusCategory) => void;
   export let isDispatching: boolean = false;
@@ -23,20 +26,20 @@
   $: isTorchRunning = $torchStore;
 
   let selectedCategory: SosStatusCategory = SosStatusCategory.NEED_BOAT;
-  let selectedCategoryLabel = '🌊 น้ำท่วมติดค้าง';
   let isSosActive = false;
 
-  const categories = [
-    { id: SosStatusCategory.NEED_BOAT, label: '🌊 น้ำท่วมติดค้าง' },
-    { id: SosStatusCategory.TRAPPED_RUBBLE, label: '🏚️ ติดใต้ซากอาคาร' },
-    { id: SosStatusCategory.GENERAL_EMERGENCY, label: '🩺 บาดเจ็บสาหัส' },
-    { id: SosStatusCategory.OXYGEN_DEPLETION, label: '🔥 ไฟไหม้/ควัน' },
-    { id: SosStatusCategory.VULNERABLE_CHILD_ELDERLY, label: '👶 มีเด็ก/คนชรา' },
+  $: categories = [
+    { id: SosStatusCategory.NEED_BOAT, label: $translations.sos_category_flood || '🌊 น้ำท่วมติดค้าง' },
+    { id: SosStatusCategory.TRAPPED_RUBBLE, label: $translations.sos_category_rubble || '🏚️ ติดใต้ซากอาคาร' },
+    { id: SosStatusCategory.GENERAL_EMERGENCY, label: $translations.sos_category_medical || '🩺 บาดเจ็บสาหัส' },
+    { id: SosStatusCategory.OXYGEN_DEPLETION, label: $translations.sos_category_fire || '🔥 ไฟไหม้/ควัน' },
+    { id: SosStatusCategory.VULNERABLE_CHILD_ELDERLY, label: $translations.sos_category_vulnerable || '👶 มีเด็ก/คนชรา' },
   ];
+
+  $: selectedCategoryLabel = categories.find(c => c.id === selectedCategory)?.label || ($translations.sos_category_flood || '🌊 น้ำท่วมติดค้าง');
 
   function selectCategory(cat: { id: SosStatusCategory; label: string }) {
     selectedCategory = cat.id;
-    selectedCategoryLabel = cat.label;
   }
 
   function handleSosClick() {
@@ -51,7 +54,7 @@
     dispatcher.stopSosStrobe();
     dispatcher.stopTorch();
     dispatcher.stopAudibleAlarm();
-    alert('🛑 ยกเลิกสัญญาณ SOS และปิดไฟฉายเรียบร้อยแล้ว');
+    alert($translations.sos_cancelled_alert || '🛑 ยกเลิกสัญญาณ SOS และปิดไฟฉายเรียบร้อยแล้ว');
   }
 
   function toggleFlashlightFromSos() {
@@ -66,28 +69,28 @@
 
 <div class="screen-sos-container">
   <span class="sos-icon-large">🚨</span>
-  <h2 class="sos-title">ระบบแจ้งเหตุฉุกเฉิน One-Tap SOS</h2>
+  <h2 class="sos-title">{$translations.sos_screen_title || 'ระบบแจ้งเหตุฉุกเฉิน One-Tap SOS'}</h2>
   <p class="sos-desc">
-    กดปุ่มด้านล่างเพื่อกระจายพิกัด GPS ออฟไลน์ฉุกเฉินทะลุทุกรัศมี Geofence ผ่านโหนดวิทยุรอบตัว 15 Hops และส่งข้อความเข้าห้องแชตสาธารณะอัตโนมัติ
+    {$translations.sos_screen_desc || 'กดปุ่มด้านล่างเพื่อกระจายพิกัด GPS ออฟไลน์ฉุกเฉินทะลุทุกรัศมี Geofence ผ่านโหนดวิทยุรอบตัว 15 Hops และส่งข้อความเข้าห้องแชตสาธารณะอัตโนมัติ'}
   </p>
 
   <!-- Active SOS Status Banner -->
   {#if isSosActive}
     <div class="sos-active-banner">
       <div class="active-banner-header">
-        <span class="active-status-text">● สัญญาณ SOS กำลังแพร่กระจายสด (15 Hops)</span>
+        <span class="active-status-text">{$translations.sos_broadcasting_active || '● สัญญาณ SOS กำลังแพร่กระจายสด (15 Hops)'}</span>
         <span class="active-badge">BROADCASTING</span>
       </div>
-      <p class="active-banner-sub">พิกัดและข้อความฉุกเฉินถูกส่งขึ้นห้องแชตสาธารณะและบันทึกลงเครื่องแล้ว</p>
+      <p class="active-banner-sub">{$translations.sos_broadcasting_sub || 'พิกัดและข้อความฉุกเฉินถูกส่งขึ้นห้องแชตสาธารณะและบันทึกลงเครื่องแล้ว'}</p>
       <div class="active-banner-actions">
         <button class="btn-banner-view" on:click={() => dispatch('viewBroadcast')}>
-          📢 แชตสาธารณะ
+          {$translations.sos_public_chat_btn || '📢 แชตสาธารณะ'}
         </button>
         <button class="btn-banner-torch" on:click={toggleFlashlightFromSos}>
-          {isTorchRunning ? '🔦 ปิดไฟฉาย' : '⚡ เปิดไฟฉาย'}
+          {isTorchRunning ? ($translations.sos_torch_off || '🔦 ปิดไฟฉาย') : ($translations.sos_torch_on || '⚡ เปิดไฟฉาย')}
         </button>
         <button class="btn-banner-cancel" on:click={cancelSos}>
-          🛑 ยกเลิก SOS
+          {$translations.sos_cancel_btn || '🛑 ยกเลิก SOS'}
         </button>
       </div>
     </div>
@@ -115,17 +118,17 @@
     on:click={handleSosClick}
   >
     {#if isDispatching}
-      <span>📡 กำลังยิงวิทยุ...</span>
+      <span>{$translations.sos_btn_dispatching || '📡 กำลังยิงวิทยุ...'}</span>
     {:else}
-      <span>🚨 กดส่ง SOS</span>
+      <span>{$translations.sos_btn_send || '🚨 กดส่ง SOS'}</span>
     {/if}
   </button>
 
   <span class="selected-cat-hint">
-    หมวดหมู่ที่เลือก: <b class="selected-cat-name">{selectedCategoryLabel}</b>
+    {$translations.sos_selected_cat_hint || 'หมวดหมู่ที่เลือก:'} <b class="selected-cat-name">{selectedCategoryLabel}</b>
   </span>
   <span class="offline-guarantee-hint">
-    (พร้อมทำงานออฟไลน์ 100% แม้ไม่มีเน็ตหรือเสาสัญญาณ)
+    {$translations.sos_offline_guarantee || '(พร้อมทำงานออฟไลน์ 100% แม้ไม่มีเน็ตหรือเสาสัญญาณ)'}
   </span>
 </div>
 

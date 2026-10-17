@@ -19,6 +19,9 @@
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
   import { createEventDispatcher } from 'svelte';
+  import { i18n } from '../../core/i18n/I18nStore';
+
+  const translations = i18n.translations;
 
   export let alertData: IIncomingSosAlert | null = null;
 
@@ -69,18 +72,18 @@
       <div class="banner-left">
         <span class="siren-icon">🚨</span>
         <div class="alert-texts">
-          <strong class="alert-title">สัญญาณขอความช่วยเหลือฉุกเฉิน!</strong>
+          <strong class="alert-title">{$translations.incoming_sos_title || 'สัญญาณขอความช่วยเหลือฉุกเฉิน!'}</strong>
           <span class="alert-detail">
-            {alertData.category} • ห่างออกไป ~{alertData.distanceMeters} ม. ({alertData.senderNodeId})
+            {alertData.category} • ~{alertData.distanceMeters} m ({alertData.senderNodeId})
           </span>
         </div>
       </div>
 
       <div class="banner-actions">
         <button class="btn-radar" on:click={handleOpenRadar}>
-          🧭 เปิดเรดาร์นำทาง
+          {$translations.incoming_sos_open_radar || '🧭 เปิดเรดาร์นำทาง'}
         </button>
-        <button class="btn-dismiss" on:click={handleDismiss} aria-label="ปิดการแจ้งเตือน">
+        <button class="btn-dismiss" on:click={handleDismiss} aria-label={$translations.btn_close || 'ปิดการแจ้งเตือน'}>
           ✕
         </button>
       </div>

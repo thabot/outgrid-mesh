@@ -7,34 +7,37 @@
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
   import { CrisisUrgency, type ICrisisFeedItem } from '../../core/feed/CrisisFeedManager';
+  import { i18n } from '../../core/i18n/I18nStore';
+
+  const translations = i18n.translations;
 
   export let feedItems: ICrisisFeedItem[] = [];
 </script>
 
 <div class="crisis-feed-container">
   <div class="feed-header">
-    <h3>📢 ศูนย์กระจายข่าวเตือนภัยฉุกเฉิน (Offline Feed)</h3>
+    <h3>{$translations.feed_title || '📢 ศูนย์กระจายข่าวเตือนภัยฉุกเฉิน (Offline Feed)'}</h3>
   </div>
 
   {#if feedItems.length === 0}
-    <div class="empty-feed">ยังไม่มีประกาศเตือนภัยในพื้นที่ขณะนี้</div>
+    <div class="empty-feed">{$translations.feed_empty || 'ยังไม่มีประกาศเตือนภัยในพื้นที่ขณะนี้'}</div>
   {:else}
     <div class="feed-list">
       {#each feedItems as item}
         <div class="feed-card" class:evacuate={item.urgency === CrisisUrgency.EVACUATE_IMMEDIATE}>
           <div class="badge-row">
             {#if item.urgency === CrisisUrgency.EVACUATE_IMMEDIATE}
-              <span class="urgency-badge evacuate-badge">🚨 คำสั่งอพยพด่วนทันที</span>
+              <span class="urgency-badge evacuate-badge">{$translations.feed_urgency_evacuate || '🚨 คำสั่งอพยพด่วนทันที'}</span>
             {:else if item.urgency === CrisisUrgency.WARNING}
-              <span class="urgency-badge warning-badge">⚠️ คำเตือนภัย</span>
+              <span class="urgency-badge warning-badge">{$translations.feed_urgency_warning || '⚠️ คำเตือนภัย'}</span>
             {:else}
-              <span class="urgency-badge info-badge">ℹ️ ข่าวสารทั่วไป</span>
+              <span class="urgency-badge info-badge">{$translations.feed_urgency_info || 'ℹ️ ข่าวสารทั่วไป'}</span>
             {/if}
 
             {#if item.isVerified}
-              <span class="auth-badge verified">🛡️ ทางการยืนยันแล้ว ({item.senderAuthority})</span>
+              <span class="auth-badge verified">{$translations.feed_verified || '🛡️ ทางการยืนยันแล้ว'} ({item.senderAuthority})</span>
             {:else}
-              <span class="auth-badge unverified">⚠️ ยังไม่ผ่านการยืนยันตัวตน</span>
+              <span class="auth-badge unverified">{$translations.feed_unverified || '⚠️ ยังไม่ผ่านการยืนยันตัวตน'}</span>
             {/if}
           </div>
 

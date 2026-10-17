@@ -8,6 +8,9 @@
    */
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { SosRadarEngine } from '../../core/spatial/SosRadarEngine';
+  import { i18n } from '../../core/i18n/I18nStore';
+
+  const translations = i18n.translations;
 
   export let target = {
     id: 'sos-target-01',
@@ -152,16 +155,16 @@
     <div class="radar-top-bar">
       <div class="target-badge">
         <span class="pulse-dot"></span>
-        <span>🚨 เป้าหมายกู้ภัย: {target.category}</span>
+        <span>{$translations.radar_target_label || 'เป้าหมายกู้ภัย:'} {target.category}</span>
       </div>
-      <button class="btn-close" on:click={() => dispatch('close')} aria-label="ปิดเรดาร์">✕</button>
+      <button class="btn-close" on:click={() => dispatch('close')} aria-label={$translations.btn_close || 'ปิด'}>✕</button>
     </div>
 
     <!-- Distance Countdown Bar -->
     <div class="distance-hud">
-      <span class="dist-label">ระยะห่างทางราบ:</span>
-      <strong class="dist-value">{distanceMeters} ม.</strong>
-      <span class="floor-tag">🏢 ประเมินอยู่ที่ชั้น {target.floor || 1}</span>
+      <span class="dist-label">{$translations.radar_dist_horizontal || 'ระยะห่างทางราบ:'}</span>
+      <strong class="dist-value">{distanceMeters} m</strong>
+      <span class="floor-tag">🏢 {$translations.radar_floor || 'ชั้น'} {target.floor || 1}</span>
     </div>
 
     <!-- Tactical Circular Radar Screen -->
@@ -177,7 +180,7 @@
       <div
         class="target-pointer"
         style="transform: rotate({relativeBearing}deg);"
-        title="ทิศทางเป้าหมายเทียบกับทิศที่โทรศัพท์หัน"
+        title="Heading"
       >
         <div class="pointer-arrow">▲</div>
         <div class="target-blip"></div>
@@ -189,8 +192,8 @@
     <!-- Compass Degree & Audio Controls -->
     <div class="radar-footer">
       <div class="heading-readout">
-        <span>ทิศเครื่อง: {deviceHeading}°</span>
-        <span class="bearing-readout">ทิศเป้าหมาย: {Math.round(targetBearing)}° ({relativeBearing > 0 ? `ขวา ${relativeBearing}°` : `ซ้าย ${Math.abs(relativeBearing)}°`})</span>
+        <span>{$translations.radar_heading || 'ทิศเครื่อง:'} {deviceHeading}°</span>
+        <span class="bearing-readout">{$translations.radar_target_bearing || 'ทิศเป้าหมาย:'} {Math.round(targetBearing)}° ({relativeBearing > 0 ? `${$translations.radar_right || 'ขวา'} ${relativeBearing}°` : `${$translations.radar_left || 'ซ้าย'} ${Math.abs(relativeBearing)}°`})</span>
       </div>
 
       <div class="actions-row">
@@ -199,18 +202,18 @@
           class:active={isSoundEnabled}
           on:click={() => isSoundEnabled = !isSoundEnabled}
         >
-          {isSoundEnabled ? '🔊 โซนาร์เสียง: เปิด' : '🔇 โซนาร์เสียง: ปิด'}
+          {isSoundEnabled ? ($translations.radar_audio_on || '🔊 โซนาร์เสียง: เปิด') : ($translations.radar_audio_off || '🔇 โซนาร์เสียง: ปิด')}
         </button>
 
         <button class="btn-calibrate" on:click={() => isCalibrating = !isCalibrating}>
-          {isCalibrating ? '✓ เสร็จสิ้น' : '∞ ปรับเข็มทิศ'}
+          {isCalibrating ? ($translations.radar_calibrating || '✓ เสร็จสิ้น') : ($translations.radar_calibrate_btn || '∞ ปรับเข็มทิศ')}
         </button>
       </div>
 
       {#if isCalibrating}
         <div class="calibrate-box">
           <span class="cal-icon">🔄</span>
-          <p>แกว่งโทรศัพท์เป็นรูปเลข 8 กลางอากาศ เพื่อปรับเทียบสนามแม่เหล็กโลก (Compass Magnetometer)</p>
+          <p>{$translations.radar_calibrate_hint || 'แกว่งโทรศัพท์เป็นรูปเลข 8 กลางอากาศ เพื่อปรับเทียบสนามแม่เหล็กโลก (Compass Magnetometer)'}</p>
         </div>
       {/if}
     </div>

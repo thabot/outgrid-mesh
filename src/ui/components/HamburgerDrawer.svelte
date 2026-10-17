@@ -71,7 +71,7 @@
     class="drawer-backdrop"
     role="dialog"
     aria-modal="true"
-    aria-label="เมนูหลักและการตั้งค่า"
+    aria-label={$translations.header_menu_open || 'เมนูหลักและการตั้งค่า'}
     tabindex="-1"
     on:click={closeDrawer}
     on:keydown={(e) => e.key === 'Escape' && closeDrawer()}
@@ -91,7 +91,7 @@
             <span class="version-tag">TOG v{appVersion} ({commitSha})</span>
           </div>
         </div>
-        <button class="btn-close" on:click={closeDrawer} aria-label="ปิดเมนู">✕</button>
+        <button class="btn-close" on:click={closeDrawer} aria-label={$translations.btn_close || 'ปิดเมนู'}>✕</button>
       </div>
 
       <!-- Logged-in User / Device Identity Card -->
