@@ -81,6 +81,21 @@ describe('I18nLanguageBundle (Sprint F Task F.5 10-Language Parity & Store)', ()
     expect(dict.profile_screen_title).toBe('ข้อมูลเครื่องและโปรไฟล์ตัวตน');
     expect(dict.btn_close).toBe('ปิด');
 
+    // Switch to Chinese (zh)
+    i18n.setLocale('zh');
+    if (storage) {
+      expect(storage.getItem('outgrid_locale')).toBe('zh');
+    }
+    expect(dict.menu_survival_manual).toBe('应急生存手册 (10种语言)');
+    expect(dict.menu_share_apk).toBe('离线分享 APK (免流传包)');
+    expect(dict.profile_screen_title).toBe('设备详情与身份资料');
+    expect(dict.btn_close).toBe('关闭');
+
+    // Switch to Japanese (ja)
+    i18n.setLocale('ja');
+    expect(dict.menu_survival_manual).toBe('緊急サバイバルマニュアル (10言語)');
+    expect(dict.menu_share_apk).toBe('オフライン APK 共有 (サイドロード)');
+
     // Test init() restores persisted locale
     if (storage) {
       storage.setItem('outgrid_locale', 'en');
