@@ -80,7 +80,32 @@
     activeRadarTarget = target;
   }
 
+  let previousTab: 'map' | 'sos' | 'chat' | 'manual' | 'feed' | 'donation' | 'friends' = 'map';
+
+  function openProfile() {
+    if (activeTab !== 'profile') {
+      previousTab = activeTab as any;
+      activeTab = 'profile';
+    }
+  }
+
+  function toggleProfile() {
+    if (activeTab === 'profile') {
+      activeTab = previousTab || 'map';
+    } else {
+      previousTab = activeTab as any;
+      activeTab = 'profile';
+    }
+  }
+
+  function closeProfile() {
+    activeTab = previousTab || 'map';
+  }
+
   function handleBottomTabChange(e: CustomEvent<{ tab: 'map' | 'chat' | 'sos' | 'manual' | 'friends' | 'profile' }>) {
+    if (e.detail.tab !== 'profile') {
+      previousTab = e.detail.tab as any;
+    }
     activeTab = e.detail.tab;
   }
 
@@ -352,6 +377,7 @@
   }
 
   onMount(() => {
+    i18n.init();
     myProfile = auth.getProfile();
     const numericNodeId = auth.getNumericShortNodeId();
 
@@ -393,7 +419,11 @@
     {appVersion}
     {commitSha}
     on:openTab={(e) => {
-      activeTab = e.detail.tab as any;
+      if (e.detail.tab === 'profile') {
+        openProfile();
+      } else {
+        activeTab = e.detail.tab as any;
+      }
       isDrawerOpen = false;
     }}
   />
@@ -416,8 +446,8 @@
       <button
         type="button"
         class="header-node-badge"
-        on:click={() => activeTab = 'profile'}
-        title="แตะเพื่อดูรหัสเครื่องและแก้ไขโปรไฟล์ตัวตน"
+        on:click={toggleProfile}
+        title={$translations.profile_card_tooltip || 'แตะเพื่อดูรหัสเครื่องและแก้ไขโปรไฟล์ตัวตน'}
       >
         <span class="node-key-icon">🔑</span>
         <span class="node-id-text">#{(myProfile?.nodeId || '0000').slice(0, 4).toUpperCase()}</span>
@@ -430,9 +460,9 @@
   {#if !isBatteryBannerDismissed}
     <div class="battery-exemption-banner">
       <div>
-        <span>⚡ <b>แนะนำ:</b> ตั้งค่าเป็น <u>ไม่จำกัดแบตเตอรี่ (Unrestricted)</u> เพื่อให้รับส่งข้อความกู้ภัยได้ตลอด 24/7</span>
+        <span>⚡ <b>{$translations.battery_banner_tip || 'แนะนำ:'}</b> {$translations.battery_banner_desc || 'ตั้งค่าเป็น'} <u>{$translations.battery_banner_unrestricted || 'ไม่จำกัดแบตเตอรี่ (Unrestricted)'}</u> {$translations.battery_banner_tail || 'เพื่อให้รับส่งข้อความกู้ภัยได้ตลอด 24/7'}</span>
       </div>
-      <button class="btn-exemption" on:click={() => showBatteryModal = true}>ตั้งค่าระบบ</button>
+      <button class="btn-exemption" on:click={() => showBatteryModal = true}>{$translations.battery_banner_btn || 'ตั้งค่าระบบ'}</button>
     </div>
   {/if}
 
@@ -526,7 +556,7 @@
         </div>
       {:else if activeTab === 'profile'}
         <div class="profile-card">
-          <AuthProfileScreen />
+          <AuthProfileScreen on:close={closeProfile} />
         </div>
       {/if}
     </div>
@@ -534,7 +564,7 @@
 
   <!-- 5. Bottom Navigation Bar -->
   <BottomNavigationBar
-    activeTab={activeTab === 'feed' ? 'chat' : (activeTab === 'donation' || activeTab === 'profile' ? 'manual' : (activeTab as any))}
+    activeTab={activeTab === 'feed' ? 'chat' : (activeTab === 'donation' ? 'manual' : (activeTab === 'profile' ? ('' as any) : (activeTab as any)))}
     unreadCount={$unreadChatCountStore}
     on:tabChange={handleBottomTabChange}
   />

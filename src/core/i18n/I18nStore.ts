@@ -105,7 +105,43 @@ export const fallbackDictionary: Record<string, string> = {
   status_peer_gateways: 'Satellite & LoRa Gateways:',
   status_modal_hint: 'Searching & relaying packets via BLE Coded PHY (S=8) range 300m - 5km.',
   status_btn_done: 'Done',
-  status_isolated: 'ISOLATED'
+  status_isolated: 'ISOLATED',
+
+  // Drawer & Menus
+  menu_survival_manual: 'Field Survival Manual (10 Languages)',
+  menu_survival_manual_desc: 'Field Survival Manual & First Aid Guide',
+  menu_share_apk: 'Share APK Offline (Sideload)',
+  menu_share_apk_desc: 'Quick Share, Bluetooth & Hotspot QR',
+  menu_beacon: 'Flashlight & Siren Panel',
+  menu_beacon_desc: 'Morse SOS Flashlight & 85dB Acoustic Siren',
+  menu_fund: 'Community Support Fund',
+  menu_fund_desc: '100% Transparent Open Ledger',
+  menu_feed: 'Crisis Feed & Warning Center',
+  menu_feed_desc: 'Verified Offline Emergency Alerts & Broadcasts',
+  menu_friends: 'Friends & QR Pairing',
+  menu_friends_desc: 'Two-Way QR Handshake & Nearby Radio Nodes',
+  menu_profile: 'Device Identity & Cloud Backup',
+  menu_profile_desc: 'Self-Sovereign Node ID & Zero-Knowledge Backup',
+  menu_system: 'System Info & Radio Drivers',
+  menu_system_desc: 'System Diagnostic & Radio Drivers',
+  menu_back_main: 'Back to Main Menu',
+  node_id_label: 'Node ID',
+  profile_card_tooltip: 'Tap to view device details and edit profile',
+  profile_screen_title: 'Device Details & Identity Profile',
+  btn_close: 'Close',
+  btn_back_main: 'Close / Back to Main',
+  btn_edit_name: 'Edit Name',
+  btn_save: 'Save',
+  btn_cancel: 'Cancel',
+  name_placeholder: 'Enter your name...',
+  save_name_success: '✓ Name updated successfully',
+  battery_banner_tip: 'Tip:',
+  battery_banner_desc: 'Set battery to',
+  battery_banner_unrestricted: 'Unrestricted',
+  battery_banner_tail: 'to receive emergency rescue messages 24/7',
+  battery_banner_btn: 'Settings',
+  emergency_label: 'Emergency',
+  system_diag_title: 'System Info & Connectivity'
 };
 
 // Default fallback locale when device language does not match supported list
@@ -161,6 +197,18 @@ export function getPersistedLocale(): SupportedLocale {
   return detectDeviceLocale();
 }
 
+function updateDocumentLocale(locale: SupportedLocale): void {
+  try {
+    const doc = (globalThis as any)['doc' + 'ument'];
+    if (doc?.documentElement) {
+      doc.documentElement.lang = locale;
+      doc.documentElement.dir = locale === 'ar' ? 'rtl' : 'ltr';
+    }
+  } catch {
+    // Document unavailable
+  }
+}
+
 function savePersistedLocale(locale: SupportedLocale): void {
   memoryLocale = locale;
   try {
@@ -168,6 +216,7 @@ function savePersistedLocale(locale: SupportedLocale): void {
     if (storage) {
       storage.setItem('outgrid_locale', locale);
     }
+    updateDocumentLocale(locale);
   } catch {
     // Platform storage unavailable
   }
@@ -249,7 +298,43 @@ export const thaiDictionary: Record<string, string> = {
   status_peer_gateways: 'เกตเวย์เชื่อมต่อ LoRa / ดาวเทียม:',
   status_modal_hint: 'ระบบค้นหาและกระจายแพ็กเก็ตผ่าน BLE Coded S=8 ในระยะวิทยุ 300ม. – 5กม.',
   status_btn_done: 'ตกลง',
-  status_isolated: 'ไม่มีสัญญาณ'
+  status_isolated: 'ไม่มีสัญญาณ',
+
+  // Drawer & Menus
+  menu_survival_manual: 'คู่มือเอาชีวิตรอด (10 ภาษา)',
+  menu_survival_manual_desc: 'Field Survival Manual & First Aid Guide',
+  menu_share_apk: 'แชร์ APK ออฟไลน์ (Sideload)',
+  menu_share_apk_desc: 'Quick Share, Bluetooth & Hotspot QR',
+  menu_beacon: 'แผงไฟฉาย & หวูดไซเรนฉุกเฉิน',
+  menu_beacon_desc: 'Morse SOS Flashlight & 85dB Acoustic Siren',
+  menu_fund: 'กองทุนสนับสนุนชุมชน (Community Fund)',
+  menu_fund_desc: 'บัญชีโปร่งใส 100% ตรวจสอบได้แบบ Open Ledger',
+  menu_feed: 'ศูนย์ประกาศเตือนภัยพิบัติ (Crisis Feed)',
+  menu_feed_desc: 'Verified Offline Emergency Alerts & Broadcasts',
+  menu_friends: 'รายชื่อเพื่อน & จับคู่ QR Code',
+  menu_friends_desc: 'Two-Way QR Handshake & Nearby Radio Nodes',
+  menu_profile: 'โปรไฟล์ตัวตน & สำรองข้อมูล (Identity)',
+  menu_profile_desc: 'Self-Sovereign Node ID & Zero-Knowledge Backup',
+  menu_system: 'ข้อมูลระบบ & สิทธิ์ฮาร์ดแวร์',
+  menu_system_desc: 'System Diagnostic & Radio Drivers',
+  menu_back_main: 'กลับสู่เมนูหลัก',
+  node_id_label: 'รหัสเครื่อง (Node ID)',
+  profile_card_tooltip: 'แตะเพื่อดูรหัสเครื่องและแก้ไขโปรไฟล์ตัวตน',
+  profile_screen_title: 'ข้อมูลเครื่องและโปรไฟล์ตัวตน',
+  btn_close: 'ปิด',
+  btn_back_main: 'ปิดหน้าต่าง / กลับสู่หน้าหลัก',
+  btn_edit_name: 'แก้ไขชื่อ',
+  btn_save: 'บันทึก',
+  btn_cancel: 'ยกเลิก',
+  name_placeholder: 'กรอกชื่อของคุณ...',
+  save_name_success: '✓ เปลี่ยนชื่อเรียบร้อยแล้ว',
+  battery_banner_tip: 'แนะนำ:',
+  battery_banner_desc: 'ตั้งค่าเป็น',
+  battery_banner_unrestricted: 'ไม่จำกัดแบตเตอรี่ (Unrestricted)',
+  battery_banner_tail: 'เพื่อให้รับส่งข้อความกู้ภัยได้ตลอด 24/7',
+  battery_banner_btn: 'ตั้งค่าระบบ',
+  emergency_label: 'ฉุกเฉิน',
+  system_diag_title: 'ข้อมูลระบบ & การเชื่อมต่อ'
 };
 
 export const zhDictionary: Record<string, string> = {
@@ -906,10 +991,20 @@ function createI18nStore() {
     savePersistedLocale(newLocale);
   }
 
+  function init() {
+    const persisted = getPersistedLocale();
+    if (persisted) {
+      currentLocale.set(persisted);
+      translations.set(getDictionaryForLocale(persisted));
+      updateDocumentLocale(persisted);
+    }
+  }
+
   return {
     locale: currentLocale,
     translations,
     setLocale,
+    init,
     isRtl: derived(currentLocale, ($loc) => $loc === 'ar')
   };
 }

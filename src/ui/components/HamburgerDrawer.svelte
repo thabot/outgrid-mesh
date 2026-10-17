@@ -99,12 +99,12 @@
         type="button"
         class="drawer-profile-card"
         on:click={() => { dispatch('openTab', { tab: 'profile' }); closeDrawer(); }}
-        title="แตะเพื่อดูรหัสเครื่องและแก้ไขโปรไฟล์ตัวตน"
+        title={$translations.profile_card_tooltip || 'แตะเพื่อดูรหัสเครื่องและแก้ไขโปรไฟล์ตัวตน'}
       >
         <div class="drawer-profile-avatar">👤</div>
         <div class="drawer-profile-info">
           <div class="drawer-profile-name">{userProfile.displayName || `Guest-${(userProfile.nodeId || '0000').slice(0, 4).toUpperCase()}`}</div>
-          <div class="drawer-profile-node">🔑 รหัสเครื่อง (Node ID): <span class="node-highlight">#{(userProfile.nodeId || '0000').slice(0, 4).toUpperCase()}</span></div>
+          <div class="drawer-profile-node">🔑 {$translations.node_id_label || 'รหัสเครื่อง (Node ID)'}: <span class="node-highlight">#{(userProfile.nodeId || '0000').slice(0, 4).toUpperCase()}</span></div>
         </div>
         <span class="drawer-profile-arrow">➔</span>
       </button>
@@ -112,7 +112,7 @@
       {#if currentSection !== 'menu'}
         <div class="sub-nav-bar">
           <button class="back-btn" on:click={() => currentSection = 'menu'}>
-            ← กลับสู่เมนูหลัก
+            ← {$translations.menu_back_main || 'กลับสู่เมนูหลัก'}
           </button>
         </div>
       {/if}
@@ -124,9 +124,9 @@
               <span class="lang-globe">🌐</span>
               <strong>{$translations.lang_select_title || 'ภาษา / Language'}</strong>
             </div>
-            <select class="drawer-lang-select" value={$currentLocaleStore} on:change={handleLanguageChange} aria-label="เลือกภาษา">
+            <select class="drawer-lang-select" value={$currentLocaleStore} on:change={handleLanguageChange} aria-label={$translations.lang_select_title || 'เลือกภาษา'}>
               {#each SUPPORTED_LOCALES as loc}
-                <option value={loc.code}>{loc.flag} {loc.name}</option>
+                <option value={loc.code} selected={loc.code === $currentLocaleStore}>{loc.flag} {loc.name}</option>
               {/each}
             </select>
           </div>
@@ -135,64 +135,64 @@
             <button class="menu-entry" on:click={() => currentSection = 'manual'}>
               <span class="menu-icon">📖</span>
               <div class="menu-info">
-                <strong>คู่มือเอาชีวิตรอด (10 ภาษา)</strong>
-                <small>Field Survival Manual & First Aid Guide</small>
+                <strong>{$translations.menu_survival_manual || 'คู่มือเอาชีวิตรอด (10 ภาษา)'}</strong>
+                <small>{$translations.menu_survival_manual_desc || 'Field Survival Manual & First Aid Guide'}</small>
               </div>
             </button>
 
             <button class="menu-entry" on:click={() => currentSection = 'share_apk'}>
               <span class="menu-icon">📲</span>
               <div class="menu-info">
-                <strong>แชร์ APK ออฟไลน์ (Sideload)</strong>
-                <small>Quick Share, Bluetooth & Hotspot QR</small>
+                <strong>{$translations.menu_share_apk || 'แชร์ APK ออฟไลน์ (Sideload)'}</strong>
+                <small>{$translations.menu_share_apk_desc || 'Quick Share, Bluetooth & Hotspot QR'}</small>
               </div>
             </button>
 
             <button class="menu-entry" on:click={() => currentSection = 'beacon'}>
               <span class="menu-icon">🔦</span>
               <div class="menu-info">
-                <strong>แผงไฟฉาย & หวูดไซเรนฉุกเฉิน</strong>
-                <small>Morse SOS Flashlight & 85dB Acoustic Siren</small>
+                <strong>{$translations.menu_beacon || 'แผงไฟฉาย & หวูดไซเรนฉุกเฉิน'}</strong>
+                <small>{$translations.menu_beacon_desc || 'Morse SOS Flashlight & 85dB Acoustic Siren'}</small>
               </div>
             </button>
 
             <button class="menu-entry" on:click={() => currentSection = 'fund'}>
               <span class="menu-icon">🤝</span>
               <div class="menu-info">
-                <strong>กองทุนสนับสนุนชุมชน (Community Fund)</strong>
-                <small>บัญชีโปร่งใส 100% ตรวจสอบได้แบบ Open Ledger</small>
+                <strong>{$translations.menu_fund || 'กองทุนสนับสนุนชุมชน (Community Fund)'}</strong>
+                <small>{$translations.menu_fund_desc || 'บัญชีโปร่งใส 100% ตรวจสอบได้แบบ Open Ledger'}</small>
               </div>
             </button>
 
             <button class="menu-entry" on:click={() => { dispatch('openTab', { tab: 'feed' }); closeDrawer(); }}>
               <span class="menu-icon">📢</span>
               <div class="menu-info">
-                <strong>ศูนย์ประกาศเตือนภัยพิบัติ (Crisis Feed)</strong>
-                <small>Verified Offline Emergency Alerts & Broadcasts</small>
+                <strong>{$translations.menu_feed || 'ศูนย์ประกาศเตือนภัยพิบัติ (Crisis Feed)'}</strong>
+                <small>{$translations.menu_feed_desc || 'Verified Offline Emergency Alerts & Broadcasts'}</small>
               </div>
             </button>
 
             <button class="menu-entry" on:click={() => { dispatch('openTab', { tab: 'friends' }); closeDrawer(); }}>
               <span class="menu-icon">👥</span>
               <div class="menu-info">
-                <strong>รายชื่อเพื่อน & จับคู่ QR Code</strong>
-                <small>Two-Way QR Handshake & Nearby Radio Nodes</small>
+                <strong>{$translations.menu_friends || 'รายชื่อเพื่อน & จับคู่ QR Code'}</strong>
+                <small>{$translations.menu_friends_desc || 'Two-Way QR Handshake & Nearby Radio Nodes'}</small>
               </div>
             </button>
 
             <button class="menu-entry" on:click={() => { dispatch('openTab', { tab: 'profile' }); closeDrawer(); }}>
               <span class="menu-icon">👤</span>
               <div class="menu-info">
-                <strong>โปรไฟล์ตัวตน & สำรองข้อมูล (Identity)</strong>
-                <small>Self-Sovereign Node ID & Zero-Knowledge Backup</small>
+                <strong>{$translations.menu_profile || 'โปรไฟล์ตัวตน & สำรองข้อมูล (Identity)'}</strong>
+                <small>{$translations.menu_profile_desc || 'Self-Sovereign Node ID & Zero-Knowledge Backup'}</small>
               </div>
             </button>
 
             <button class="menu-entry" on:click={() => currentSection = 'system'}>
               <span class="menu-icon">⚙️</span>
               <div class="menu-info">
-                <strong>ข้อมูลระบบ & สิทธิ์ฮาร์ดแวร์</strong>
-                <small>System Diagnostic & Radio Drivers</small>
+                <strong>{$translations.menu_system || 'ข้อมูลระบบ & สิทธิ์ฮาร์ดแวร์'}</strong>
+                <small>{$translations.menu_system_desc || 'System Diagnostic & Radio Drivers'}</small>
               </div>
             </button>
           </nav>
@@ -217,7 +217,7 @@
           </div>
         {:else if currentSection === 'system'}
           <div class="sub-content system-diag">
-            <h4>⚙️ ข้อมูลระบบ & การเชื่อมต่อ</h4>
+            <h4>⚙️ {$translations.system_diag_title || 'ข้อมูลระบบ & การเชื่อมต่อ'}</h4>
             <ul class="diag-list">
               <li><strong>Protocol:</strong> Thabot OutGrid Protocol (TOG v1.1)</li>
               <li><strong>PHY Driver:</strong> BLE Coded PHY S=8 (Range 300m - 5km)</li>

@@ -6,8 +6,13 @@
    * Protocol: TOG v1.1
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
+  import { createEventDispatcher } from 'svelte';
   import { i18n, SUPPORTED_LOCALES, type SupportedLocale } from '../../core/i18n/I18nStore';
   import { AuthManager, UserRole } from '../../core/auth/AuthManager';
+
+  const dispatch = createEventDispatcher<{
+    close: void;
+  }>();
 
   const localeStore = i18n.locale;
   const t = i18n.translations;
@@ -94,6 +99,23 @@
 
 <div class="profile-container">
   <div class="profile-card">
+    <!-- Top Bar with Close Button -->
+    <div class="profile-top-bar">
+      <div class="profile-top-title">
+        <span class="profile-top-icon">👤</span>
+        <h2>{$t.profile_screen_title || 'ข้อมูลเครื่องและโปรไฟล์ (Device & Profile)'}</h2>
+      </div>
+      <button
+        type="button"
+        class="btn-close-profile"
+        on:click={() => dispatch('close')}
+        aria-label={$t.btn_close || 'ปิด'}
+        title={$t.btn_close || 'ปิด'}
+      >
+        ✕
+      </button>
+    </div>
+
     <!-- Header & Identity Badge -->
     <div class="profile-header">
       <div class="avatar-circle">
@@ -107,24 +129,24 @@
               class="name-input"
               bind:value={inputDisplayName}
               maxlength="24"
-              placeholder="กรอกชื่อของคุณ..."
+              placeholder={$t.name_placeholder || 'กรอกชื่อของคุณ...'}
             />
-            <button class="btn-save-name" on:click={handleSaveDisplayName}>💾 บันทึก</button>
-            <button class="btn-cancel-name" on:click={() => { isEditingName = false; inputDisplayName = userProfile.displayName; }}>ยกเลิก</button>
+            <button class="btn-save-name" on:click={handleSaveDisplayName}>💾 {$t.btn_save || 'บันทึก'}</button>
+            <button class="btn-cancel-name" on:click={() => { isEditingName = false; inputDisplayName = userProfile.displayName; }}>{$t.btn_cancel || 'ยกเลิก'}</button>
           {:else}
             <div class="display-name-group">
               <h3>{userProfile.displayName}</h3>
-              <button class="btn-edit-name-icon" on:click={() => isEditingName = true} title="เปลี่ยนชื่อของคุณ">
-                ✏️ แก้ไขชื่อ
+              <button class="btn-edit-name-icon" on:click={() => isEditingName = true} title={$t.btn_edit_name || 'เปลี่ยนชื่อของคุณ'}>
+                ✏️ {$t.btn_edit_name || 'แก้ไขชื่อ'}
               </button>
             </div>
           {/if}
         </div>
         {#if saveSuccessNotice}
-          <div class="save-notice">✓ เปลี่ยนชื่อเรียบร้อยแล้ว</div>
+          <div class="save-notice">{$t.save_name_success || '✓ เปลี่ยนชื่อเรียบร้อยแล้ว'}</div>
         {/if}
         <div class="node-badge-row">
-          <span class="node-id-badge">🔑 Node ID: #{userProfile.nodeId.slice(0, 4).toUpperCase()}</span>
+          <span class="node-id-badge">🔑 {$t.node_id_label || 'Node ID'}: #{userProfile.nodeId.slice(0, 4).toUpperCase()}</span>
           <span class="badge-parity">{$t.guest_parity_badge}</span>
         </div>
       </div>
@@ -193,6 +215,17 @@
         {$t.storage_note_2}
       </p>
     </div>
+
+    <!-- Action to Close Profile and Return to Map/Main -->
+    <div class="profile-footer-actions">
+      <button
+        type="button"
+        class="btn-back-main"
+        on:click={() => dispatch('close')}
+      >
+        ← {$t.btn_back_main || 'ปิดหน้าต่าง / กลับสู่หน้าหลัก'}
+      </button>
+    </div>
   </div>
 </div>
 
@@ -214,6 +247,82 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+  }
+
+  .profile-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #1e293b;
+    padding-bottom: 10px;
+    margin-bottom: 2px;
+  }
+
+  .profile-top-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .profile-top-icon {
+    font-size: 1.25rem;
+  }
+
+  .profile-top-title h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #38bdf8;
+  }
+
+  .btn-close-profile {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #94a3b8;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.15rem;
+    font-weight: 700;
+    transition: all 0.2s ease;
+  }
+
+  .btn-close-profile:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.6);
+    color: #f87171;
+  }
+
+  .profile-footer-actions {
+    display: flex;
+    justify-content: center;
+    padding-top: 10px;
+    border-top: 1px solid #1e293b;
+    margin-top: 4px;
+  }
+
+  .btn-back-main {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #38bdf8;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .btn-back-main:hover {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #38bdf8;
   }
 
   .profile-header {

@@ -247,14 +247,14 @@
 
   <!-- Inline Emergency Beacon Controls -->
   <div class="beacon-controls-inline">
-    <span class="header-title-inline">⚡ ฉุกเฉิน:</span>
+    <span class="header-title-inline">⚡ {$translations.emergency_label || 'ฉุกเฉิน'}:</span>
     <button
       class="btn-beacon"
       class:active={isFlashlightActive}
       on:click={toggleFlashlight}
       title="ไฟฉายกระพริบรหัสมอร์ส SOS"
     >
-      <span>⚡</span> <span>{isFlashlightActive ? 'ปิดไฟฉาย' : 'ไฟฉาย SOS'}</span>
+      <span>⚡</span> <span>{isFlashlightActive ? ($translations.torch_off || 'ปิดไฟฉาย') : ($translations.sos_morse_torch || 'ไฟฉาย SOS')}</span>
     </button>
     <button
       class="btn-beacon"
@@ -262,7 +262,7 @@
       on:click={toggleSiren}
       title="หวูดเตือนภัยความดัง 85dB"
     >
-      <span>📢</span> <span>หวูด 85dB</span>
+      <span>📢</span> <span>{$translations.siren_85db || 'หวูด 85dB'}</span>
     </button>
     <button
       class="btn-beacon"
