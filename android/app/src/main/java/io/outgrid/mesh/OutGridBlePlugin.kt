@@ -90,11 +90,14 @@ class OutGridBlePlugin(private val context: Context) {
             AdvertiseSettings.ADVERTISE_TX_POWER_LOW
         }
 
+        val burstTimeoutMs = if (txPowerHigh) 1500 else 800
+        val advertiseMode = if (txPowerHigh) AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY else AdvertiseSettings.ADVERTISE_MODE_BALANCED
+
         val settings = AdvertiseSettings.Builder()
-            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+            .setAdvertiseMode(advertiseMode)
             .setTxPowerLevel(txPower)
             .setConnectable(false)
-            .setTimeout(3000) // 3 seconds transmission burst
+            .setTimeout(burstTimeoutMs) // 800ms energy-saving burst (1500ms for emergency SOS)
             .build()
 
         // Stop previous advertising burst to prevent ALREADY_STARTED collision

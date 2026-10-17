@@ -47,10 +47,10 @@ class OutGridMeshService : Service() {
         val notification = buildOngoingNotification()
         startForeground(notificationId, notification)
 
-        // Initialize BLE Radio Engine
+        // Initialize BLE Radio Engine in BALANCED mode for background duty cycling
         BleRadioNativeDriver.initialize(applicationContext)
         BleRadioNativeDriver.addPacketListener(servicePacketListener)
-        BleRadioNativeDriver.startScanning()
+        BleRadioNativeDriver.startScanning(lowLatency = false)
 
         schedulePeriodicDozeWakeup()
         return START_STICKY
@@ -140,14 +140,13 @@ class OutGridMeshService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun acquireWakeLock() {
+    private fun acquireWakeLock(durationMs: Long = 15000L) {
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
             "OutGridMesh:RadioDutyWakeLock"
         ).apply {
-
-            acquire(10 * 60 * 1000L) // 10 minutes temporary window
+            acquire(durationMs) // 15-second energy-saving window
         }
     }
 

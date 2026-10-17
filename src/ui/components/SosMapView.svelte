@@ -124,7 +124,14 @@
     }
   }
 
+  let lastOrientationTimestamp = 0;
+
   function handleDeviceOrientation(e: DeviceOrientationEvent) {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    // Throttle orientation processing to max 10 Hz (every 100ms) to preserve CPU and battery
+    if (now - lastOrientationTimestamp < 100) return;
+    lastOrientationTimestamp = now;
+
     let heading: number | null = null;
     if ((e as any).webkitCompassHeading !== undefined && (e as any).webkitCompassHeading !== null) {
       // iOS WebKit Compass Heading

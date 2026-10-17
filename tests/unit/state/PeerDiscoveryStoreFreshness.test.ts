@@ -14,19 +14,19 @@ import {
 
 describe('PeerDiscoveryStore Freshness & State Suite', () => {
   describe('Adaptive Broadcast Interval Calculation', () => {
-    it('should return 8000ms for <= 5 active peers', () => {
-      expect(calculateBroadcastInterval(0)).toBe(8000);
-      expect(calculateBroadcastInterval(5)).toBe(8000);
+    it('should return 15000ms for <= 5 active peers', () => {
+      expect(calculateBroadcastInterval(0)).toBe(15000);
+      expect(calculateBroadcastInterval(5)).toBe(15000);
     });
 
-    it('should return 15000ms for 6 to 15 active peers', () => {
-      expect(calculateBroadcastInterval(6)).toBe(15000);
-      expect(calculateBroadcastInterval(15)).toBe(15000);
+    it('should return 25000ms for 6 to 15 active peers', () => {
+      expect(calculateBroadcastInterval(6)).toBe(25000);
+      expect(calculateBroadcastInterval(15)).toBe(25000);
     });
 
-    it('should return 30000ms for 16 to 30 active peers', () => {
-      expect(calculateBroadcastInterval(16)).toBe(30000);
-      expect(calculateBroadcastInterval(30)).toBe(30000);
+    it('should return 40000ms for 16 to 30 active peers', () => {
+      expect(calculateBroadcastInterval(16)).toBe(40000);
+      expect(calculateBroadcastInterval(30)).toBe(40000);
     });
 
     it('should return 60000ms for > 30 active peers', () => {

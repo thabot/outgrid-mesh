@@ -46,9 +46,9 @@ export function toggleStealthMode(): void {
 }
 
 export function calculateBroadcastInterval(activeCount: number): number {
-  if (activeCount <= 5) return 8000;   // 8s
-  if (activeCount <= 15) return 15000; // 15s
-  if (activeCount <= 30) return 30000; // 30s
+  if (activeCount <= 5) return 15000;  // 15s (energy-optimized from 8s)
+  if (activeCount <= 15) return 25000; // 25s
+  if (activeCount <= 30) return 40000; // 40s
   return 60000;                        // 60s
 }
 

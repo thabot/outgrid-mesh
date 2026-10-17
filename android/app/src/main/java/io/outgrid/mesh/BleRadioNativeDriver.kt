@@ -80,26 +80,31 @@ object BleRadioNativeDriver {
     private val TOG_PARCEL_UUID = android.os.ParcelUuid(TOG_SERVICE_UUID)
     private const val TOG_MANUFACTURER_ID = 0x544F
 
-    fun startScanning() {
+    fun startScanning(lowLatency: Boolean = false) {
         if (isScanning || scanner == null) return
+
+        val scanMode = if (lowLatency) {
+            ScanSettings.SCAN_MODE_LOW_LATENCY
+        } else {
+            ScanSettings.SCAN_MODE_BALANCED
+        }
 
         val scanSettings = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isLeCodedPhySupported()) {
             ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .setScanMode(scanMode)
                 .setLegacy(false)
                 .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
                 .build()
         } else {
             ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .setScanMode(scanMode)
                 .build()
         }
 
-        // Hardware ScanFilter targeting Service UUID & Manufacturer Data with open fallback
+        // Hardware ScanFilter strictly targeting TOG Service UUID & Manufacturer Data (Removes CPU-draining open filter)
         val filters = listOf(
             ScanFilter.Builder().setServiceUuid(TOG_PARCEL_UUID).build(),
-            ScanFilter.Builder().setManufacturerData(TOG_MANUFACTURER_ID, byteArrayOf()).build(),
-            ScanFilter.Builder().build()
+            ScanFilter.Builder().setManufacturerData(TOG_MANUFACTURER_ID, byteArrayOf()).build()
         )
 
         try {

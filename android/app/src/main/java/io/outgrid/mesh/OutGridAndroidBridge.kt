@@ -279,12 +279,23 @@ class OutGridAndroidBridge(
     private var lastRoll: Double = 0.0
     private var lastPressureHpa: Double = 1013.25
     private var sensorsRegistered: Boolean = false
+    private var sensorManager: android.hardware.SensorManager? = null
+    private var sensorListener: android.hardware.SensorEventListener? = null
+    private val sensorHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val SENSOR_AUTO_UNREGISTER_DELAY_MS = 10000L // Auto-release sensors after 10s of inactivity
+
+    private val unregisterSensorsRunnable = Runnable {
+        stopSensors()
+    }
 
     private fun ensureSensorsRegistered() {
+        sensorHandler.removeCallbacks(unregisterSensorsRunnable)
+        sensorHandler.postDelayed(unregisterSensorsRunnable, SENSOR_AUTO_UNREGISTER_DELAY_MS)
         if (sensorsRegistered) return
         sensorsRegistered = true
         try {
             val sm = context.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager ?: return
+            sensorManager = sm
             @Suppress("DEPRECATION")
             val orientSensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_ORIENTATION)
             val pressureSensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_PRESSURE)
@@ -302,6 +313,7 @@ class OutGridAndroidBridge(
                 }
                 override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
             }
+            sensorListener = listener
             if (orientSensor != null) {
                 sm.registerListener(listener, orientSensor, android.hardware.SensorManager.SENSOR_DELAY_UI)
             }
@@ -309,6 +321,20 @@ class OutGridAndroidBridge(
                 sm.registerListener(listener, pressureSensor, android.hardware.SensorManager.SENSOR_DELAY_UI)
             }
         } catch (_: Exception) {}
+    }
+
+    @JavascriptInterface
+    fun stopSensors(): Boolean {
+        sensorHandler.removeCallbacks(unregisterSensorsRunnable)
+        if (!sensorsRegistered) return true
+        sensorsRegistered = false
+        return try {
+            sensorListener?.let { sensorManager?.unregisterListener(it) }
+            sensorListener = null
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     @JavascriptInterface
