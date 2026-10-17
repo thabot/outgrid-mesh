@@ -8,6 +8,7 @@
    */
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import type { Map as LeafletMap, LayerGroup as LeafletLayerGroup } from 'leaflet';
+  import { latLngToCell, gridDisk, cellToBoundary } from 'h3-js';
   import { ODBL_ATTRIBUTION } from '../../core/spatial/TileProxyClient';
   import { peerDiscoveryManager } from '../../core/state/PeerDiscoveryStore';
   import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
@@ -53,6 +54,7 @@
   let markersLayer: LeafletLayerGroup | null = null;
   let ringsLayer: LeafletLayerGroup | null = null;
   let vectorBasemapLayer: LeafletLayerGroup | null = null;
+  let h3GridLayer: LeafletLayerGroup | null = null;
   let tileLayerRef: any = null;
 
   // Persistent User Position and Zoom Level
@@ -494,6 +496,63 @@
     }
   }
 
+  function getH3ResolutionForZoom(zoom: number): number {
+    if (zoom >= 18) return 10;
+    if (zoom >= 16) return 9;
+    if (zoom >= 14) return 8;
+    if (zoom >= 12) return 7;
+    if (zoom >= 10) return 6;
+    if (zoom >= 8) return 5;
+    return 4;
+  }
+
+  function renderH3Grid() {
+    if (!map || !L || !h3GridLayer) return;
+    h3GridLayer.clearLayers();
+
+    const zoom = map.getZoom();
+    const center = map.getCenter();
+    if (!center || isNaN(center.lat) || isNaN(center.lng)) return;
+
+    const resolution = getH3ResolutionForZoom(zoom);
+    let centerCell: string;
+    try {
+      centerCell = latLngToCell(center.lat, center.lng, resolution);
+    } catch {
+      return;
+    }
+
+    const k = zoom >= 16 ? 4 : (zoom >= 12 ? 3 : 2);
+    let cells: string[];
+    try {
+      cells = gridDisk(centerCell, k);
+    } catch {
+      return;
+    }
+
+    const polygonCoords: Array<Array<[number, number]>> = [];
+    for (const cell of cells) {
+      try {
+        const boundary = cellToBoundary(cell);
+        if (boundary && boundary.length >= 6) {
+          polygonCoords.push(boundary as Array<[number, number]>);
+        }
+      } catch {}
+    }
+
+    if (polygonCoords.length > 0) {
+      L.polygon(polygonCoords, {
+        color: '#38bdf8',
+        weight: 1,
+        opacity: 0.35,
+        dashArray: '3, 4',
+        fillColor: '#0284c7',
+        fillOpacity: 0.04,
+        interactive: false
+      }).addTo(h3GridLayer);
+    }
+  }
+
   async function initLeafletMap() {
     if (typeof window === 'undefined' || !mapEl) return;
     L = (await import('leaflet')) as typeof import('leaflet');
@@ -518,6 +577,7 @@
     }).addTo(map);
 
     vectorBasemapLayer = L.layerGroup().addTo(map);
+    h3GridLayer = L.layerGroup().addTo(map);
     ringsLayer = L.layerGroup().addTo(map);
     markersLayer = L.layerGroup().addTo(map);
 
@@ -527,6 +587,7 @@
       if (map) {
         mapZoomLevel = map.getZoom();
         savePersistedMapState();
+        renderH3Grid();
       }
     });
 
@@ -536,10 +597,12 @@
         if (c && !isNaN(c.lat) && !isNaN(c.lng)) {
           savePersistedMapState();
         }
+        renderH3Grid();
       }
     });
 
     renderMapElements();
+    renderH3Grid();
   }
 
   // Reactive updater when peerNodes, sosTargets or myPos update
@@ -609,16 +672,6 @@
       class="leaflet-map-host"
       style="transform: rotate({-currentHeading}deg); transform-origin: 50% 50%;"
     ></div>
-
-    <!-- Subtle Tactical H3 Hexagon Grid Overlay (Seamless Non-Overlapping Regular Honeycomb) -->
-    <svg class="h3-subtle-overlay" width="100%" height="100%">
-      <defs>
-        <pattern id="h3-hex-pattern-map" width="60" height="103.92" patternUnits="userSpaceOnUse">
-          <path d="M 30,0 L 60,17.32 L 60,51.96 L 30,69.28 L 0,51.96 L 0,17.32 Z M 30,69.28 L 30,103.92" fill="none" stroke="#38bdf8" stroke-width="0.75" stroke-dasharray="2,2"/>
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#h3-hex-pattern-map)" />
-    </svg>
 
     <!-- Floating HUD Overlay Layer (Non-blocking) -->
     <div class="tactical-hud-overlay">
@@ -804,17 +857,6 @@
     height: 100%;
     z-index: 1;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  /* Subtle H3 Hexagon Grid Overlay */
-  .h3-subtle-overlay {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 2;
-    opacity: 0.28;
   }
 
   /* Non-blocking HUD Overlay */

@@ -102,4 +102,26 @@ describe('SosMapView (Phase 5 Task 10.3 — Spatial Map UI)', () => {
     expect(H3GridEngine.getResolution(bundle.res5)).toBe(5);
     expect(H3GridEngine.getResolution(bundle.res4)).toBe(4);
   });
+
+  it('should render real geographic H3 grid on Leaflet layer and discard static screen-space SVG', () => {
+    const svelteCode = readFileSync(
+      join(ROOT, 'src/ui/components/SosMapView.svelte'),
+      'utf-8'
+    );
+
+    // 1. Must use real h3-js functions
+    expect(svelteCode).toContain("from 'h3-js'");
+    expect(svelteCode).toContain('latLngToCell');
+    expect(svelteCode).toContain('gridDisk');
+    expect(svelteCode).toContain('cellToBoundary');
+
+    // 2. Must use Leaflet vector layer
+    expect(svelteCode).toContain('h3GridLayer');
+    expect(svelteCode).toContain('renderH3Grid');
+    expect(svelteCode).toContain('getH3ResolutionForZoom');
+
+    // 3. Static fake screen-space SVG pattern must NOT be present
+    expect(svelteCode).not.toContain('h3-hex-pattern-map');
+    expect(svelteCode).not.toContain('h3-subtle-overlay');
+  });
 });
