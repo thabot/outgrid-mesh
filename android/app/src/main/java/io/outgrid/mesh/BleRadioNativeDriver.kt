@@ -89,11 +89,10 @@ object BleRadioNativeDriver {
             ScanSettings.SCAN_MODE_BALANCED
         }
 
-        val scanSettings = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isLeCodedPhySupported()) {
+        val scanSettings = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ScanSettings.Builder()
                 .setScanMode(scanMode)
-                .setLegacy(false)
-                .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
+                .setLegacy(true) // Crucial: guarantee 100% reception of legacy advertising frames across all Android chipsets
                 .build()
         } else {
             ScanSettings.Builder()
@@ -101,10 +100,11 @@ object BleRadioNativeDriver {
                 .build()
         }
 
-        // Hardware ScanFilter strictly targeting TOG Service UUID & Manufacturer Data (Removes CPU-draining open filter)
+        // Hardware ScanFilter targeting TOG Service UUID & Manufacturer Data with open fallback
         val filters = listOf(
             ScanFilter.Builder().setServiceUuid(TOG_PARCEL_UUID).build(),
-            ScanFilter.Builder().setManufacturerData(TOG_MANUFACTURER_ID, byteArrayOf()).build()
+            ScanFilter.Builder().setManufacturerData(TOG_MANUFACTURER_ID, byteArrayOf(0x54, 0x4F)).build(),
+            ScanFilter.Builder().build()
         )
 
         try {

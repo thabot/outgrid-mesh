@@ -25,6 +25,7 @@ export interface IDiscoveredPeer {
   isGateway?: boolean | undefined;
   isSos?: boolean | undefined;
   isInternet?: boolean | undefined;      // Connected to Internet Gateway
+  hasRealSignal?: boolean | undefined;   // Genuine physical radio discovery
 }
 
 export interface IPeerCounts {
@@ -89,12 +90,21 @@ export class PeerDiscoveryStoreManager {
         const raw = storage.getItem(this.storageKey);
         if (raw) {
           const list: IDiscoveredPeer[] = JSON.parse(raw);
+          let cleaned = false;
           this.peersStore.update((map) => {
             for (const p of list) {
+              // Strictly purge any mockup nodes or fake test entries
+              if (!p.shortNodeId || p.shortNodeId.startsWith('node-') || p.shortNodeId.includes('rescue') || p.shortNodeId.includes('medic') || p.shortNodeId === '#TEST') {
+                cleaned = true;
+                continue;
+              }
               map.set(p.shortNodeId, p);
             }
             return map;
           });
+          if (cleaned) {
+            this.persistPeersToStorage();
+          }
         }
 
         const savedLoc = storage.getItem('outgrid_last_gps_location');
@@ -299,7 +309,8 @@ export class PeerDiscoveryStoreManager {
       isRelay: !chirp.isLegacyBt,
       isGateway: (chirp.radioCapabilities & 0x80) !== 0,
       isInternet,
-      isSos: (chirp.statusFlags & 0x01) !== 0
+      isSos: (chirp.statusFlags & 0x01) !== 0,
+      hasRealSignal: true
     };
 
     this.peersStore.update((map) => {
@@ -314,6 +325,10 @@ export class PeerDiscoveryStoreManager {
    * Adds or updates a manually paired friend peer
    */
   public addFriendPeer(shortNodeId: string, fullNodeId?: string) {
+    if (!shortNodeId || shortNodeId.startsWith('node-') || shortNodeId.includes('rescue') || shortNodeId.includes('medic')) {
+      return;
+    }
+
     this.peersStore.update((map) => {
       const existing = map.get(shortNodeId);
       if (existing) {
@@ -334,7 +349,8 @@ export class PeerDiscoveryStoreManager {
           rssiTier: 3,
           distanceMeters: 30,
           lastSeen: Date.now(),
-          isFriend: true
+          isFriend: true,
+          hasRealSignal: false
         });
       }
       return map;

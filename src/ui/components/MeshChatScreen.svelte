@@ -6,7 +6,7 @@
    * Protocol: TOG v1.1 Tactical Chat Hub
    * License: AGPL-3.0 + Commercial Rights Reserved to Thabot
    */
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
   import { MeshChatPayloadManager, type IChatMessage } from '../../core/chat/MeshChatPayload';
   import { ImageCompressor, ImageQualityTier } from '../../core/media/ImageCompressor';
   import { i18n } from '../../core/i18n/I18nStore';
@@ -48,6 +48,19 @@
   let broadcastInputText = '';
   let unsubscribeRadio: (() => void) | null = null;
 
+  let directScrollContainer: HTMLDivElement | null = null;
+  let broadcastScrollContainer: HTMLDivElement | null = null;
+
+  async function scrollToBottom(view?: 'direct' | 'broadcast') {
+    await tick();
+    if ((!view || view === 'direct') && directScrollContainer) {
+      directScrollContainer.scrollTop = directScrollContainer.scrollHeight;
+    }
+    if ((!view || view === 'broadcast') && broadcastScrollContainer) {
+      broadcastScrollContainer.scrollTop = broadcastScrollContainer.scrollHeight;
+    }
+  }
+
   const dispatch = createEventDispatcher<{
     openFriendsScanner: void;
   }>();
@@ -75,7 +88,9 @@
         const raw = window.localStorage.getItem(CONTACTS_STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) return parsed;
+          if (Array.isArray(parsed)) {
+            return parsed.filter(c => c && c.id && !c.id.startsWith('node-') && !c.id.includes('rescue') && !c.id.includes('medic'));
+          }
         }
       }
     } catch {}
@@ -100,6 +115,9 @@
       const peerId = msg.isSelf ? (msg.recipientId || '') : (msg.recipientId || msg.sender.replace(/^โหนด\s*/, ''));
       if (!peerId) continue;
       const normalizedPeerId = peerId.trim();
+      if (normalizedPeerId.startsWith('node-') || normalizedPeerId.includes('rescue') || normalizedPeerId.includes('medic')) {
+        continue; // Strictly skip mock node contacts
+      }
 
       let contact = current.find(c => c.id === normalizedPeerId || c.id.replace('#', '') === normalizedPeerId.replace('#', ''));
       if (!contact) {
@@ -175,6 +193,15 @@
     chatMessageManager.setActiveRecipient(selectedRecipient);
     peerDiscoveryManager.addFriendPeer(selectedRecipient);
     currentView = 'direct';
+    scrollToBottom('direct');
+  }
+
+  $: if (activeConversationMessages && currentView === 'direct') {
+    scrollToBottom('direct');
+  }
+
+  $: if ($broadcastMessagesStore && currentView === 'broadcast') {
+    scrollToBottom('broadcast');
   }
 
   $: filteredContacts = contacts.filter(c =>
@@ -189,6 +216,7 @@
     contact.unreadCount = 0;
     chatMessageManager.setActiveRecipient(contact.id);
     currentView = 'direct';
+    scrollToBottom('direct');
   }
 
   function openDirectChatWithPeer(peer: any) {
@@ -215,6 +243,7 @@
       saveContactsToStorage(contacts);
     }
     currentView = 'direct';
+    scrollToBottom('direct');
   }
 
   function sendBroadcastMessage() {
@@ -222,6 +251,7 @@
     if (!text) return;
     chatMessageManager.sendBroadcastMessage(text);
     broadcastInputText = '';
+    scrollToBottom('broadcast');
   }
 
   function sendDirectMessage() {
@@ -254,6 +284,7 @@
     }
 
     inputText = '';
+    scrollToBottom('direct');
   }
 
   onMount(() => {
@@ -262,6 +293,7 @@
       syncContactsFromMessages($directMessagesStore);
     }
     chatMessageManager.setActiveRecipient(currentView === 'direct' ? selectedRecipient : null);
+    scrollToBottom();
   });
 
   onDestroy(() => {
@@ -436,7 +468,7 @@
       </div>
 
       <!-- Broadcast Messages Scroll -->
-      <div class="chat-messages-scroll">
+      <div class="chat-messages-scroll" bind:this={broadcastScrollContainer}>
         {#each $broadcastMessagesStore as msg}
           {#if msg.isPinned}
             <div class="bubble-pinned">
@@ -494,7 +526,7 @@
       </div>
 
       <!-- Direct Message History -->
-      <div class="chat-messages-scroll">
+      <div class="chat-messages-scroll" bind:this={directScrollContainer}>
         {#each activeConversationMessages as msg}
           <div class="bubble {msg.isSelf ? 'bubble-out' : 'bubble-in'}">
             <span class="bubble-sender">{msg.sender}:</span>

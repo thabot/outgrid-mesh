@@ -222,6 +222,9 @@
     const points: Array<[number, number]> = [[myPos.lat, myPos.lng]];
 
     for (const p of peerNodes) {
+      if (!p.shortNodeId || p.shortNodeId.startsWith('node-') || p.shortNodeId.includes('rescue') || p.shortNodeId.includes('medic') || p.shortNodeId === '#TEST' || p.hasRealSignal === false) {
+        continue;
+      }
       if (p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)) {
         points.push([p.lat, p.lng]);
       }
@@ -407,6 +410,10 @@
 
     // 3. Real Discovered Peer Markers
     for (const peer of peerNodes) {
+      if (!peer.shortNodeId || peer.shortNodeId.startsWith('node-') || peer.shortNodeId.includes('rescue') || peer.shortNodeId.includes('medic') || peer.shortNodeId === '#TEST' || peer.hasRealSignal === false) {
+        continue; // Strictly omit mockups and unverified contacts without real radio presence
+      }
+
       let pLat = peer.lat;
       let pLng = peer.lng;
       if (!pLat || !pLng || isNaN(pLat) || isNaN(pLng)) continue;
