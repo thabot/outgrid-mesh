@@ -298,5 +298,27 @@ export class NativeBridgeDispatcher {
 
     return Boolean(this.bridgeImpl.transmitRadioPacket(base64, txPowerHigh));
   }
+
+  public setPowerProfile(profile: string): boolean {
+    try {
+      if (typeof this.bridgeImpl?.setPowerProfile === 'function') {
+        return Boolean(this.bridgeImpl.setPowerProfile(profile));
+      }
+    } catch (err) {
+      console.warn('NativeBridge setPowerProfile error:', err);
+    }
+    return false;
+  }
+
+  public boostScanPerformance(durationMs: number = 60000): boolean {
+    try {
+      if (typeof this.bridgeImpl?.boostScanPerformance === 'function') {
+        return Boolean(this.bridgeImpl.boostScanPerformance(durationMs));
+      }
+    } catch (err) {
+      console.warn('NativeBridge boostScanPerformance error:', err);
+    }
+    return false;
+  }
 }
 

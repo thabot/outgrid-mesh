@@ -14,6 +14,7 @@
   import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
   import { SosRadarEngine } from '../../core/spatial/SosRadarEngine';
   import { i18n } from '../../core/i18n/I18nStore';
+  import { effectivePowerProfileStore, PowerProfile } from '../../core/state/PowerProfileStore';
 
   const translations = i18n.translations;
 
@@ -196,9 +197,19 @@
     }
   }
 
-  function locateMe() {
+  function locateMe(forceHighAccuracy = false) {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
     isLocating = true;
+
+    let effProfile: PowerProfile = PowerProfile.NORMAL;
+    effectivePowerProfileStore.subscribe((val) => { effProfile = val; })();
+
+    // Smart GPS Sleep: In Eco or Survival mode, avoid spinning up power-hungry GPS satellite modem
+    // unless user explicitly forces high accuracy or an active SOS emergency exists
+    const hasActiveSos = sosTargets.length > 0;
+    const enableHighAccuracy = forceHighAccuracy || hasActiveSos || (effProfile === PowerProfile.NORMAL);
+    const maximumAge = (effProfile === PowerProfile.SURVIVAL) ? 90000 : ((effProfile === PowerProfile.ECO) ? 60000 : 30000);
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         isLocating = false;
@@ -213,7 +224,7 @@
       () => {
         isLocating = false;
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      { enableHighAccuracy, timeout: 10000, maximumAge }
     );
   }
 

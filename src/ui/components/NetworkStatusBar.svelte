@@ -11,6 +11,12 @@
   import { i18n } from '../../core/i18n/I18nStore';
   import { peerDiscoveryManager } from '../../core/state/PeerDiscoveryStore';
   import { NativeBridgeDispatcher } from '../../core/native/NativeBridgeDispatcher';
+  import {
+    powerProfileManager,
+    selectedPowerProfileStore,
+    effectivePowerProfileStore,
+    PowerProfile
+  } from '../../core/state/PowerProfileStore';
 
   export let stateMachine: ModeStateMachine = new ModeStateMachine(AppOperatingMode.NORMAL_CLOUD);
   export let peerCounts = {
@@ -134,6 +140,14 @@
     }
   }
 
+  $: isUltraSurvival = $effectivePowerProfileStore === PowerProfile.SURVIVAL;
+
+  function selectPowerProfile(p: PowerProfile) {
+    powerProfileManager.setProfile(p);
+    isUltraSurvival = powerProfileManager.getEffectiveProfile() === PowerProfile.SURVIVAL;
+    dispatch('toggleSurvival');
+  }
+
   async function initBattery() {
     if (typeof navigator !== 'undefined' && 'getBattery' in navigator) {
       try {
@@ -141,16 +155,21 @@
         batteryPct = Math.round(b.level * 100);
         isCharging = b.charging;
         batteryEstimate = BatteryRuntimeEstimator.estimateRuntime(batteryPct, isCharging);
+        powerProfileManager.updateBattery(batteryPct, isCharging);
 
         b.addEventListener('levelchange', () => {
           batteryPct = Math.round(b.level * 100);
           batteryEstimate = BatteryRuntimeEstimator.estimateRuntime(batteryPct, isCharging);
+          powerProfileManager.updateBattery(batteryPct, isCharging);
         });
         b.addEventListener('chargingchange', () => {
           isCharging = b.charging;
           batteryEstimate = BatteryRuntimeEstimator.estimateRuntime(batteryPct, isCharging);
+          powerProfileManager.updateBattery(batteryPct, isCharging);
         });
       } catch {}
+    } else {
+      powerProfileManager.updateBattery(batteryPct, isCharging);
     }
   }
 
@@ -183,8 +202,11 @@
   }
 
   function toggleSurvivalMode() {
-    isUltraSurvival = !isUltraSurvival;
-    dispatch('toggleSurvival');
+    if ($selectedPowerProfileStore === PowerProfile.SURVIVAL) {
+      selectPowerProfile(PowerProfile.AUTO);
+    } else {
+      selectPowerProfile(PowerProfile.SURVIVAL);
+    }
   }
 
   onMount(() => {
@@ -385,6 +407,48 @@
       </div>
 
       <div class="modal-body-list">
+        <div class="profile-selector-container">
+          <div class="profile-selector-title">⚙️ เลือกระดับประหยัดพลังงาน (Power Profile):</div>
+          <div class="power-profile-grid">
+            <button
+              class="btn-profile-pill"
+              class:selected={$selectedPowerProfileStore === PowerProfile.NORMAL}
+              on:click={() => selectPowerProfile(PowerProfile.NORMAL)}
+            >
+              ⚡ ปกติ
+            </button>
+            <button
+              class="btn-profile-pill"
+              class:selected={$selectedPowerProfileStore === PowerProfile.ECO}
+              on:click={() => selectPowerProfile(PowerProfile.ECO)}
+            >
+              🍃 ประหยัด (Eco)
+            </button>
+            <button
+              class="btn-profile-pill"
+              class:selected={$selectedPowerProfileStore === PowerProfile.SURVIVAL}
+              on:click={() => selectPowerProfile(PowerProfile.SURVIVAL)}
+            >
+              🛑 กู้ชีพ (Survival)
+            </button>
+            <button
+              class="btn-profile-pill"
+              class:selected={$selectedPowerProfileStore === PowerProfile.AUTO}
+              on:click={() => selectPowerProfile(PowerProfile.AUTO)}
+            >
+              🔄 อัตโนมัติ (Auto)
+            </button>
+          </div>
+          <div class="profile-current-desc">
+            <span class="desc-tag">{powerProfileManager.getProfileDetails($selectedPowerProfileStore).label}:</span>
+            {powerProfileManager.getProfileDetails($selectedPowerProfileStore).description}
+            <div class="drain-indicator">
+              ⚡ อัตราบริโภคพลังงาน: <strong>{powerProfileManager.getProfileDetails($selectedPowerProfileStore).estimatedDrainPerHourMah}</strong>
+              ({powerProfileManager.getProfileDetails($selectedPowerProfileStore).scanDutyMode})
+            </div>
+          </div>
+        </div>
+
         <div class="modal-row">
           <span>🔋 แบตเตอรี่คงเหลือ:</span>
           <b style="color: #22c55e;">{batteryPct}% ({isCharging ? '⚡ กำลังชาร์จ' : `~${batteryEstimate.estimatedHours} ชม.`})</b>
@@ -726,5 +790,60 @@
   .btn-toggle-survival.active {
     background: #0284c7;
     color: #fff;
+  }
+  .profile-selector-container {
+    background: #090d16;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+  }
+  .profile-selector-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #38bdf8;
+    margin-bottom: 6px;
+  }
+  .power-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .btn-profile-pill {
+    background: #1e293b;
+    color: #cbd5e1;
+    border: 1px solid #475569;
+    border-radius: 4px;
+    padding: 5px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-profile-pill:hover {
+    background: #334155;
+    color: #fff;
+  }
+  .btn-profile-pill.selected {
+    background: #0284c7;
+    color: #fff;
+    border-color: #38bdf8;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
+  }
+  .profile-current-desc {
+    font-size: 10px;
+    color: #94a3b8;
+    line-height: 1.35;
+    margin-top: 4px;
+  }
+  .desc-tag {
+    color: #38bdf8;
+    font-weight: 700;
+  }
+  .drain-indicator {
+    margin-top: 3px;
+    font-size: 9.5px;
+    color: #34d399;
   }
 </style>

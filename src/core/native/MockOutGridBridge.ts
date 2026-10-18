@@ -213,5 +213,29 @@ export class MockOutGridBridge {
   public showMessageNotification(sender: string, message: string): boolean {
     return true;
   }
+
+  private currentPowerProfile: string = 'NORMAL';
+  private performanceBoosted: boolean = false;
+
+  public setPowerProfile(profile: string): boolean {
+    this.currentPowerProfile = profile.toUpperCase();
+    return true;
+  }
+
+  public getPowerProfile(): string {
+    return this.currentPowerProfile;
+  }
+
+  public boostScanPerformance(durationMs: number = 60000): boolean {
+    this.performanceBoosted = true;
+    setTimeout(() => {
+      this.performanceBoosted = false;
+    }, durationMs);
+    return true;
+  }
+
+  public isPerformanceBoosted(): boolean {
+    return this.performanceBoosted;
+  }
 }
 

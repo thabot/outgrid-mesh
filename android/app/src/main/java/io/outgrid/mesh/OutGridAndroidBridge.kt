@@ -441,7 +441,35 @@ class OutGridAndroidBridge(
     fun transmitRadioPacket(base64Payload: String, txPowerHigh: Boolean = true): Boolean {
         return try {
             val rawBytes = Base64.decode(base64Payload, Base64.NO_WRAP)
+            // Transmission primes radio scan agility for incoming responses
+            BleRadioNativeDriver.boostScanPerformance(60000L)
             blePlugin.transmitPacket(rawBytes, txPowerHigh)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Sets runtime power profile (NORMAL, ECO, SURVIVAL) for radio duty cycling
+     */
+    @JavascriptInterface
+    fun setPowerProfile(profile: String): Boolean {
+        return try {
+            BleRadioNativeDriver.setPowerProfile(profile)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Temporarily boosts BLE radio scanning performance during active conversation
+     */
+    @JavascriptInterface
+    fun boostScanPerformance(durationMs: Long = 60000L): Boolean {
+        return try {
+            BleRadioNativeDriver.boostScanPerformance(durationMs)
+            true
         } catch (_: Exception) {
             false
         }

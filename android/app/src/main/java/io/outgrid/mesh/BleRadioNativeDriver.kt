@@ -80,14 +80,72 @@ object BleRadioNativeDriver {
     private val TOG_PARCEL_UUID = android.os.ParcelUuid(TOG_SERVICE_UUID)
     private const val TOG_MANUFACTURER_ID = 0x544F
 
+    private var currentPowerProfile: String = "NORMAL"
+    private var isPerformanceBoosted: Boolean = false
+    private var boostEndTime: Long = 0L
+    private val boostHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val boostCooldownRunnable = Runnable {
+        if (isPerformanceBoosted && System.currentTimeMillis() >= boostEndTime) {
+            isPerformanceBoosted = false
+            android.util.Log.i("OutGridBLE", "Performance boost expired. Returning to power-saving scan mode ($currentPowerProfile).")
+            if (isScanning) {
+                restartScanningWithCurrentProfile()
+            }
+        }
+    }
+
+    fun setPowerProfile(profile: String) {
+        val normalized = profile.uppercase()
+        if (currentPowerProfile != normalized) {
+            currentPowerProfile = normalized
+            android.util.Log.i("OutGridBLE", "Updated Radio Power Profile: $currentPowerProfile")
+            if (isScanning) {
+                restartScanningWithCurrentProfile()
+            }
+        }
+    }
+
+    fun getPowerProfile(): String = currentPowerProfile
+
+    fun boostScanPerformance(durationMs: Long = 60000L) {
+        val now = System.currentTimeMillis()
+        boostEndTime = Math.max(boostEndTime, now + durationMs)
+        if (!isPerformanceBoosted) {
+            isPerformanceBoosted = true
+            android.util.Log.i("OutGridBLE", "Performance boosted for ${durationMs}ms (Switching to balanced scan).")
+            if (isScanning) {
+                restartScanningWithCurrentProfile()
+            }
+        }
+        boostHandler.removeCallbacks(boostCooldownRunnable)
+        boostHandler.postDelayed(boostCooldownRunnable, durationMs)
+    }
+
+    private fun restartScanningWithCurrentProfile() {
+        if (!isScanning) return
+        try {
+            stopScanning()
+            startScanning()
+        } catch (_: Exception) {}
+    }
+
+    private fun resolveScanMode(lowLatency: Boolean): Int {
+        if (lowLatency) {
+            return ScanSettings.SCAN_MODE_LOW_LATENCY
+        }
+        if (isPerformanceBoosted && System.currentTimeMillis() < boostEndTime) {
+            return ScanSettings.SCAN_MODE_BALANCED
+        }
+        return when (currentPowerProfile) {
+            "ECO", "SURVIVAL", "DEEP_HIBERNATION" -> ScanSettings.SCAN_MODE_LOW_POWER
+            else -> ScanSettings.SCAN_MODE_BALANCED
+        }
+    }
+
     fun startScanning(lowLatency: Boolean = false) {
         if (isScanning || scanner == null) return
 
-        val scanMode = if (lowLatency) {
-            ScanSettings.SCAN_MODE_LOW_LATENCY
-        } else {
-            ScanSettings.SCAN_MODE_BALANCED
-        }
+        val scanMode = resolveScanMode(lowLatency)
 
         val scanSettings = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ScanSettings.Builder()
@@ -136,6 +194,7 @@ object BleRadioNativeDriver {
             // 1. Check Service Data for TOG_PARCEL_UUID (Standard Android BLE transport)
             val serviceData = record.getServiceData(TOG_PARCEL_UUID)
             if (serviceData != null && serviceData.isNotEmpty()) {
+                boostScanPerformance(45000L)
                 packetListeners.forEach { it.invoke(serviceData, rssi) }
                 return
             }

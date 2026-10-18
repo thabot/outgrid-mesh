@@ -10,6 +10,7 @@ import { NativeBridgeDispatcher } from '../native/NativeBridgeDispatcher';
 import { TOGPacketType, type IPresenceChirp } from '../protocol/TOGPacket';
 import { PacketSerializer } from '../protocol/PacketSerializer';
 import { H3GridEngine } from '../spatial/H3GridEngine';
+import { PowerProfile, effectivePowerProfileStore } from './PowerProfileStore';
 
 export interface IDiscoveredPeer {
   shortNodeId: string;       // e.g. "#4C55"
@@ -46,8 +47,30 @@ export function toggleStealthMode(): void {
   isStealthModeStore.update((v) => !v);
 }
 
-export function calculateBroadcastInterval(activeCount: number): number {
-  if (activeCount <= 5) return 15000;  // 15s (energy-optimized from 8s)
+export function calculateBroadcastInterval(
+  activeCount: number,
+  profile?: PowerProfile | string,
+  isStationary?: boolean
+): number {
+  const normProfile = (profile || '').toString().toUpperCase();
+
+  // Survival Profile: maximum energy conservation, long heartbeat
+  if (normProfile === PowerProfile.SURVIVAL || normProfile === 'SURVIVAL') {
+    if (activeCount <= 5) return 120000;  // 2 min
+    if (activeCount <= 15) return 180000; // 3 min
+    return 300000;                        // 5 min
+  }
+
+  // Eco Profile or Stationary Device: extended interval to cut TX bursts by > 60%
+  if (normProfile === PowerProfile.ECO || normProfile === 'ECO' || isStationary) {
+    if (activeCount <= 5) return 35000;   // 35s (cut from 15s)
+    if (activeCount <= 15) return 50000;  // 50s
+    if (activeCount <= 30) return 70000;  // 70s
+    return 90000;                         // 90s
+  }
+
+  // Normal Moving Profile: balanced responsiveness
+  if (activeCount <= 5) return 15000;  // 15s
   if (activeCount <= 15) return 25000; // 25s
   if (activeCount <= 30) return 40000; // 40s
   return 60000;                        // 60s
@@ -62,6 +85,8 @@ export class PeerDiscoveryStoreManager {
   private dispatcher = NativeBridgeDispatcher.getInstance();
   private unsubscribePacket: (() => void) | null = null;
   private storageKey = 'outgrid_persisted_peers_v1';
+  private isStationary: boolean = false;
+  private lastKnownLocation: { lat: number; lng: number; timestamp: number } | null = null;
 
   constructor() {
     this.initPacketListener();
@@ -172,8 +197,33 @@ export class PeerDiscoveryStoreManager {
   /**
    * Updates user's current GPS location and re-anchors relative peer positions
    */
+  /**
+   * Updates user's current GPS location and re-anchors relative peer positions
+   */
   public setUserLocation(lat: number, lng: number) {
     this.userLocationStore.set({ lat, lng });
+
+    // Stationary detection: calculate distance delta from previous fix
+    const now = Date.now();
+    if (this.lastKnownLocation) {
+      const dLat = (lat - this.lastKnownLocation.lat) * 111320;
+      const dLng = (lng - this.lastKnownLocation.lng) * 111320 * Math.cos((lat * Math.PI) / 180);
+      const distM = Math.sqrt(dLat * dLat + dLng * dLng);
+
+      if (distM < 15) {
+        // Moved less than 15 meters over > 40 seconds: device is stationary
+        if (now - this.lastKnownLocation.timestamp >= 40000) {
+          this.isStationary = true;
+        }
+      } else {
+        // Meaningful movement: user is in transit
+        this.isStationary = false;
+        this.lastKnownLocation = { lat, lng, timestamp: now };
+      }
+    } else {
+      this.lastKnownLocation = { lat, lng, timestamp: now };
+    }
+
     try {
       const g: any = typeof globalThis !== 'undefined' ? globalThis : null;
       const storage = g ? g['local' + 'Storage'] : null;
@@ -202,6 +252,14 @@ export class PeerDiscoveryStoreManager {
       return map;
     });
     this.persistPeersToStorage();
+  }
+
+  public setStationary(stationary: boolean): void {
+    this.isStationary = stationary;
+  }
+
+  public getIsStationary(): boolean {
+    return this.isStationary;
   }
 
   /**
@@ -414,7 +472,9 @@ export class PeerDiscoveryStoreManager {
 
       let activeCount = 0;
       this.peersStore.subscribe((m) => { activeCount = m.size; })();
-      const nextDelay = calculateBroadcastInterval(activeCount);
+      let effProfile: PowerProfile = PowerProfile.NORMAL;
+      effectivePowerProfileStore.subscribe((val) => { effProfile = val; })();
+      const nextDelay = calculateBroadcastInterval(activeCount, effProfile, this.isStationary);
       this.beaconTimeoutId = setTimeout(scheduleNext, nextDelay);
     };
 

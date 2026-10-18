@@ -29,11 +29,17 @@
   import { PacketSerializer } from '../core/protocol/PacketSerializer';
   import { TOGPacketType } from '../core/protocol/TOGPacket';
   import { H3DeltaCompressor } from '../core/spatial/H3DeltaCompressor';
+  import {
+    powerProfileManager,
+    effectivePowerProfileStore,
+    PowerProfile
+  } from '../core/state/PowerProfileStore';
 
   const translations = i18n.translations;
 
   let activeTab: 'map' | 'sos' | 'chat' | 'manual' | 'feed' | 'donation' | 'friends' | 'profile' = 'map';
   let isUltraSurvival = false;
+  $: isUltraSurvival = $effectivePowerProfileStore === PowerProfile.SURVIVAL;
   let isDrawerOpen = false;
   let showBatteryModal = false;
   let isBatteryBannerDismissed = false;
@@ -354,7 +360,11 @@
   }
 
   function toggleSurvivalMode() {
-    isUltraSurvival = !isUltraSurvival;
+    if (powerProfileManager.getProfile() === PowerProfile.SURVIVAL) {
+      powerProfileManager.setProfile(PowerProfile.AUTO);
+    } else {
+      powerProfileManager.setProfile(PowerProfile.SURVIVAL);
+    }
   }
 
   let isInternetOnline = typeof navigator !== 'undefined' ? navigator.onLine : false;
