@@ -392,6 +392,10 @@
     unsubscribeRadioSos = NativeBridgeDispatcher.getInstance().subscribeToPackets((event) => {
       handleIncomingSosRadio(event.bytes, event.rssi);
     });
+
+    if (typeof window !== 'undefined' && (window as any).__onAppMounted) {
+      (window as any).__onAppMounted();
+    }
   });
 
   onDestroy(() => {

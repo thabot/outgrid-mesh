@@ -28,7 +28,10 @@
 					'<b>UserAgent:</b> ' + navigator.userAgent + '<br>' +
 					'<b>ReadyState:</b> ' + document.readyState +
 					'</div>' +
-					'<button id="copy-err-btn" style="background:#ef4444;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-weight:bold;cursor:pointer;margin-bottom:14px;">📋 คัดลอก Error ทั้งหมด</button>' +
+					'<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">' +
+					'<button id="copy-err-btn" style="background:#ef4444;color:#fff;border:none;padding:8px 14px;border-radius:6px;font-weight:bold;cursor:pointer;">📋 คัดลอก Error ทั้งหมด</button>' +
+					'<button id="dismiss-err-btn" style="background:#334155;color:#e2e8f0;border:none;padding:8px 14px;border-radius:6px;font-weight:bold;cursor:pointer;">✕ ปิดหน้านี้ / รอดูผล (Dismiss)</button>' +
+					'</div>' +
 					'<div style="display:flex;flex-direction:column;gap:12px;">' +
 					collectedErrors.map(function(item) {
 						return '<div style="background:#131d2e;padding:12px;border-radius:6px;border-left:4px solid #ef4444;">' + item + '</div>';
@@ -48,7 +51,18 @@
 						}
 					};
 				}
+
+				var dismissBtn = document.getElementById('dismiss-err-btn');
+				if (dismissBtn) {
+					dismissBtn.onclick = function() {
+						if (errBox) {
+							errBox.style.display = 'none';
+						}
+					};
+				}
 			}
+
+			var hasRealError = false;
 
 			function logDiagnosticError(title, detail) {
 				collectedErrors.push('<b>[' + title + ']</b><br>' + detail);
@@ -56,6 +70,7 @@
 			}
 
 			window.addEventListener('error', function(e) {
+				hasRealError = true;
 				var info = '<b>Message:</b> ' + e.message + '<br>' +
 					'<b>Source:</b> ' + (e.filename || 'unknown') + ':' + (e.lineno || 0) + ':' + (e.colno || 0) + '<br>' +
 					(e.error && e.error.stack ? '<pre style="background:#0f172a;color:#cbd5e1;padding:8px;border-radius:4px;overflow:auto;margin:6px 0;">' + e.error.stack + '</pre>' : '');
@@ -68,6 +83,7 @@
 			});
 
 			window.addEventListener('unhandledrejection', function(e) {
+				hasRealError = true;
 				var r = e.reason || {};
 				var msg = r.message || String(r);
 				var stack = r.stack || '';
@@ -98,17 +114,46 @@
 					});
 			}
 
-			// Fallback: If SvelteKit has not mounted within 3 seconds, show diagnostic warning
-			setTimeout(function() {
+			var mountTimer = null;
+
+			function clearMountWatchdog() {
+				if (mountTimer) {
+					clearTimeout(mountTimer);
+					mountTimer = null;
+				}
+				// If SvelteKit has mounted and there are no fatal runtime crashes, clear any mount warning
+				var errBox = document.getElementById('debug-error-box');
+				if (errBox && !hasRealError) {
+					errBox.remove();
+				}
+			}
+
+			window.__onAppMounted = clearMountWatchdog;
+
+			// Observe DOM so when .app-root mounts, any timeout warning is auto-dismissed immediately
+			if (typeof MutationObserver !== 'undefined') {
+				var observer = new MutationObserver(function() {
+					if (document.querySelector('.app-root')) {
+						clearMountWatchdog();
+						observer.disconnect();
+					}
+				});
+				if (document.documentElement) {
+					observer.observe(document.documentElement, { childList: true, subtree: true });
+				}
+			}
+
+			// Watchdog: Allow up to 12s for CDN chunk downloads before showing diagnostic warning
+			mountTimer = setTimeout(function() {
 				var appRoot = document.querySelector('.app-root');
-				if (!appRoot && collectedErrors.length === 0) {
+				if (!appRoot && !hasRealError) {
 					logDiagnosticError(
-						'SvelteKit Mount Timeout (3s)',
-						'แอปไม่สามารถโหลด UI เข้าสู่หน้าจอได้ (SvelteKit ไม่ได้เริ่มทำงาน หรือไฟล์ JS หลักไม่ถูกเรียก)<br>' +
+						'SvelteKit Mount Timeout (12s)',
+						'แอปใช้เวลาโหลดนานกว่าปกติ (อาจเกิดจากความเร็วอินเทอร์เน็ตหรือกำลังดาวน์โหลดโค้ด)<br>' +
 						'<b>Document ReadyState:</b> ' + document.readyState
 					);
 				}
-			}, 3000);
+			}, 12000);
 		</script>
 		%sveltekit.head%
 	</head>
