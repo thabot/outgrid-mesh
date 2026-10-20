@@ -50,7 +50,7 @@ describe('Android Release & Google Play Deployment Automation', () => {
 
     // Verify Google Play deploy step with secret guard
     expect(workflow).toContain('Deploy to Google Play Console');
-    expect(workflow).toContain('secrets.PLAY_STORE_JSON_KEY');
+    expect(workflow).toContain('HAS_PLAY_SECRET');
     expect(workflow).toContain('uses: r0adkll/upload-google-play@v1');
     expect(workflow).toContain('packageName: io.outgrid.mesh');
   });

@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      HAS_PLAY_SECRET: ${{ secrets.PLAY_STORE_JSON_KEY != '' }}
 
     steps:
       - name: Checkout Code
@@ -100,9 +102,12 @@ jobs:
           gradle-version: '8.5'
 
       - name: Decode Android Release Keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 secret provided."
+          fi
 
       - name: Build Android Artifacts with Gradle (AAB & APK)
         env:
@@ -141,7 +146,7 @@ jobs:
           retention-days: 30
 
       - name: Deploy to Google Play Console
-        if: ${{ secrets.PLAY_STORE_JSON_KEY != '' }}
+        if: env.HAS_PLAY_SECRET == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
