@@ -22,12 +22,25 @@ android {
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
+        release {
+            def ksPath = System.getenv("ANDROID_KEYSTORE_FILE") ?: (project.hasProperty('RELEASE_STORE_FILE') ? RELEASE_STORE_FILE : "release.keystore")
+            def ksFile = file(ksPath)
+            if (ksFile.exists()) {
+                storeFile ksFile
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: (project.hasProperty('RELEASE_STORE_PASSWORD') ? RELEASE_STORE_PASSWORD : "")
+                keyAlias System.getenv("KEY_ALIAS") ?: (project.hasProperty('RELEASE_KEY_ALIAS') ? RELEASE_KEY_ALIAS : "")
+                keyPassword System.getenv("KEY_PASSWORD") ?: (project.hasProperty('RELEASE_KEY_PASSWORD') ? RELEASE_KEY_PASSWORD : "")
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (signingConfigs.release.storeFile != null && signingConfigs.release.storeFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
         debug {
             applicationIdSuffix ".debug"

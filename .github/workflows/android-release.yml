@@ -23,16 +23,20 @@ jobs:
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "env_name=production" >> $GITHUB_OUTPUT
             echo "apk_name=outgrid-mesh.apk" >> $GITHUB_OUTPUT
+            echo "aab_name=outgrid-mesh.aab" >> $GITHUB_OUTPUT
             echo "release_tag=v1.1.0" >> $GITHUB_OUTPUT
             echo "release_title=OutGrid Mesh v1.1.0 (Official Production Release)" >> $GITHUB_OUTPUT
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "play_track=production" >> $GITHUB_OUTPUT
           else
             UAT_VERSION="v1.1.0-uat.${{ github.run_number }}"
             echo "env_name=uat" >> $GITHUB_OUTPUT
             echo "apk_name=outgrid-mesh-uat.apk" >> $GITHUB_OUTPUT
+            echo "aab_name=outgrid-mesh-uat.aab" >> $GITHUB_OUTPUT
             echo "release_tag=${UAT_VERSION}" >> $GITHUB_OUTPUT
             echo "release_title=OutGrid Mesh ${UAT_VERSION} (UAT Build ${{ github.run_number }})" >> $GITHUB_OUTPUT
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            echo "play_track=internal" >> $GITHUB_OUTPUT
           fi
 
       - name: Set up Java 17
@@ -95,12 +99,39 @@ jobs:
         with:
           gradle-version: '8.5'
 
-      - name: Build Android APK with Gradle
+      - name: Decode Android Release Keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+
+      - name: Build Android Artifacts with Gradle (AAB & APK)
+        env:
+          ANDROID_KEYSTORE_FILE: "release.keystore"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd android
-          gradle assembleDebug -PcustomVersionCode=${{ github.run_number }} --no-daemon --stacktrace
-          mkdir -p ../dist-apk
-          cp app/build/outputs/apk/debug/app-debug.apk ../dist-apk/${{ steps.meta.outputs.apk_name }}
+          if [ -f "app/release.keystore" ]; then
+            echo "Building Release AAB & APK with Release Keystore..."
+            gradle bundleRelease assembleRelease assembleDebug -PcustomVersionCode=${{ github.run_number }} --no-daemon --stacktrace
+            mkdir -p ../dist-aab ../dist-apk
+            cp app/build/outputs/bundle/release/app-release.aab ../dist-aab/${{ steps.meta.outputs.aab_name }}
+            cp app/build/outputs/apk/release/app-release.apk ../dist-apk/${{ steps.meta.outputs.apk_name }}
+          else
+            echo "No Release Keystore found; building Debug AAB & APK..."
+            gradle bundleDebug assembleDebug -PcustomVersionCode=${{ github.run_number }} --no-daemon --stacktrace
+            mkdir -p ../dist-aab ../dist-apk
+            cp app/build/outputs/bundle/debug/app-debug.aab ../dist-aab/${{ steps.meta.outputs.aab_name }}
+            cp app/build/outputs/apk/debug/app-debug.apk ../dist-apk/${{ steps.meta.outputs.apk_name }}
+          fi
+
+      - name: Upload AAB as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.aab_name }}
+          path: dist-aab/${{ steps.meta.outputs.aab_name }}
+          retention-days: 30
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
@@ -108,6 +139,16 @@ jobs:
           name: ${{ steps.meta.outputs.apk_name }}
           path: dist-apk/${{ steps.meta.outputs.apk_name }}
           retention-days: 30
+
+      - name: Deploy to Google Play Console
+        if: ${{ secrets.PLAY_STORE_JSON_KEY != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          packageName: io.outgrid.mesh
+          releaseFiles: dist-aab/${{ steps.meta.outputs.aab_name }}
+          track: ${{ steps.meta.outputs.play_track }}
+          status: completed
 
       - name: Create or Update Specific Build GitHub Release
         uses: softprops/action-gh-release@v2
@@ -121,13 +162,16 @@ jobs:
             - **Architecture:** Android Native 24/7 Background Mesh Service + BLE Coded PHY (S=8) + Wi-Fi P2P
             - **Zero Internet Dependency:** 100% Offline Communication & Sideloading
 
-            ### 📥 ดาวน์โหลด APK
-            คลิกปุ่ม **Assets** ด้านล่าง หรือดาวน์โหลดโดยตรงจากลิงก์นี้:
+            ### 📦 ดาวน์โหลด App Bundle (สำหรับ Google Play Console):
+            - **[${{ steps.meta.outputs.aab_name }}](https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.release_tag }}/${{ steps.meta.outputs.aab_name }})**
 
-            **[${{ steps.meta.outputs.apk_name }}](https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.release_tag }}/${{ steps.meta.outputs.apk_name }})**
+            ### 📥 ดาวน์โหลด APK (สำหรับติดตั้งบนเครื่องโดยตรง):
+            - **[${{ steps.meta.outputs.apk_name }}](https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.release_tag }}/${{ steps.meta.outputs.apk_name }})**
 
             > ⚠️ **ข้อควรระวัง:** ไฟล์นี้ไม่ได้อยู่ในโค้ดของ Repository — ต้องดาวน์โหลดผ่านลิงก์ด้านบน หรือจากแท็บ **Releases** เท่านั้น
-          files: dist-apk/${{ steps.meta.outputs.apk_name }}
+          files: |
+            dist-apk/${{ steps.meta.outputs.apk_name }}
+            dist-aab/${{ steps.meta.outputs.aab_name }}
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
           make_latest: true
         env:
@@ -143,12 +187,17 @@ jobs:
             ## 🧪 OutGrid Mesh Latest UAT Build (Bleeding-Edge)
             - **Protocol:** Thabot OutGrid Protocol (TOG v1.1)
             - **Channel:** `uat`
-            - **Permanent Direct Download:** ลิงก์ดาวน์โหลดถาวรสำหรับ APK ตัวล่าสุดจาก branch `uat`
+            - **Permanent Direct Download:** ลิงก์ดาวน์โหลดถาวรสำหรับ APK และ AAB ตัวล่าสุดจาก branch `uat`
             - **Source Run:** Build #${{ github.run_number }} (${{ steps.meta.outputs.release_tag }})
+
+            ### 📦 ดาวน์โหลด AAB ล่าสุด (Google Play Bundle):
+            **[outgrid-mesh-uat.aab](https://github.com/${{ github.repository }}/releases/download/v1.1.0-uat/outgrid-mesh-uat.aab)**
 
             ### 📥 ดาวน์โหลด APK ล่าสุด (Permanent Link):
             **[outgrid-mesh-uat.apk](https://github.com/${{ github.repository }}/releases/download/v1.1.0-uat/outgrid-mesh-uat.apk)**
-          files: dist-apk/${{ steps.meta.outputs.apk_name }}
+          files: |
+            dist-apk/${{ steps.meta.outputs.apk_name }}
+            dist-aab/${{ steps.meta.outputs.aab_name }}
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
