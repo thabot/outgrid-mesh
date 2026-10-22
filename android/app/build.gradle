@@ -3,12 +3,12 @@ apply plugin: 'kotlin-android'
 
 android {
     namespace 'io.outgrid.mesh'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId "io.outgrid.mesh"
         minSdk 26 // Android 8.0 for BLE Long Range & Background Services
-        targetSdk 34
+        targetSdk 36
         versionCode project.hasProperty('customVersionCode') ? project.property('customVersionCode').toInteger() : 1
         versionName "1.1.0"
 

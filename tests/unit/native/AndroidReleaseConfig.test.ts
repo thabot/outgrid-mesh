@@ -25,6 +25,10 @@ describe('Android Release & Google Play Deployment Automation', () => {
     expect(buildGradle).toContain('KEY_ALIAS');
     expect(buildGradle).toContain('KEY_PASSWORD');
     expect(buildGradle).toContain('signingConfig signingConfigs.release');
+
+    // Verify Google Play targetSdk and compileSdk >= 36 requirement
+    expect(buildGradle).toContain('compileSdk 36');
+    expect(buildGradle).toContain('targetSdk 36');
   });
 
   it('should verify .github/workflows/android-release.yml has AAB building and artifacts configured', () => {
