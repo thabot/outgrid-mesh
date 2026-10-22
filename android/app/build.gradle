@@ -9,8 +9,8 @@ android {
         applicationId "io.outgrid.mesh"
         minSdk 26 // Android 8.0 for BLE Long Range & Background Services
         targetSdk 36
-        versionCode project.hasProperty('customVersionCode') ? project.property('customVersionCode').toInteger() : 1
-        versionName "1.1.0"
+        versionCode project.hasProperty('customVersionCode') ? (project.property('customVersionCode').toInteger() + 100) : 200
+        versionName "1.1.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
