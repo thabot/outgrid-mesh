@@ -99,7 +99,8 @@ describe('Thai Chat Message Integrity & Device Identity Verification', () => {
   });
 
   it('should upgrade existing truncated chat message when full standard TOG packet arrives', () => {
-    const myProfile = (chatMessageManager as any).authManager ? (chatMessageManager as any).authManager.getProfile() : new AuthManager().getProfile();
+    const authInstance = (chatMessageManager as any).auth || (chatMessageManager as any).authManager || new AuthManager();
+    const myProfile = authInstance.getProfile();
     let myNumericShortId = 0x47a1;
     try {
       const parsed = parseInt(myProfile.nodeId.slice(0, 4), 16);

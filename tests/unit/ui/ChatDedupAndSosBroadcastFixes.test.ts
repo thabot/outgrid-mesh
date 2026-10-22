@@ -29,7 +29,8 @@ describe('Chat Deduplication & SOS Delivery Fixes', () => {
 
   beforeEach(() => {
     NativeBridgeDispatcher.getInstance();
-    const profile = (chatMessageManager as any).authManager ? (chatMessageManager as any).authManager.getProfile() : new AuthManager().getProfile();
+    const authInstance = (chatMessageManager as any).auth || (chatMessageManager as any).authManager || new AuthManager();
+    const profile = authInstance.getProfile();
     try {
       const parsed = parseInt(profile.nodeId.slice(0, 4), 16);
       if (!isNaN(parsed) && parsed > 0) myNumericShortId = parsed;
