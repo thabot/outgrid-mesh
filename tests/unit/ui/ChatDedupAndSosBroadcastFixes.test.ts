@@ -16,6 +16,7 @@ import {
   broadcastMessagesStore,
   unreadChatCountStore
 } from '../../../src/core/state/ChatMessageStore';
+import { NativeBridgeDispatcher } from '../../../src/core/native/NativeBridgeDispatcher';
 import { OneTapSosEngine, SosStatusCategory } from '../../../src/core/state/OneTapSosEngine';
 import { PacketSerializer, type ICompactDirectChat } from '../../../src/core/protocol/PacketSerializer';
 import { TOGPacketType, CannedEmergencyCode } from '../../../src/core/protocol/TOGPacket';
@@ -27,8 +28,8 @@ describe('Chat Deduplication & SOS Delivery Fixes', () => {
   let myNumericShortId = 0x47a1;
 
   beforeEach(() => {
-    auth = new AuthManager();
-    const profile = auth.getProfile();
+    NativeBridgeDispatcher.getInstance();
+    const profile = (chatMessageManager as any).authManager ? (chatMessageManager as any).authManager.getProfile() : new AuthManager().getProfile();
     try {
       const parsed = parseInt(profile.nodeId.slice(0, 4), 16);
       if (!isNaN(parsed) && parsed > 0) myNumericShortId = parsed;
