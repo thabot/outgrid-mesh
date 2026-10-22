@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, afterAll } from 'bun:test';
 import { AuthManager } from '../../../src/core/auth/AuthManager';
 import {
   peerDiscoveryManager,
@@ -107,5 +107,10 @@ describe('Deep Dive Bug Fixes & Handshake Integration Tests', () => {
     expect(node).toBeDefined();
     expect(node?.distanceMeters).toBeGreaterThan(0);
     expect(node?.batteryBars).toBeGreaterThanOrEqual(1);
+  });
+
+  afterAll(() => {
+    localStorage.clear();
+    AuthManager.resetCache();
   });
 });
