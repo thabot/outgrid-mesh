@@ -29,7 +29,7 @@ describe('Live Peer Discovery & Background Zero-Loss Chat Tests', () => {
   });
 
   it('should ingest incoming direct chat packets into ChatMessageStore even when user is on background tab', () => {
-    const myAuth = new AuthManager();
+    const myAuth = (chatMessageManager as any).auth || (chatMessageManager as any).authManager || new AuthManager();
     const myProfile = myAuth.getProfile();
     let myNumericShortId = 0x47a1;
     try {

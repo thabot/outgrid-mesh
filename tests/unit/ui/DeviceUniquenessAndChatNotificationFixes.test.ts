@@ -57,8 +57,10 @@ describe('Device Uniqueness, Seamless Hex Grid, Chat Notifications & History Per
   });
 
   it('should trigger incoming message alert store, audio chime and vibration when receiving radio chat', () => {
+    AuthManager.resetCache();
+    incomingMessageAlertStore.set(null);
     const senderShortId = 0x5D72;
-    const myAuth = new AuthManager();
+    const myAuth = (chatMessageManager as any).auth || (chatMessageManager as any).authManager || new AuthManager();
     const myNumericId = myAuth.getNumericShortNodeId();
     const incomingText = 'OK-HELP-99';
 

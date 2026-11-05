@@ -110,7 +110,9 @@ describe('Deep Dive Bug Fixes & Handshake Integration Tests', () => {
   });
 
   afterAll(() => {
-    localStorage.clear();
+    try {
+  if (typeof localStorage !== 'undefined') localStorage.clear();
+} catch(e) {}
     AuthManager.resetCache();
   });
 });

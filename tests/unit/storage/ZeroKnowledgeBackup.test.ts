@@ -103,6 +103,7 @@ describe('ZeroKnowledgeBackup (Sprint F Task F.6 Zero-Knowledge Backup & Storage
   });
 
   it('should guarantee 100% emergency capability for Guest users without authentication token', () => {
+    AuthManager.resetCache();
     const auth = new AuthManager();
     const guestProfile = auth.getProfile();
 

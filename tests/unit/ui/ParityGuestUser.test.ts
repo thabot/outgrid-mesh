@@ -33,5 +33,6 @@ describe('AuthManager & Guest Parity (100% Emergency Accessibility)', () => {
     expect(auth.isResponder()).toBe(true);
     expect(auth.getProfile().badge).toBe('ศูนย์กู้ภัยสว่างบริบูรณ์ (Pattaya Rescue)');
     expect(auth.canAccessFeature('COORDINATION_DASHBOARD')).toBe(true);
+    AuthManager.resetCache();
   });
 });
